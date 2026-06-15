@@ -36,9 +36,9 @@ toIR {
       config = {
         # Region in Nix, not the environment. Change to your region.
         region = "eu-central-1";
-        default_tags = {
-          tags = { managed-by = "terrae-nivis"; };
-        };
+        # default_tags is a LIST-nested block in the AWS provider, so it takes a
+        # list (of at most one) — a bare attrset is rejected at Configure time.
+        default_tags = [ { tags = { managed-by = "terrae-nivis"; }; } ];
       };
     };
   };

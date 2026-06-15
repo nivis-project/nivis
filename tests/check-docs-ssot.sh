@@ -55,12 +55,13 @@ check_unique \
   docs/OVERVIEW.md \
   docs-site/src/index.md
 
-# 3. Real-provider (AWS) walkthrough — canonical in docs/GETTING-STARTED.md (§7);
-#    site real-providers.md includes it, README only links.
+# 3. The full AWS plan/apply/state/destroy walkthrough — canonical in the
+#    step-by-step tutorial. getting-started §7 only links to it; README only
+#    links; the site's real-providers.md includes §7 (the link), not the commands.
 check_unique \
-  "tn plan    --attr terraeNivis.aws" \
-  docs/GETTING-STARTED.md \
-  README.md docs-site/src/real-providers.md
+  "tn apply --attr terraeNivis.aws" \
+  docs/TUTORIAL-AWS-S3.md \
+  README.md docs/GETTING-STARTED.md docs-site/src/real-providers.md
 
 # 4. The fake-provider build/run command block — canonical in getting-started;
 #    README's quickstart is a shorter, distinct set (no provider-alpha+beta+tn trio

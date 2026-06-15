@@ -49,7 +49,8 @@ links to it — neither copies it. New duplication is caught by
 |---|---|---|
 | Pitch + "how it works" | `docs/OVERVIEW.md` (anchors `pitch`, `how-it-works`) | site `index.md` (include), README (link) |
 | Fake-provider walkthrough + build/run | `docs/GETTING-STARTED.md` | site `getting-started.md` (include), README (link) |
-| Real provider (AWS) | `docs/GETTING-STARTED.md` §7 (anchor `aws`) | site `real-providers.md` (include), README (link) |
+| Real provider (AWS) intro | `docs/GETTING-STARTED.md` §7 (anchor `aws`) | site `real-providers.md` (include), README (link) |
+| AWS S3 step-by-step tutorial | `docs/TUTORIAL-AWS-S3.md` | site `tutorial-aws-s3.md` (include); getting-started §7 links to it |
 | IR contract / testing / design / roadmap / brand | `docs/*.md` (incl. `DESIGN.md`, `ROADMAP.md`) | site pages (include) |
 
 When a section must render in more than one place, give it an mdBook anchor

@@ -125,7 +125,9 @@ adjust the generated output.
 Everything above is offline against the fakes. The same `tn` commands drive
 **real** providers — `tn` resolves a provider by address from the OpenTofu
 registry, downloads and checksum-verifies the binary, negotiates the plugin
-protocol (AWS speaks v5), configures it, and runs plan/apply/destroy.
+protocol (AWS speaks v5), configures it, and runs plan/apply/destroy. The example
+`nix/example/aws.nix` (flake attr `terraeNivis.aws`) declares the `hashicorp/aws`
+provider with `mkProvider` and one `aws_s3_bucket`.
 
 > ⚠️ **This creates a real resource in your AWS account** — one (free-tier) S3
 > bucket, then destroys it. The provider's `region` lives in the Nix config; only
@@ -133,40 +135,16 @@ protocol (AWS speaks v5), configures it, and runs plan/apply/destroy.
 > `AWS_PROFILE` (or `AWS_ACCESS_KEY_ID`/…). The first run downloads the
 > ~900&nbsp;MB AWS provider (cached afterwards).
 
-```sh
-export AWS_PROFILE=your-profile                # credentials only; region is in the Nix config
-
-./bin/tn plan    --attr terraeNivis.aws
-./bin/tn apply   --attr terraeNivis.aws        # creates a real S3 bucket
-./bin/tn state show aws.aws_s3_bucket.demo     # AWS-generated bucket name, region, etc.
-./bin/tn destroy --attr terraeNivis.aws        # deletes it
-```
-
-The example lives in `nix/example/aws.nix` (flake attr `terraeNivis.aws`). It
-declares the provider with `mkProvider`:
-
-```nix
-providers.aws = mkProvider {
-  source = "registry.opentofu.org/hashicorp/aws";
-  config = {
-    region = "eu-central-1";                   # provider config in Nix, not env
-    default_tags = { tags = { managed-by = "terrae-nivis"; }; };
-  };
-};
-```
-
-`mkProvider`'s `config` is a raw attribute tree the provider validates at
-`Configure` time; nested blocks (`default_tags`, `assume_role`, `endpoints`, …)
-are just nested attrsets/lists, and `toIR` resolves any `__ref`/`__derived`
-leaves in it against the outputs ledger like resource config. Point the `region`,
-`source`, or resource at anything else to drive a different provider/setting.
+For the full, hand-held walkthrough — prerequisites, writing the config line by
+line, `plan`/`apply`/inspecting state/`destroy`, and troubleshooting — follow the
+**[AWS S3 tutorial](TUTORIAL-AWS-S3.md)**.
 <!-- ANCHOR_END: aws -->
 
 ## Where to go next
 
-- `docs/IR-CONTRACT.md` + `docs/ir-schema.json` — the IR, the stable contract
+- `IR-CONTRACT.md` + `ir-schema.json` — the IR, the stable contract
   between the Nix frontend and the Go executor.
-- `docs/TESTING.md` — the test layers and the headline two-provider e2e.
+- `TESTING.md` — the test layers and the headline two-provider e2e.
 - `DESIGN.md` — why the architecture is the way it is (spawn-not-link,
   batch-not-live, phased re-eval to a fixpoint).
 
