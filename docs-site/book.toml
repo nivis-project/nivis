@@ -1,0 +1,21 @@
+[book]
+title = "Terrae Nivis"
+description = "Infrastructure as Nix Code — Terraform/OpenTofu provider resources as first-class Nix values."
+authors = ["Pim Snel"]
+language = "en"
+src = "src"
+
+[output.html]
+# Brand theme lives in ./theme (custom.css/head.hbs override the defaults).
+default-theme = "navy"
+preferred-dark-theme = "navy"
+no-section-label = false
+additional-css = ["theme/custom.css"]
+git-repository-url = "https://github.com/wearetechnative/terrae-nivis"
+edit-url-template = "https://github.com/wearetechnative/terrae-nivis/edit/main/docs-site/{path}"
+
+[output.html.playground]
+runnable = false
+
+[output.html.search]
+enable = true

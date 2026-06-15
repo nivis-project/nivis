@@ -121,6 +121,19 @@ These are versioned interfaces — change the spec before the shape:
 - **The flake interface**: `terraeNivis.plan = ledger → IR`, evaluated each phase
   with the outputs ledger injected.
 
+## Docs site
+
+A branded [mdBook](https://rust-lang.github.io/mdBook/) site lives in
+`docs-site/`; it reuses these Markdown docs (one source of truth) and applies the
+brand theme (`docs/BRAND.md`). Build it with:
+
+```sh
+cargo install mdbook        # if you don't have it (single static binary)
+mdbook build docs-site      # -> docs-site/book/   (mdbook serve for live preview)
+```
+
+See `docs-site/README.md` for details.
+
 ## Testing
 
 ```sh

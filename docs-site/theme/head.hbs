@@ -1,0 +1,17 @@
+<!-- Terrae Nivis brand <head> additions: favicon + social preview (og:image /
+     twitter:image -> the 1280x640 brand banner). Paths are site-relative via
+     mdBook's {{ path_to_root }}; when deploying to a known origin, prepend the
+     absolute site URL so crawlers can fetch the image. -->
+<link rel="icon" type="image/svg+xml" href="{{ path_to_root }}favicon.svg">
+<link rel="apple-touch-icon" href="{{ path_to_root }}favicon.svg">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Terrae Nivis">
+<meta property="og:title" content="Terrae Nivis — Infrastructure as Nix Code">
+<meta property="og:description" content="A Nix-native infrastructure tool where Terraform/OpenTofu provider resources are first-class Nix values.">
+<meta property="og:image" content="{{ path_to_root }}banner.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Terrae Nivis — Infrastructure as Nix Code">
+<meta name="twitter:description" content="A Nix-native infrastructure tool where Terraform/OpenTofu provider resources are first-class Nix values.">
+<meta name="twitter:image" content="{{ path_to_root }}banner.png">

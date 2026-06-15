@@ -1,0 +1,110 @@
+/* Terrae Nivis brand theme for mdBook (docs/BRAND.md).
+ * Navy surfaces, ice/silver text, glacier-blue links, the single Volcanic Ember
+ * accent; Cinzel display, Schibsted Grotesk body, IBM Plex Mono code. Fonts come
+ * from Google Fonts (OFL) with a system-font fallback so the site renders offline.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Schibsted+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Brand tokens */
+  --tn-ink:          #081726;
+  --tn-deep-navy:    #0E3157;
+  --tn-disc-navy:    #0B2A48;
+  --tn-steel:        #2D5E8E;
+  --tn-glacier:      #4A93C8;
+  --tn-ice:          #AECFE6;
+  --tn-pale-ice:     #DCEDF7;
+  --tn-silver:       #C3D2DE;
+  --tn-snow:         #F5FAFD;
+  --tn-ember:        #F2632E;
+  --tn-magma:        #C4361A;
+
+  --tn-body-font:    "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --tn-display-font: "Cinzel", Georgia, "Times New Roman", serif;
+  --tn-mono-font:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+/* Map the brand palette onto mdBook's theme variables (the .navy theme). */
+.navy {
+  --bg: var(--tn-ink);
+  --fg: var(--tn-snow);
+
+  --sidebar-bg: var(--tn-disc-navy);
+  --sidebar-fg: var(--tn-ice);
+  --sidebar-non-existant: #5a6f82;
+  --sidebar-active: var(--tn-ember);
+  --sidebar-spacer: #143653;
+
+  --scrollbar: var(--tn-steel);
+
+  --icons: var(--tn-silver);
+  --icons-hover: var(--tn-ice);
+
+  --links: var(--tn-glacier);
+
+  --inline-code-color: var(--tn-pale-ice);
+
+  --theme-popup-bg: var(--tn-deep-navy);
+  --theme-popup-border: var(--tn-steel);
+  --theme-hover: #143653;
+
+  --quote-bg: var(--tn-disc-navy);
+  --quote-border: var(--tn-ember);
+
+  --table-border-color: var(--tn-steel);
+  --table-header-bg: var(--tn-deep-navy);
+  --table-alternate-bg: #0c2640;
+
+  --searchbar-border-color: var(--tn-steel);
+  --searchbar-bg: var(--tn-disc-navy);
+  --searchbar-fg: var(--tn-snow);
+  --searchbar-shadow-color: var(--tn-ink);
+  --search-mark-bg: var(--tn-ember);
+}
+
+/* Type stack. */
+html, body, .content { font-family: var(--tn-body-font); }
+.content code, pre, code, kbd, .hljs, .menu-title + .left .icon { font-family: var(--tn-mono-font); }
+
+/* Display headings: Cinzel for the top-level title, Grotesk for the rest so body
+ * stays readable. The page H1 and the sidebar brand get the Roman caps treatment. */
+.content h1 {
+  font-family: var(--tn-display-font);
+  letter-spacing: 0.04em;
+  color: var(--tn-snow);
+}
+.content h2, .content h3, .content h4 {
+  font-family: var(--tn-body-font);
+  font-weight: 600;
+  color: var(--tn-pale-ice);
+}
+
+/* Links + the one warm accent. */
+.content a, .content a:visited { color: var(--tn-glacier); }
+.content a:hover { color: var(--tn-ice); }
+
+/* Blockquotes (the ⚠️ real-resource warnings) get the ember edge. */
+.content blockquote {
+  border-inline-start: 3px solid var(--tn-ember);
+  background: var(--tn-disc-navy);
+  color: var(--tn-pale-ice);
+}
+
+/* Hero banner on the landing page. */
+.tn-hero { margin: 0 0 1.5rem; text-align: center; }
+.tn-hero img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--tn-steel);
+}
+
+/* Emblem on the brand page. */
+.tn-brand-emblem { text-align: center; margin: 0 0 1rem; }
+
+/* Inline code: ice on a faint navy chip. */
+.content code:not(pre code) {
+  background: var(--tn-disc-navy);
+  color: var(--tn-pale-ice);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
