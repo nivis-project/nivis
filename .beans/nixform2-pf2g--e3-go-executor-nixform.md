@@ -1,13 +1,13 @@
 ---
 # nixform2-pf2g
 title: E3 Go executor (nixform)
-status: in-progress
+status: completed
 type: epic
 priority: high
 tags:
     - critical-path
 created_at: 2026-06-15T09:02:41Z
-updated_at: 2026-06-15T10:00:28Z
+updated_at: 2026-06-15T10:07:54Z
 parent: nixform2-hj4w
 blocked_by:
     - nixform2-znh8
@@ -27,3 +27,17 @@ IR ingestion, trivial JSON state, plugin manager (spawn, plain v6 handshake), DA
   handshake via generated tfplugin6 client stubs, plan/apply engines,
   __ref->tfprotov6-unknown mapping. NOT yet started.
 E3 stays in-progress until plugin-client-plan-apply lands.
+
+
+
+## Summary of Changes
+E3 complete via two OpenSpec changes:
+- executor-core (2026-06-15-executor-core): IR ingest/validate, ref
+  classification, DAG + cycle detection + ready-set, TF->TF resolution, lockable
+  JSON state. internal/ir, internal/graph, internal/state.
+- plugin-client-plan-apply (2026-06-15-plugin-client-plan-apply): generated
+  tfplugin6 client, go-plugin v6 plugin manager (spawn + handshake + pooling),
+  value codec (__ref->unknown), plan + apply engines. Integration test drives
+  the real fake providers end-to-end.
+The executor capability spec now has 10 requirements. Single-provider round trip
+proven (DESIGN D5). Unblocks E3.5 (phased evaluation to fixpoint).

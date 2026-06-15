@@ -2,13 +2,17 @@ module github.com/wearetechnative/nixform
 
 go 1.26.3
 
-require github.com/hashicorp/terraform-plugin-go v0.31.0
+require (
+	github.com/hashicorp/go-plugin v1.7.0
+	github.com/hashicorp/terraform-plugin-go v0.31.0
+	google.golang.org/grpc v1.79.2
+	google.golang.org/protobuf v1.36.11
+)
 
 require (
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
-	github.com/hashicorp/go-plugin v1.7.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.10.0 // indirect
 	github.com/hashicorp/terraform-registry-address v0.4.0 // indirect
@@ -24,6 +28,4 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/grpc v1.79.2 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 )
