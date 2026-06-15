@@ -1,0 +1,54 @@
+{
+  "_comment": "Valid: phase-0 IR for the headline e2e topology (docs/TESTING.md). A has no inputs; B.from is __derived on A.value; C.label is __derived on B.endpoint + A.value. nixConsumers read from both providers. Mirrors the contract's __ref/__derived encoding.",
+  "schemaVersion": 1,
+  "providers": {
+    "alpha": { "source": "./bin/provider-alpha", "config": {} },
+    "beta": { "source": "./bin/provider-beta", "config": {} }
+  },
+  "resources": [
+    {
+      "id": "alpha.alpha_token.A",
+      "provider": "alpha",
+      "type": "alpha_token",
+      "name": "A",
+      "config": { "label": "seed-A" }
+    },
+    {
+      "id": "beta.beta_record.B",
+      "provider": "beta",
+      "type": "beta_record",
+      "name": "B",
+      "config": {
+        "from": { "__derived": { "inputs": ["alpha.alpha_token.A.value"] } }
+      }
+    },
+    {
+      "id": "alpha.alpha_token.C",
+      "provider": "alpha",
+      "type": "alpha_token",
+      "name": "C",
+      "config": {
+        "label": {
+          "__derived": {
+            "inputs": ["beta.beta_record.B.endpoint", "alpha.alpha_token.A.value"]
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "from": "alpha.alpha_token.A", "to": "beta.beta_record.B", "via": "from" },
+    { "from": "beta.beta_record.B", "to": "alpha.alpha_token.C", "via": "label" },
+    { "from": "alpha.alpha_token.A", "to": "alpha.alpha_token.C", "via": "label" }
+  ],
+  "nixConsumers": [
+    {
+      "id": "systemConfig",
+      "value": {
+        "recordEndpoint": { "__ref": { "resource": "beta.beta_record.B", "path": ["endpoint"] } },
+        "tokenValue": { "__ref": { "resource": "alpha.alpha_token.A", "path": ["value"] } },
+        "combined": { "__derived": { "inputs": ["beta.beta_record.B.endpoint", "alpha.alpha_token.A.value"] } }
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "_comment": "INVALID: meta carries 'count' -- expansion must happen in Nix, so count/for_each may never appear in the IR. expect_error_contains: count",
+  "_expect_error_contains": "count",
+  "schemaVersion": 1,
+  "providers": { "alpha": { "source": "./bin/provider-alpha", "config": {} } },
+  "resources": [
+    {
+      "id": "alpha.alpha_token.A",
+      "provider": "alpha",
+      "type": "alpha_token",
+      "name": "A",
+      "config": {},
+      "meta": { "count": 3 }
+    }
+  ],
+  "edges": [],
+  "nixConsumers": []
+}

@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nixform/ir-schema.json",
+  "title": "nixform IR (schemaVersion 1)",
+  "description": "Normative machine-checkable schema for the nixform JSON IR. This is the frozen contract between the Nix library (Epic 1), codegen (Epic 2), and the Go executor (Epic 3/3.5). Authoritative prose lives in docs/IR-CONTRACT.md; this file encodes its structural rules so both producers (toIR) and consumers (IngestIR) can validate against one artifact. Breaking changes require an OpenSpec change against the contract first and a schemaVersion bump.",
+  "type": "object",
+  "required": ["schemaVersion", "providers", "resources", "edges", "nixConsumers"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Bumped on any breaking change to the IR shape."
+    },
+    "providers": {
+      "type": "object",
+      "description": "Map of provider-id -> provider declaration.",
+      "additionalProperties": { "$ref": "#/$defs/provider" }
+    },
+    "resources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resource" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "nixConsumers": {
+      "type": "array",
+      "description": "Values Nix computed FROM resource outputs, surfaced for the round trip. Leaves may still be unknown on a given phase.",
+      "items": { "$ref": "#/$defs/nixConsumer" }
+    }
+  },
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "required": ["source", "config"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source or path. For the PoC: filesystem path to the provider binary."
+        },
+        "config": {
+          "$ref": "#/$defs/configTree",
+          "description": "Provider config; may itself contain refs."
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "required": ["id", "provider", "type", "name", "config"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[^.]+\\.[^.]+\\.[^.]+$",
+          "description": "Stable identity '<provider>.<type>.<name>', unique across the IR. Expanded instances use '<name>__<key>' so the id stays three dotted segments."
+        },
+        "provider": {
+          "type": "string",
+          "description": "Must be a key in top-level 'providers'. (Referential integrity checked by the conformance harness, not by JSON Schema.)"
+        },
+        "type": { "type": "string" },
+        "name": { "type": "string" },
+        "config": { "$ref": "#/$defs/configTree" },
+        "meta": { "$ref": "#/$defs/meta" }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Meta-arguments. NOTE: count/for_each are NOT permitted here -- expansion already happened in Nix.",
+      "additionalProperties": false,
+      "properties": {
+        "dependsOn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Explicit edges (additive to the implicit ref-derived edges)."
+        },
+        "lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preventDestroy": { "type": "boolean" },
+            "ignoreChanges": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to", "via"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string", "description": "Source resource id." },
+        "to": { "type": "string", "description": "Target resource id." },
+        "via": { "type": "string", "description": "Config path in 'to' that carries the dependency." }
+      }
+    },
+    "nixConsumer": {
+      "type": "object",
+      "required": ["id", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "value": { "$ref": "#/$defs/configTree" }
+      }
+    },
+
+    "ref": {
+      "type": "object",
+      "required": ["__ref"],
+      "additionalProperties": false,
+      "properties": {
+        "__ref": {
+          "type": "object",
+          "required": ["resource", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "resource": { "type": "string", "description": "Concrete target resource id." },
+            "path": {
+              "type": "array",
+              "minItems": 1,
+              "description": "Ordered keys (string) / indices (integer >= 0) into the target's output object. Uniformly covers nested attrs, list/set indices, and map keys.",
+              "items": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "integer", "minimum": 0 }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "derived": {
+      "type": "object",
+      "required": ["__derived"],
+      "additionalProperties": false,
+      "properties": {
+        "__derived": {
+          "type": "object",
+          "required": ["inputs"],
+          "additionalProperties": false,
+          "properties": {
+            "inputs": {
+              "type": "array",
+              "minItems": 1,
+              "description": "List of '<id>.<attr>' inputs whose resolution lets the next Nix re-eval produce the concrete value. Classified *->Nix; never computed in-executor.",
+              "items": {
+                "type": "string",
+                "pattern": "^.+\\..+$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "sensitiveRef": {
+      "type": "object",
+      "description": "Placeholder for a sensitive value. Points at the executor's restricted-mode (0600) channel; the secret itself never appears in IR JSON or the Nix store.",
+      "required": ["__sensitiveRef"],
+      "additionalProperties": false,
+      "properties": {
+        "__sensitiveRef": {
+          "type": "object",
+          "required": ["resource", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "resource": { "type": "string" },
+            "path": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "integer", "minimum": 0 }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "configTree": {
+      "description": "An attribute tree. Leaves are concrete JSON scalars, a __ref, a __derived, or a __sensitiveRef. Objects/arrays nest configTrees. An object carrying a reserved marker key (__ref/__derived/__sensitiveRef) is dispatched to that exact subschema via if/then, so a malformed marker reports a precise error (e.g. 'path is a required property') rather than a generic 'no branch matched'.",
+      "if": { "type": "object", "required": ["__ref"] },
+      "then": { "$ref": "#/$defs/ref" },
+      "else": {
+        "if": { "type": "object", "required": ["__derived"] },
+        "then": { "$ref": "#/$defs/derived" },
+        "else": {
+          "if": { "type": "object", "required": ["__sensitiveRef"] },
+          "then": { "$ref": "#/$defs/sensitiveRef" },
+          "else": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "null" },
+              {
+                "type": "array",
+                "items": { "$ref": "#/$defs/configTree" }
+              },
+              {
+                "type": "object",
+                "additionalProperties": { "$ref": "#/$defs/configTree" }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

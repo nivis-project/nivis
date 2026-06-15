@@ -1,0 +1,20 @@
+{
+  "_comment": "INVALID: a __ref leaf is missing the required 'path'. Caught by JSON Schema (configTree). expect_error_contains: path",
+  "_expect_error_contains": "path",
+  "schemaVersion": 1,
+  "providers": { "alpha": { "source": "./bin/provider-alpha", "config": {} } },
+  "resources": [
+    { "id": "alpha.alpha_token.A", "provider": "alpha", "type": "alpha_token", "name": "A", "config": {} },
+    {
+      "id": "alpha.alpha_token.B",
+      "provider": "alpha",
+      "type": "alpha_token",
+      "name": "B",
+      "config": { "label": { "__ref": { "resource": "alpha.alpha_token.A" } } }
+    }
+  ],
+  "edges": [
+    { "from": "alpha.alpha_token.A", "to": "alpha.alpha_token.B", "via": "label" }
+  ],
+  "nixConsumers": []
+}

@@ -1,0 +1,12 @@
+{
+  "_comment": "INVALID: two resources share the same id. expect_error_contains: alpha.alpha_token.A",
+  "_expect_error_contains": "alpha.alpha_token.A",
+  "schemaVersion": 1,
+  "providers": { "alpha": { "source": "./bin/provider-alpha", "config": {} } },
+  "resources": [
+    { "id": "alpha.alpha_token.A", "provider": "alpha", "type": "alpha_token", "name": "A", "config": {} },
+    { "id": "alpha.alpha_token.A", "provider": "alpha", "type": "alpha_token", "name": "A", "config": { "label": "dup" } }
+  ],
+  "edges": [],
+  "nixConsumers": []
+}

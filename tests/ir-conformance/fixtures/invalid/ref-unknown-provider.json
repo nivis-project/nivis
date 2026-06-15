@@ -1,0 +1,11 @@
+{
+  "_comment": "INVALID: resource names a provider id absent from top-level providers. expect_error_contains: ghostprovider",
+  "_expect_error_contains": "ghostprovider",
+  "schemaVersion": 1,
+  "providers": { "alpha": { "source": "./bin/provider-alpha", "config": {} } },
+  "resources": [
+    { "id": "ghostprovider.x_thing.A", "provider": "ghostprovider", "type": "x_thing", "name": "A", "config": {} }
+  ],
+  "edges": [],
+  "nixConsumers": []
+}

@@ -1,0 +1,39 @@
+{
+  "_comment": "Valid: exercises nested/list-index/map-key refs, a ref into an expanded for_each instance (id '<base>__<key>'), depends_on + lifecycle meta, and a __sensitiveRef placeholder. Proves count/for_each are already expanded (no count/for_each keys anywhere).",
+  "schemaVersion": 1,
+  "providers": {
+    "alpha": { "source": "./bin/provider-alpha", "config": {} }
+  },
+  "resources": [
+    { "id": "alpha.alpha_net.n", "provider": "alpha", "type": "alpha_net", "name": "n", "config": {} },
+    {
+      "id": "alpha.alpha_token.web__a",
+      "provider": "alpha",
+      "type": "alpha_token",
+      "name": "web__a",
+      "config": { "label": "web-a" }
+    },
+    {
+      "id": "alpha.alpha_token.consumer",
+      "provider": "alpha",
+      "type": "alpha_token",
+      "name": "consumer",
+      "config": {
+        "nestedIp": { "__ref": { "resource": "alpha.alpha_net.n", "path": ["net", 0, "ip"] } },
+        "mapKey": { "__ref": { "resource": "alpha.alpha_net.n", "path": ["tags", "env"] } },
+        "fromExpanded": { "__ref": { "resource": "alpha.alpha_token.web__a", "path": ["id"] } },
+        "secret": { "__sensitiveRef": { "resource": "alpha.alpha_token.web__a", "path": ["value"] } }
+      },
+      "meta": {
+        "dependsOn": ["alpha.alpha_net.n"],
+        "lifecycle": { "preventDestroy": true, "ignoreChanges": ["label"] }
+      }
+    }
+  ],
+  "edges": [
+    { "from": "alpha.alpha_net.n", "to": "alpha.alpha_token.consumer", "via": "nestedIp" },
+    { "from": "alpha.alpha_net.n", "to": "alpha.alpha_token.consumer", "via": "mapKey" },
+    { "from": "alpha.alpha_token.web__a", "to": "alpha.alpha_token.consumer", "via": "fromExpanded" }
+  ],
+  "nixConsumers": []
+}

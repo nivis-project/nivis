@@ -136,8 +136,30 @@ restricted-mode channel rather than embedding the secret.
 
 ## Validation
 
-Both sides validate against this contract:
-- Nix: a property test that `toIR` output conforms (every leaf is a value, a
-  well-formed `__ref`, or a `__derived`; every edge endpoint exists; ids unique).
-- Go: `IngestIR` rejects malformed IR with an actionable error naming the
-  offending resource/path (Epic 4c).
+The contract is **machine-checkable**, not just prose. Two artifacts make it so:
+
+- **`docs/ir-schema.json`** — the normative JSON Schema (Draft 2020-12) encoding
+  the structural rules of everything above: top-level shape, the
+  `__ref`/`__derived`/`__sensitiveRef` leaf encodings, and the *no `count`/
+  `for_each` in the IR* rule. A leaf-marker object (`__ref` etc.) is dispatched
+  to its exact subschema, so a malformed marker reports a precise, addressed
+  error (e.g. `at resources/1/config/label/__ref: 'path' is a required
+  property`) rather than a generic failure.
+- **`tests/ir-conformance/`** — the executable conformance suite. `check.py`
+  layers (1) JSON-Schema structural validation over (2) the *referential* rules
+  JSON Schema cannot express: unique ids, every `provider` declared, every edge
+  endpoint present, every `__ref`/`__sensitiveRef` target existing. Fixtures
+  under `fixtures/valid` and `fixtures/invalid` lock both directions; each
+  invalid fixture asserts the error *names the offending element*.
+
+Both producer/consumer sides MUST conform to these artifacts:
+- **Nix** (Epic 1.5 `toIR`): a property test that, for arbitrary valid resource
+  graphs, `toIR` output passes `check.py validate` — every leaf is a value, a
+  well-formed `__ref`, a `__derived`, or a `__sensitiveRef`; ids unique; every
+  edge endpoint exists.
+- **Go** (Epic 3a.1 `IngestIR`): rejects malformed IR with an actionable error
+  naming the offending resource/path (Epic 4c), matching the failure classes in
+  `tests/ir-conformance/fixtures/invalid`. `check.py` is the reference behavior
+  the Go validator is tested against.
+
+Run the suite: `python3 tests/ir-conformance/check.py test`.
