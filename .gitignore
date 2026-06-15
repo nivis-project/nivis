@@ -32,3 +32,4 @@ terrae-nivis.state.json*
 
 # goreleaser build output
 dist/
+/.claude/

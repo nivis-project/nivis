@@ -19,6 +19,27 @@
       forAllSystems = f: builtins.listToAttrs (map (system: { name = system; value = f system; }) systems);
       pkgsFor = system: import nixpkgs { inherit system; };
 
+      # The NixOS amazon image for the EC2 example: a machine that serves HTTP 200
+      # on :80. Built for x86_64-linux (the AMI target). This is the "OS in Nix"
+      # half of nix/example/ec2.nix's two-domain mix. Evaluating `nivis.ec2`
+      # forces nixpkgs (it builds this) — unlike the pure `lib`/`nivis.plan`.
+      ec2NixosImage =
+        (nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            (
+              { modulesPath, ... }:
+              {
+                imports = [ (modulesPath + "/virtualisation/amazon-image.nix") ];
+                services.nginx.enable = true;
+                services.nginx.virtualHosts."_".locations."/".return = ''200 "hello from NixOS on EC2, built and launched by Nivis\n"'';
+                networking.firewall.allowedTCPPorts = [ 80 ];
+                system.stateVersion = "25.05";
+              }
+            )
+          ];
+        }).config.system.build.images.amazon;
+
       # buildGoModule package for the nivis CLI (codegen is the `nivis gen`
       # subcommand). Go toolchain from the pinned nixpkgs; deps pinned by
       # vendorHash (no vendor/ dir). If go.mod changes, `nix build` reports the
@@ -65,6 +86,14 @@
         # A real-provider example (AWS S3 bucket) — drive with `nivis ... --attr
         # nivis.aws`; creates a real resource (see nix/example/aws.nix).
         aws = import ./nix/example/aws.nix { inherit nivis; };
+        # EC2 + NixOS: BUILD a NixOS AMI in Nix and launch it (full AWS pipeline
+        # as Nivis resources) — the OS image and the infra in one expression. The
+        # image's .vhd path flows into aws_s3_object.source. Evaluating this forces
+        # nixpkgs (it builds the image). See docs/TUTORIAL-EC2-NIXOS.md.
+        ec2 = import ./nix/example/ec2.nix {
+          inherit nivis;
+          nixosImage = ec2NixosImage;
+        };
       };
 
       # CLI package: `nix build .#nivis`.
@@ -76,6 +105,11 @@
         {
           nivis = cli;
           default = cli;
+          # The NixOS amazon image for the EC2 tutorial. `nivis` evaluates the
+          # config but does not build derivations, so the image must be realised
+          # before `nivis apply` uploads it: `nix build .#ec2-image`. Its store
+          # path is exactly the one nivis.ec2 feeds to aws_s3_object.source.
+          ec2-image = ec2NixosImage;
         }
       );
 
