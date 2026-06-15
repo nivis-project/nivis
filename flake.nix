@@ -22,6 +22,10 @@
       # buildGoModule package for the two user-facing CLIs. Go toolchain comes from
       # the pinned nixpkgs; module deps are pinned by vendorHash (no vendor/ dir).
       # If go.mod changes, `nix build` reports the expected hash; update it here.
+      # Single source of truth for the version: the top-level VERSION file.
+      # fileContents strips the trailing newline.
+      version = nixpkgs.lib.fileContents ./VERSION;
+
       mkCli =
         system:
         let
@@ -29,16 +33,19 @@
         in
         pkgs.buildGoModule {
           pname = "terrae-nivis";
-          version = "0.1.0";
+          inherit version;
           src = ./.;
           vendorHash = "sha256-LjGLaFdEYWqe42JHhRG1IzGqFn7yobbhIeLJ/Enc+l4=";
           subPackages = [
             "cmd/tn"
             "cmd/tn-gen"
           ];
+          # Inject the canonical version into the binary (overrides the "dev"
+          # default in cmd/tn). -s -w strip debug info.
           ldflags = [
             "-s"
             "-w"
+            "-X main.version=${version}"
           ];
           meta = {
             description = "Terraform/OpenTofu provider resources as first-class Nix values";

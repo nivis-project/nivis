@@ -29,3 +29,6 @@ go.work.sum
 
 # tn state written to the working dir during real runs (may hold provider outputs)
 terrae-nivis.state.json*
+
+# goreleaser build output
+dist/

@@ -11,8 +11,11 @@ import (
 	"golang.org/x/term"
 )
 
-// version is the displayed version (overridable at build time via -ldflags).
-var version = "v1.0"
+// version is the displayed version. The single source of truth is the top-level
+// VERSION file: release builds (the Nix flake and goreleaser) inject it via
+// `-ldflags -X main.version=<v>`. A plain `go build` with no ldflags reports
+// "dev" rather than a stale hardcoded number.
+var version = "dev"
 
 // Brand ANSI colours (24-bit truecolor) from docs/BRAND.md:
 //

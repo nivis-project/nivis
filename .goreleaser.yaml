@@ -1,0 +1,61 @@
+# goreleaser config — builds the tn and tn-gen CLIs and cuts a GitHub release on a
+# v* tag (driven by .github/workflows/release.yml). The version comes from the
+# tag and is injected into the binary's main.version (matching the Nix flake's
+# -ldflags). Validate locally with `goreleaser check`; dry-run with
+# `goreleaser release --snapshot --clean`.
+version: 2
+
+project_name: terrae-nivis
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: tn
+    main: ./cmd/tn
+    binary: tn
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+  - id: tn-gen
+    main: ./cmd/tn-gen
+    binary: tn-gen
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: default
+    ids: [tn, tn-gen]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  # Release notes from the commit log since the previous tag.
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge "
+
+release:
+  github:
+    owner: wearetechnative
+    name: terrae-nivis
+  name_template: "terrae nivis {{ .Tag }}"
+  draft: false
+  prerelease: auto # v0.x and -rc tags are marked pre-release
