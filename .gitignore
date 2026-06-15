@@ -1,0 +1,28 @@
+# --- jujutsu (colocated repo) ---
+# .jj holds jj's own state; never commit it. .git is the colocated backing store.
+/.jj/
+
+# --- Nix ---
+result
+result-*
+.direnv/
+
+# --- Go ---
+# Binaries / build output (fake providers, executor) live under bin/ or are built ad hoc.
+/bin/
+*.test
+*.out
+/coverage.out
+# Go workspace file is machine-local
+go.work
+go.work.sum
+
+# --- nixform runtime artifacts ---
+# The outputs ledger is 0600 and MUST NOT be committed (may hold sensitive provider outputs).
+# See docs/IR-CONTRACT.md "Sensitive values across the boundary".
+*.ledger.json
+/.nixform/
+
+# --- editor / OS noise ---
+*.swp
+.DS_Store
