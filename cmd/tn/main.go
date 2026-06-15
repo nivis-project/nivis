@@ -99,16 +99,28 @@ func planCmd() *cobra.Command {
 		Use:   "plan",
 		Short: "Evaluate the configuration and show what would be applied",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// A dry phase-0 ingest + report; the full plan is part of apply for
-			// the PoC (the phase loop plans each resource before applying).
+			// A dry phase-0 ingest + report. We mark each resource create (+) or
+			// change (~) by whether it already exists in state; the precise
+			// update-vs-replace decision is made per-resource during apply (the
+			// phase loop plans against prior state and the provider's schema).
 			g, err := phase0Graph(cmd.Context())
 			if err != nil {
 				return err
 			}
-			for _, id := range g.Order {
-				fmt.Printf("+ %s (%s)\n", id, g.Nodes[id].Resource.Type)
+			st, err := openStore()
+			if err != nil {
+				return err
 			}
-			fmt.Printf("\n%d resource(s) to resolve across phases. Run `tn apply`.\n", len(g.Order))
+			for _, id := range g.Order {
+				marker := "+"
+				if _, found, err := st.Get(id); err != nil {
+					return err
+				} else if found {
+					marker = "~"
+				}
+				fmt.Printf("%s %s (%s)\n", marker, id, g.Nodes[id].Resource.Type)
+			}
+			fmt.Printf("\n%d resource(s) to resolve across phases (+ create, ~ change). Run `tn apply`.\n", len(g.Order))
 			return nil
 		},
 	}

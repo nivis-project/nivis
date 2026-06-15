@@ -75,7 +75,7 @@ func TestAlphaEndToEnd(t *testing.T) {
 
 	n := node("alpha.alpha_token.A", "alpha_token", "A", map[string]interface{}{"label": "rec-X"})
 
-	pr, err := plan.Plan(ctx, client, rs, n, n.Resource.Config)
+	pr, err := plan.Plan(ctx, client, rs, n, n.Resource.Config, nil)
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestAlphaEndToEnd(t *testing.T) {
 	}
 
 	st, _ := state.Open(filepath.Join(t.TempDir(), "state.json"))
-	attrs, err := apply.Apply(ctx, client, rs, n, n.Resource.Config, pr.PlannedState, st)
+	attrs, err := apply.Apply(ctx, client, rs, n, n.Resource.Config, pr.PlannedState, nil, st)
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestBetaEndToEnd(t *testing.T) {
 	}
 	n := node("beta.beta_record.B", "beta_record", "B", map[string]interface{}{"from": "alpha:rec-X:0"})
 
-	pr, err := plan.Plan(ctx, client, rs, n, n.Resource.Config)
+	pr, err := plan.Plan(ctx, client, rs, n, n.Resource.Config, nil)
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestBetaEndToEnd(t *testing.T) {
 	}
 
 	st, _ := state.Open(filepath.Join(t.TempDir(), "state.json"))
-	attrs, err := apply.Apply(ctx, client, rs, n, n.Resource.Config, pr.PlannedState, st)
+	attrs, err := apply.Apply(ctx, client, rs, n, n.Resource.Config, pr.PlannedState, nil, st)
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}

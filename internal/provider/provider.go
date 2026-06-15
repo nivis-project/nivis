@@ -52,6 +52,10 @@ type PlanRequest struct {
 	Schema      ResourceSchema
 	TypeName    string
 	ResolvedCfg map[string]interface{} // unresolved __ref/__derived leaves => unknown
+	// Prior is the resource's stored attributes, or nil when the resource is new.
+	// The backend sends it as PriorState so the provider judges create vs. update
+	// vs. replace; nil means a null prior state (a create).
+	Prior map[string]interface{}
 }
 
 type PlanResult struct {
@@ -59,7 +63,11 @@ type PlanResult struct {
 	PlannedState interface{}
 	// UnknownAfterApply lists attributes unknown in the planned state.
 	UnknownAfterApply []string
-	Diagnostics       []Diagnostic
+	// RequiresReplace is true when the provider's plan requires destroying and
+	// recreating the resource (a force-new attribute changed) rather than an
+	// in-place update. Always false for a create (nil prior state).
+	RequiresReplace bool
+	Diagnostics     []Diagnostic
 }
 
 // ApplyRequest / ApplyResult: apply one planned resource.
@@ -68,6 +76,10 @@ type ApplyRequest struct {
 	TypeName     string
 	ResolvedCfg  map[string]interface{}
 	PlannedState interface{} // from PlanResult
+	// Prior is the resource's stored attributes, or nil for a create. The backend
+	// sends it as PriorState so an in-place update is applied against real prior
+	// state (not a null state, which would be a create).
+	Prior map[string]interface{}
 }
 
 type ApplyResult struct {

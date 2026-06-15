@@ -126,6 +126,15 @@ func nullState(objType tftypes.Object) (*tfplugin5.DynamicValue, error) {
 	return &tfplugin5.DynamicValue{Msgpack: mp}, nil
 }
 
+// priorState encodes a resource's stored attributes as PriorState, or a null
+// state when there is no prior (a create). nil/empty prior => null.
+func priorState(objType tftypes.Object, prior map[string]interface{}) (*tfplugin5.DynamicValue, error) {
+	if len(prior) == 0 {
+		return nullState(objType)
+	}
+	return encodeState(objType, prior)
+}
+
 func unknownAttrs(objType tftypes.Object, dv *tfplugin5.DynamicValue) ([]string, error) {
 	if dv == nil || len(dv.GetMsgpack()) == 0 {
 		return nil, nil

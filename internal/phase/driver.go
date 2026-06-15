@@ -125,8 +125,10 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 	return nil, fmt.Errorf("phase loop exceeded %d phases without reaching fixpoint", maxPhases)
 }
 
-// applyOne fetches the resource's schema, plans (encoding unresolved refs as
-// unknown), applies, and returns the computed outputs as strings.
+// applyOne fetches the resource's schema, reads any prior state, plans against
+// it (encoding unresolved refs as unknown), and applies the implied operation:
+// create (no prior), update in place, or replace (destroy the prior resource
+// then create). Returns the computed outputs.
 func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}) (map[string]interface{}, error) {
 	prov, ok := g.Providers[node.Resource.Provider]
 	if !ok {
@@ -140,11 +142,39 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	if err != nil {
 		return nil, err
 	}
-	pr, err := plan.Plan(ctx, client, rs, node, resolvedCfg)
+
+	// Prior state for this resource id, if it was applied in an earlier run.
+	var prior map[string]interface{}
+	if stored, found, err := d.Store.Get(node.Resource.ID); err != nil {
+		return nil, fmt.Errorf("read prior state for %q: %w", node.Resource.ID, err)
+	} else if found {
+		prior = stored.Attrs
+	}
+
+	pr, err := plan.Plan(ctx, client, rs, node, resolvedCfg, prior)
 	if err != nil {
 		return nil, err
 	}
-	return apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, d.Store)
+
+	switch pr.Op {
+	case plan.OpReplace:
+		// Refuse if the prior resource is protected; otherwise destroy it first so
+		// nothing is orphaned, then create the new one (prior=nil => create).
+		if node.Resource.Meta != nil && node.Resource.Meta.Lifecycle != nil && node.Resource.Meta.Lifecycle.PreventDestroy {
+			return nil, fmt.Errorf("replace of %q requires destroying it, but lifecycle.preventDestroy is set", node.Resource.ID)
+		}
+		if _, err := client.Destroy(ctx, provider.DestroyRequest{
+			Schema:   rs,
+			TypeName: node.Resource.Type,
+			Stored:   prior,
+		}); err != nil {
+			return nil, fmt.Errorf("replace %q: destroy prior: %w", node.Resource.ID, err)
+		}
+		return apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, nil, d.Store)
+	default:
+		// OpCreate (prior nil) or OpUpdate (prior carried into apply for in-place).
+		return apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, prior, d.Store)
+	}
 }
 
 func (d *Driver) finish(phases int, order []string, last *ir.Graph) *Result {

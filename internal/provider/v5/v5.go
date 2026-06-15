@@ -133,9 +133,10 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("encode config: %w", err)
 	}
-	// PriorState for a create must be a proper NULL value of the resource type,
-	// not an empty DynamicValue — SDKv2 providers panic decoding empty msgpack.
-	priorNull, err := nullState(raw.objType)
+	// PriorState is the stored attributes for an existing resource, or a proper
+	// NULL value of the resource type for a create. (It must be a real null, not
+	// an empty DynamicValue — SDKv2 providers panic decoding empty msgpack.)
+	prior, err := priorState(raw.objType, req.Prior)
 	if err != nil {
 		return provider.PlanResult{}, err
 	}
@@ -143,7 +144,7 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 		TypeName:         req.TypeName,
 		Config:           cfgDV,
 		ProposedNewState: cfgDV,
-		PriorState:       priorNull,
+		PriorState:       prior,
 	})
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("PlanResourceChange: %w", err)
@@ -156,7 +157,15 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	if err != nil {
 		return provider.PlanResult{}, err
 	}
-	return provider.PlanResult{PlannedState: resp.GetPlannedState(), UnknownAfterApply: unknown, Diagnostics: diags}, nil
+	// A replace is only meaningful when there was a prior resource; for a create
+	// the provider may still report paths, which we ignore.
+	requiresReplace := req.Prior != nil && len(resp.GetRequiresReplace()) > 0
+	return provider.PlanResult{
+		PlannedState:      resp.GetPlannedState(),
+		UnknownAfterApply: unknown,
+		RequiresReplace:   requiresReplace,
+		Diagnostics:       diags,
+	}, nil
 }
 
 func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provider.ApplyResult, error) {
@@ -166,7 +175,10 @@ func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provide
 		return provider.ApplyResult{}, fmt.Errorf("encode config: %w", err)
 	}
 	planned, _ := req.PlannedState.(*tfplugin5.DynamicValue)
-	priorNull, err := nullState(raw.objType)
+	// PriorState is the stored attributes for an in-place update, or null for a
+	// create. (On a replace the executor destroys the prior resource first and
+	// applies the new one as a create, so Prior is nil here.)
+	prior, err := priorState(raw.objType, req.Prior)
 	if err != nil {
 		return provider.ApplyResult{}, err
 	}
@@ -174,7 +186,7 @@ func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provide
 		TypeName:     req.TypeName,
 		Config:       cfgDV,
 		PlannedState: planned,
-		PriorState:   priorNull,
+		PriorState:   prior,
 	})
 	if err != nil {
 		return provider.ApplyResult{}, fmt.Errorf("ApplyResourceChange: %w", err)

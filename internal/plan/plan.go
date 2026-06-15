@@ -15,13 +15,29 @@ import (
 	"github.com/wearetechnative/terrae-nivis/internal/provider"
 )
 
+// Op is the operation a plan implies for a resource.
+type Op int
+
+const (
+	// OpCreate: the resource does not exist yet (no prior state).
+	OpCreate Op = iota
+	// OpUpdate: the resource exists and changes apply in place.
+	OpUpdate
+	// OpReplace: the resource exists but a force-new attribute changed, so it
+	// must be destroyed and recreated.
+	OpReplace
+)
+
 // Result is the outcome of planning one resource.
 type Result struct {
 	// PlannedState is an opaque backend handle carried into Apply.
 	PlannedState interface{}
 	// UnknownAfterApply lists attributes unknown in the planned state.
 	UnknownAfterApply []string
-	Human             string
+	// Op is create / update / replace, decided from prior state + the provider's
+	// RequiresReplace.
+	Op    Op
+	Human string
 }
 
 // SchemaFor fetches the schema for one resource type via the client.
@@ -30,27 +46,46 @@ func SchemaFor(ctx context.Context, client provider.Client, resourceType string)
 }
 
 // Plan plans a ready resource with its resolved config (unresolved refs encoded
-// as unknown by the backend). It returns the planned state for apply plus a
+// as unknown by the backend) against its prior state (nil for a new resource).
+// It returns the planned state for apply, the implied operation, and a
 // human-readable summary.
-func Plan(ctx context.Context, client provider.Client, rs provider.ResourceSchema, node *ir.ResourceNode, resolvedCfg map[string]interface{}) (Result, error) {
+func Plan(ctx context.Context, client provider.Client, rs provider.ResourceSchema, node *ir.ResourceNode, resolvedCfg map[string]interface{}, prior map[string]interface{}) (Result, error) {
 	pr, err := client.Plan(ctx, provider.PlanRequest{
 		Schema:      rs,
 		TypeName:    node.Resource.Type,
 		ResolvedCfg: resolvedCfg,
+		Prior:       prior,
 	})
 	if err != nil {
 		return Result{}, err
 	}
+	op := OpCreate
+	switch {
+	case prior == nil:
+		op = OpCreate
+	case pr.RequiresReplace:
+		op = OpReplace
+	default:
+		op = OpUpdate
+	}
 	return Result{
 		PlannedState:      pr.PlannedState,
 		UnknownAfterApply: pr.UnknownAfterApply,
-		Human:             renderPlan(node.Resource.ID, pr.UnknownAfterApply),
+		Op:                op,
+		Human:             renderPlan(node.Resource.ID, op, pr.UnknownAfterApply),
 	}, nil
 }
 
-func renderPlan(id string, unknown []string) string {
+func renderPlan(id string, op Op, unknown []string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s will be created", id)
+	switch op {
+	case OpUpdate:
+		fmt.Fprintf(&b, "%s will be updated in place", id)
+	case OpReplace:
+		fmt.Fprintf(&b, "%s will be replaced (destroy and re-create)", id)
+	default:
+		fmt.Fprintf(&b, "%s will be created", id)
+	}
 	if len(unknown) > 0 {
 		fmt.Fprintf(&b, " (%s known after apply)", strings.Join(unknown, ", "))
 	}

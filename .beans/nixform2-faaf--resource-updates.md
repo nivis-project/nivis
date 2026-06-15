@@ -1,11 +1,11 @@
 ---
 # nixform2-faaf
 title: resource updates
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-06-15T17:31:40Z
-updated_at: 2026-06-15T17:42:22Z
+updated_at: 2026-06-15T17:59:39Z
 parent: nixform2-ft9v
 ---
 
@@ -43,3 +43,7 @@ This is GENERIC — it's all at the protocol/state layer (PlanRequest/PlanResult
 
 ---
 Scoped into OpenSpec change resource-update-replace (under epic beans-ft9v), validated. Implementation pending.
+
+
+---
+FIXED via OpenSpec change resource-update-replace (archived 2026-06-15-resource-update-replace). The executor now reads prior state and chooses create / update-in-place / replace generically (provider.PlanRequest.Prior, PlanResult.RequiresReplace, ApplyRequest.Prior; v5/v6 encode prior state via EncodeState + read GetRequiresReplace; phase driver branches in applyOne — replace = destroy prior then create, honoring prevent_destroy). VERIFIED LIVE against AWS (account 076504012268): create → bucket made; tag change → in-place update (same id, one bucket); bucket rename (force-new) → REPLACE (old destroyed, new created, exactly one bucket, NO orphan — the exact thing you hit, now correct); destroy → clean, no orphans. 9 new unit tests (plan op decision + applyOne destroy-then-create + prevent_destroy refusal). tn plan now marks + create / ~ change.

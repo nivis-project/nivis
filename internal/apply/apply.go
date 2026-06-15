@@ -24,6 +24,7 @@ func Apply(
 	node *ir.ResourceNode,
 	resolvedCfg map[string]interface{},
 	plannedState interface{},
+	prior map[string]interface{},
 	store state.Store,
 ) (map[string]interface{}, error) {
 	res, err := client.Apply(ctx, provider.ApplyRequest{
@@ -31,6 +32,7 @@ func Apply(
 		TypeName:     node.Resource.Type,
 		ResolvedCfg:  resolvedCfg,
 		PlannedState: plannedState,
+		Prior:        prior,
 	})
 	if err != nil {
 		return nil, err

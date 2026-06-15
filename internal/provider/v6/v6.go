@@ -141,10 +141,10 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("encode config: %w", err)
 	}
-	// PriorState for a create must be a properly-encoded NULL value of the
-	// resource object type, not an empty DynamicValue — real (SDKv2) providers
-	// panic trying to decode empty msgpack.
-	priorNull, err := tfvalue.NullState(raw.objType)
+	// PriorState is the stored attributes for an existing resource, or a properly-
+	// encoded NULL value for a create (not an empty DynamicValue — real SDKv2
+	// providers panic decoding empty msgpack).
+	prior, err := priorState6(raw.objType, req.Prior)
 	if err != nil {
 		return provider.PlanResult{}, err
 	}
@@ -152,7 +152,7 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 		TypeName:         req.TypeName,
 		Config:           cfgDV,
 		ProposedNewState: cfgDV,
-		PriorState:       priorNull,
+		PriorState:       prior,
 	})
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("PlanResourceChange: %w", err)
@@ -165,9 +165,11 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	if err != nil {
 		return provider.PlanResult{}, err
 	}
+	requiresReplace := req.Prior != nil && len(resp.GetRequiresReplace()) > 0
 	return provider.PlanResult{
 		PlannedState:      resp.GetPlannedState(),
 		UnknownAfterApply: unknown,
+		RequiresReplace:   requiresReplace,
 		Diagnostics:       diags,
 	}, nil
 }
@@ -179,7 +181,9 @@ func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provide
 		return provider.ApplyResult{}, fmt.Errorf("encode config: %w", err)
 	}
 	planned, _ := req.PlannedState.(*tfplugin6.DynamicValue)
-	priorNull, err := tfvalue.NullState(raw.objType)
+	// PriorState is the stored attributes for an in-place update, or null for a
+	// create (and for the create half of a replace).
+	prior, err := priorState6(raw.objType, req.Prior)
 	if err != nil {
 		return provider.ApplyResult{}, err
 	}
@@ -187,7 +191,7 @@ func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provide
 		TypeName:     req.TypeName,
 		Config:       cfgDV,
 		PlannedState: planned,
-		PriorState:   priorNull,
+		PriorState:   prior,
 	})
 	if err != nil {
 		return provider.ApplyResult{}, fmt.Errorf("ApplyResourceChange: %w", err)
@@ -294,4 +298,13 @@ func normDiags(in []*tfplugin6.Diagnostic) []provider.Diagnostic {
 		out = append(out, provider.Diagnostic{Severity: sev, Summary: d.GetSummary(), Detail: d.GetDetail()})
 	}
 	return out
+}
+
+// priorState6 encodes a resource's stored attributes as PriorState, or a null
+// state when there is no prior (a create). nil/empty prior => null.
+func priorState6(objType tftypes.Object, prior map[string]interface{}) (*tfplugin6.DynamicValue, error) {
+	if len(prior) == 0 {
+		return tfvalue.NullState(objType)
+	}
+	return tfvalue.EncodeState(objType, prior)
 }
