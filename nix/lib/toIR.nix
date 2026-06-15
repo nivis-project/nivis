@@ -75,6 +75,17 @@ let
   resolvedResources = map (r: r // { config = resolve ledger r.config; }) resources;
   resolvedConsumers = map (c: c // { value = resolve ledger c.value; }) nixConsumers;
 
+  # Provider config gets the SAME two passes as resource config: resolve against
+  # the ledger (so a __ref/__derived in provider config resolves each phase) then
+  # encode to wire shape. `source` passes through verbatim. Plain values are a
+  # no-op. Accepts the bare { source, config } shape and mkProvider's output alike.
+  irProviders = builtins.mapAttrs (
+    _: p: {
+      inherit (p) source;
+      config = encode (resolve ledger (p.config or { }));
+    }
+  ) providers;
+
   irResources = map (r: {
     inherit (r) id provider type name;
     config = encode r.config;
@@ -89,7 +100,7 @@ let
 in
 {
   schemaVersion = 1;
-  inherit providers;
+  providers = irProviders;
   resources = irResources;
   inherit edges;
   nixConsumers = irConsumers;

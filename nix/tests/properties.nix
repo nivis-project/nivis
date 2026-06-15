@@ -11,7 +11,7 @@
 #   P5. Injecting a ledger resolves __ref and __derived leaves to concrete values.
 let
   terraeNivis = import ../lib { };
-  inherit (terraeNivis) mkResource toIR str;
+  inherit (terraeNivis) mkResource mkProvider toIR str;
   lib = terraeNivis.lib;
 
   # --- graphs under test ----------------------------------------------------
@@ -106,12 +106,57 @@ let
     in
     (c.direct == "alpha-0") && (c.computed == "E::V") && (bFrom == "rec-V");
 
+  # P6. Provider config gets the same resolve+encode passes as resource config:
+  #   - a __derived in provider config resolves against the ledger to a concrete value,
+  #   - its leaves are well-formed wire shape (no internal fields leaked),
+  #   - a nested provider block (default_tags.tags.x) and a plain value pass through,
+  #   - source is verbatim.
+  irProv =
+    toIR {
+      providers = {
+        # config holds a __derived built from A.value, plus a nested block + scalar.
+        aws = mkProvider {
+          source = "registry.opentofu.org/hashicorp/aws";
+          config = {
+            region = "eu-central-1";
+            token = str [ "tok-" (A.refAttr "value") ]; # __derived -> resolves to "tok-V"
+            default_tags = { tags = { managed-by = "terrae-nivis"; }; };
+          };
+        };
+      };
+      resources = [ A ];
+      ledger = {
+        phase = 1;
+        outputs = { "alpha.alpha_token.A" = { value = "V"; }; };
+      };
+    };
+  P6 =
+    let
+      pc = irProv.providers.aws;
+    in
+    (pc.source == "registry.opentofu.org/hashicorp/aws")
+    && (pc.config.region == "eu-central-1")
+    && (pc.config.token == "tok-V") # __derived resolved against the ledger
+    && (pc.config.default_tags.tags.managed-by == "terrae-nivis")
+    && (leavesOk pc.config); # encoded to wire shape, no leaked internals
+
+  # P7. mkProvider validates source: present+string -> ok; absent/empty -> throw.
+  P7 =
+    let
+      ok = (mkProvider { source = "x"; }).source == "x";
+      caught = (builtins.tryEval (mkProvider { config = { }; })).success == false;
+      caughtEmpty = (builtins.tryEval (mkProvider { source = ""; })).success == false;
+    in
+    ok && caught && caughtEmpty;
+
   checks = [
     { name = "P1 leaves well-formed"; ok = P1; }
     { name = "P2 ids unique"; ok = P2; }
     { name = "P3 edge endpoints exist"; ok = P3; }
     { name = "P4 ref->edge, derived->no-edge"; ok = P4; }
     { name = "P5 ledger resolves ref+derived"; ok = P5; }
+    { name = "P6 provider config resolves+encodes"; ok = P6; }
+    { name = "P7 mkProvider validates source"; ok = P7; }
   ];
   failures = builtins.filter (c: !c.ok) checks;
 in

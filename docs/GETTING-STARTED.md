@@ -122,13 +122,13 @@ registry, downloads and checksum-verifies the binary, negotiates the plugin
 protocol (AWS speaks v5), configures it, and runs plan/apply/destroy.
 
 > ⚠️ **This creates a real resource in your AWS account** — one (free-tier) S3
-> bucket, then destroys it. Credentials and region come from the environment
-> (the AWS SDK default chain); set `AWS_PROFILE`/`AWS_REGION`. The first run
-> downloads the ~900&nbsp;MB AWS provider (cached afterwards).
+> bucket, then destroys it. The provider's `region` lives in the Nix config; only
+> credentials come from the environment (the AWS SDK default chain), so set
+> `AWS_PROFILE` (or `AWS_ACCESS_KEY_ID`/…). The first run downloads the
+> ~900&nbsp;MB AWS provider (cached afterwards).
 
 ```sh
-export AWS_PROFILE=your-profile
-export AWS_REGION=eu-central-1
+export AWS_PROFILE=your-profile                # credentials only; region is in the Nix config
 
 ./bin/tn plan    --attr terraeNivis.aws
 ./bin/tn apply   --attr terraeNivis.aws        # creates a real S3 bucket
@@ -136,11 +136,24 @@ export AWS_REGION=eu-central-1
 ./bin/tn destroy --attr terraeNivis.aws        # deletes it
 ```
 
-The example lives in `nix/example/aws.nix` (flake attr `terraeNivis.aws`): it
-declares `source = "registry.opentofu.org/hashicorp/aws"` and an `aws_s3_bucket`
-with `force_destroy = true` and a generated name. Point it at a different
-provider/resource to drive anything else. (Expressing provider config — region,
-profile — in Nix rather than the environment is a planned addition.)
+The example lives in `nix/example/aws.nix` (flake attr `terraeNivis.aws`). It
+declares the provider with `mkProvider`:
+
+```nix
+providers.aws = mkProvider {
+  source = "registry.opentofu.org/hashicorp/aws";
+  config = {
+    region = "eu-central-1";                   # provider config in Nix, not env
+    default_tags = { tags = { managed-by = "terrae-nivis"; }; };
+  };
+};
+```
+
+`mkProvider`'s `config` is a raw attribute tree the provider validates at
+`Configure` time; nested blocks (`default_tags`, `assume_role`, `endpoints`, …)
+are just nested attrsets/lists, and `toIR` resolves any `__ref`/`__derived`
+leaves in it against the outputs ledger like resource config. Point the `region`,
+`source`, or resource at anything else to drive a different provider/setting.
 
 ## Where to go next
 

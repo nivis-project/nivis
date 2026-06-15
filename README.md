@@ -75,14 +75,14 @@ resolves a provider by address from the OpenTofu registry, downloads and
 protocol (v5 or v6), configures it, and runs the same plan/apply/destroy cycle.
 
 > ⚠️ **This creates a real resource in your AWS account.** The example below
-> creates a single (free-tier) S3 bucket and then destroys it. Credentials and
-> region come from the environment (the AWS SDK default chain) — set
-> `AWS_PROFILE`/`AWS_REGION` (Nix-side provider config is a separate, planned
-> feature). First run downloads the ~900&nbsp;MB AWS provider (cached after).
+> creates a single (free-tier) S3 bucket and then destroys it. Provider settings
+> like `region` live in the **Nix config** (via `mkProvider`); only credentials
+> come from the environment (the AWS SDK default chain) — set `AWS_PROFILE` (or
+> `AWS_ACCESS_KEY_ID`/…). First run downloads the ~900&nbsp;MB AWS provider
+> (cached after).
 
 ```sh
-export AWS_PROFILE=your-profile          # or AWS_ACCESS_KEY_ID/…
-export AWS_REGION=eu-central-1
+export AWS_PROFILE=your-profile          # credentials only; region is in the Nix config
 
 ./bin/tn plan    --attr terraeNivis.aws  # show the planned bucket
 ./bin/tn apply   --attr terraeNivis.aws  # create a real S3 bucket (AWS-generated name)
@@ -90,14 +90,18 @@ export AWS_REGION=eu-central-1
 ./bin/tn destroy --attr terraeNivis.aws  # delete it
 ```
 
-The `terraeNivis.aws` flake attribute (`nix/example/aws.nix`) declares
-`source = "registry.opentofu.org/hashicorp/aws"` and one `aws_s3_bucket` — change
-those to drive any other provider/resource the same way.
+The `terraeNivis.aws` flake attribute (`nix/example/aws.nix`) declares the
+provider with `mkProvider { source = "registry.opentofu.org/hashicorp/aws";
+config = { region = "eu-central-1"; default_tags = …; }; }` and one
+`aws_s3_bucket` — change the `region`, source, or resource to drive any other
+provider/setting/resource the same way. Provider config (including nested blocks
+like `default_tags`) flows into the provider's `Configure` call.
 
 ## Layout
 
-- `nix/lib/` — the Nix library: `mkResource`, references (`__ref`/`__derived`),
-  `toIR`, `count`/`for_each` expansion, and a module system (`evalModules`).
+- `nix/lib/` — the Nix library: `mkResource`, `mkProvider`, references
+  (`__ref`/`__derived`), `toIR`, `count`/`for_each` expansion, and a module
+  system (`evalModules`).
 - `flake.nix` — exposes `terraeNivis.plan` (a function of the outputs ledger → IR).
 - `internal/` — the Go executor: `ir` (ingest/validate), `graph` (DAG, TF→TF
   resolution), `state`, `plugin` (spawn + go-plugin v6 handshake), `plan`/`apply`,
