@@ -4,6 +4,8 @@
 #   2. conformance: toIR output (phase 0) validates against docs/ir-schema.json
 #   3. phased resolution: a derived value resolves to concrete once the ledger
 #      supplies its inputs.
+#   4. module/expansion property eval (nix/tests/modules.nix)
+#   5. conformance: an expanded + module-composed IR validates.
 # Exits non-zero on any failure. Hermetic: no network, no binary cache.
 set -euo pipefail
 
@@ -30,6 +32,27 @@ if [ "$got" != "$want" ]; then
   exit 1
 fi
 echo "   ok: C.label resolved to '$got'"
+
+echo "== 4. module/expansion property tests =="
+nix eval --impure --json --file nix/tests/modules.nix > /dev/null
+echo "   ok"
+
+echo "== 5. expanded + module-composed IR conforms =="
+# A module composing a count-expanded resource set + a consumer, serialized to IR.
+nix eval --impure --json --expr '
+  let
+    nf = import ./nix/lib { };
+    mod = { ... }: {
+      providers.alpha = { source = "p"; config = {}; };
+      resources = nf.mkResources {
+        provider = "alpha"; type = "alpha_token"; name = "web"; count = 2;
+        config = i: { label = "web-${toString i}"; };
+      };
+    };
+  in nf.toModuleIR { modules = [ mod ]; }
+' 2>/dev/null > /tmp/nixform-ir-modules.json
+python3 tests/ir-conformance/check.py validate /tmp/nixform-ir-modules.json
+rm -f /tmp/nixform-ir-modules.json
 
 echo
 echo "All Nix tests passed."
