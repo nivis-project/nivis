@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-15
+
 ### Added
 - Resource lifecycle: a second apply now updates in place or replaces
   (destroy + create for force-new attributes) instead of always creating; honors
@@ -37,5 +39,6 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.3.0
 [0.1.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.1.0
