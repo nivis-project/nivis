@@ -1,5 +1,5 @@
 # Cut a GitHub release when a v* tag is pushed (scripts/release.sh pushes the tag).
-# goreleaser cross-builds tn + tn-gen, writes checksums and changelog notes, and
+# goreleaser cross-builds the nivis CLI, writes checksums and changelog notes, and
 # creates the release with the artifacts attached.
 name: release
 
@@ -21,7 +21,8 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.22"
+          # Must satisfy go.mod's `go` directive (a dep requires >= 1.25).
+          go-version: "1.25"
           check-latest: true
 
       - name: Run goreleaser
