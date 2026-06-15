@@ -74,6 +74,20 @@ func (n NixEval) Eval(ctx context.Context, l *ledger.Ledger) ([]byte, error) {
 	return out, nil
 }
 
+// nixRealiser is the default Realiser: it builds a store path with
+// `nix-store --realise`, which is a no-op if the path is already valid and
+// otherwise builds the derivation (downloading from a substituter or building
+// locally). It is how `nivis` builds the __build outputs a resource needs.
+type nixRealiser struct{}
+
+func (nixRealiser) Realise(ctx context.Context, storePath string) error {
+	cmd := exec.CommandContext(ctx, "nix-store", "--realise", storePath)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("nix-store --realise %s: %w\n%s", storePath, err, cleanNixStderr(string(out)))
+	}
+	return nil
+}
+
 // cleanNixStderr keeps the actionable lines from nix's stderr (the `error:` and
 // its indented context) and drops non-actionable noise like the "Git tree is
 // dirty" warning, so the user sees the real cause, not Nix's internal verbiage.

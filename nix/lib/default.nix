@@ -31,5 +31,15 @@ in
   inherit (modules) evalModules toModuleIR;
 
   # Convenience re-exports of the most-used ref helpers.
-  inherit (ref) mkRef derived str resolve isRef isDerived;
+  inherit (ref)
+    mkRef
+    derived
+    str
+    drv
+    drvFile
+    resolve
+    isRef
+    isDerived
+    isBuild
+    ;
 }

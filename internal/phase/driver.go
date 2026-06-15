@@ -47,6 +47,21 @@ type Driver struct {
 	// planning (the `--refresh=false` opt-out). When false (the default), plan/
 	// apply refresh prior state so drift and out-of-band deletion are seen.
 	NoRefresh bool
+	// NoBuild disables realising __build leaves (the `--no-build` opt-out): the
+	// store paths are used as-is, assumed already built. Default (false) realises.
+	NoBuild bool
+	// Realiser builds a Nix store path (a derivation output) referenced by a
+	// __build leaf. nil uses the default (nix-store --realise). The seam lets
+	// tests inject a stub.
+	Realiser Realiser
+}
+
+// Realiser builds Nix store paths referenced by __build leaves in resource
+// config. Realise is given the absolute store path of a build output; it must
+// ensure that path is valid (built) in the store, building the derivation if
+// necessary. internal/plugin's nix realiser satisfies this.
+type Realiser interface {
+	Realise(ctx context.Context, storePath string) error
 }
 
 // priorState returns the prior state for an in-state resource. By default it
@@ -259,6 +274,16 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		return nil, err
 	}
 
+	// Realise any __build leaves in this resource's config (Nix build outputs the
+	// provider must read) and substitute the concrete path. Done per resource, as
+	// it becomes ready, so only builds reachable this phase run — and a build that
+	// depends on an earlier resource's output is realised in the later phase once
+	// the config re-evaluates. `nivis` evaluates (not builds), so without this the
+	// provider would see an unbuilt store path. `--no-build` skips it.
+	if err := d.realiseBuilds(ctx, node.Resource.ID, resolvedCfg); err != nil {
+		return nil, err
+	}
+
 	// Prior state for this resource id, if it was applied in an earlier run.
 	// By default this is refreshed from the provider (so drift is seen and an
 	// out-of-band deletion becomes a create); --refresh=false uses stored state.
@@ -301,6 +326,82 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		// OpCreate (prior nil) or OpUpdate (prior carried into apply for in-place).
 		return apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, prior, d.Store)
 	}
+}
+
+// realiseBuilds walks a resolved config tree, replacing every __build leaf
+// ({"__build":{"path":...}}) with its concrete store path after ensuring the path
+// is built (via d.Realiser, unless NoBuild). It mutates maps/slices in place.
+func (d *Driver) realiseBuilds(ctx context.Context, owner string, cfg map[string]interface{}) error {
+	for k, v := range cfg {
+		nv, err := d.realiseValue(ctx, owner, v)
+		if err != nil {
+			return err
+		}
+		cfg[k] = nv
+	}
+	return nil
+}
+
+func (d *Driver) realiseValue(ctx context.Context, owner string, v interface{}) (interface{}, error) {
+	switch t := v.(type) {
+	case map[string]interface{}:
+		if path, ok := buildPath(t); ok {
+			if !d.NoBuild {
+				r := d.Realiser
+				if r == nil {
+					r = nixRealiser{}
+				}
+				if err := r.Realise(ctx, storeRoot(path)); err != nil {
+					return nil, fmt.Errorf("realise build for %q (%s): %w", owner, path, err)
+				}
+			}
+			return path, nil // substitute the __build leaf with its path string
+		}
+		for k, child := range t {
+			nv, err := d.realiseValue(ctx, owner, child)
+			if err != nil {
+				return nil, err
+			}
+			t[k] = nv
+		}
+		return t, nil
+	case []interface{}:
+		for i, child := range t {
+			nv, err := d.realiseValue(ctx, owner, child)
+			if err != nil {
+				return nil, err
+			}
+			t[i] = nv
+		}
+		return t, nil
+	default:
+		return v, nil
+	}
+}
+
+// buildPath returns the path of a {"__build":{"path":...}} leaf, or false.
+func buildPath(m map[string]interface{}) (string, bool) {
+	b, ok := m["__build"].(map[string]interface{})
+	if !ok {
+		return "", false
+	}
+	p, ok := b["path"].(string)
+	return p, ok && p != ""
+}
+
+// storeRoot reduces /nix/store/<hash>-<name>/sub/file to the store root
+// /nix/store/<hash>-<name> (the realisable output path). A path that is not under
+// /nix/store is returned unchanged (realise will surface a clear error).
+func storeRoot(path string) string {
+	const prefix = "/nix/store/"
+	if !strings.HasPrefix(path, prefix) {
+		return path
+	}
+	rest := path[len(prefix):]
+	if i := strings.IndexByte(rest, '/'); i >= 0 {
+		return prefix + rest[:i]
+	}
+	return path
 }
 
 func (d *Driver) finish(phases int, order []string, last *ir.Graph) *Result {

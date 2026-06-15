@@ -30,6 +30,7 @@ var (
 	target    string
 	attr      string
 	doRefresh bool
+	doBuild   bool
 )
 
 func main() {
@@ -63,6 +64,7 @@ func main() {
 	root.PersistentFlags().StringVar(&attr, "attr", "nivis.plan", "flake attribute to evaluate")
 	root.PersistentFlags().StringVar(&target, "target", "", "restrict the operation to a single resource id")
 	root.PersistentFlags().BoolVar(&doRefresh, "refresh", true, "read real provider state before planning (false = plan against stored state)")
+	root.PersistentFlags().BoolVar(&doBuild, "build", true, "realise Nix build outputs (drv leaves) referenced by resources (false = assume already built)")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
 	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), genCmd())
@@ -110,7 +112,7 @@ func planCmd() *cobra.Command {
 			}
 			mgr := newManager()
 			defer mgr.Close()
-			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: ledger.New(), NoRefresh: !doRefresh}
+			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: ledger.New(), NoRefresh: !doRefresh, NoBuild: !doBuild}
 
 			items, err := d.PlanReport(cmd.Context())
 			if err != nil {
@@ -160,6 +162,7 @@ func applyCmd() *cobra.Command {
 				Ledger:     ledger.New(),
 				LedgerPath: statePath + ".ledger",
 				NoRefresh:  !doRefresh,
+				NoBuild:    !doBuild,
 			}
 			res, err := d.Run(cmd.Context())
 			if err != nil {

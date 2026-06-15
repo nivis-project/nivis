@@ -14,7 +14,25 @@ rec {
   isRef = v: builtins.isAttrs v && v ? __ref;
   isDerived = v: builtins.isAttrs v && v ? __derived;
   isSensitiveRef = v: builtins.isAttrs v && v ? __sensitiveRef;
+  isBuild = v: builtins.isAttrs v && v ? __build;
   isMarker = v: isRef v || isDerived v || isSensitiveRef v;
+
+  # buildLeaf :: store-path-string -> __build leaf. The executor realises this
+  # path (builds the derivation) before apply, then substitutes it into the
+  # provider config. Unlike __ref/__derived, a __build leaf is a KNOWN value (its
+  # path exists at evaluation); only the file needs building, so it passes through
+  # `resolve` unchanged.
+  buildLeaf = path: { __build = { inherit path; }; };
+
+  # drv :: derivation -> __build leaf. Marks a config value as the output of a Nix
+  # build (e.g. aws_s3_object.source = drv image). If the derivation has
+  # passthru.filePath (an artifact inside its output, like a NixOS image's .vhd),
+  # that file is used; otherwise the output root. For an explicit sub-path use
+  # `drvFile d "rel/path"`.
+  drv = d: buildLeaf (if d ? passthru && d.passthru ? filePath then "${d}/${d.passthru.filePath}" else "${d}");
+
+  # drvFile :: derivation -> relative-path -> __build leaf for "${d}/<path>".
+  drvFile = d: file: buildLeaf "${d}/${file}";
 
   # inputsOf :: marker -> list of "<id>.<attr>" input keys it depends on.
   # For a __ref, that is the single "<resource>.<path-dotted>"; for a __derived,
@@ -115,7 +133,9 @@ rec {
   # attrsets/lists.
   resolve =
     ledger: v:
-    if isRef v || isSensitiveRef v then
+    if isBuild v then
+      v # a __build leaf is a known value (a store path); the executor realises it
+    else if isRef v || isSensitiveRef v then
       let
         key = builtins.head (inputsOf v);
         hit = ledgerLookup ledger key;

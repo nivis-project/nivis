@@ -149,6 +149,23 @@ let
     in
     ok && caught && caughtEmpty;
 
+  # P8. drv produces a __build leaf carrying the store path; it survives resolve
+  # unchanged (a known value, not ledger-dependent) and creates no edge.
+  P8 =
+    let
+      fakeDrv = { outPath = "/nix/store/abc-img"; passthru.filePath = "x.vhd"; };
+      leaf = nivis.drv fakeDrv;
+      onlyPath = builtins.attrNames leaf == [ "__build" ] && builtins.attrNames leaf.__build == [ "path" ];
+      goodPath = leaf.__build.path == "/nix/store/abc-img/x.vhd";
+      survives = (nivis.resolve { outputs = { }; } leaf) == leaf; # passes through
+      # a __build in a resource config produces no edge (it's not a dependency)
+      bres = mkResource { provider = "aws"; type = "t"; name = "n"; config = { src = leaf; }; };
+      irB = toIR { providers = { }; resources = [ bres ]; };
+      noEdge = irB.edges == [ ];
+      encoded = (builtins.head irB.resources).config.src == leaf; # wire shape unchanged
+    in
+    onlyPath && goodPath && survives && noEdge && encoded;
+
   checks = [
     { name = "P1 leaves well-formed"; ok = P1; }
     { name = "P2 ids unique"; ok = P2; }
@@ -157,6 +174,7 @@ let
     { name = "P5 ledger resolves ref+derived"; ok = P5; }
     { name = "P6 provider config resolves+encodes"; ok = P6; }
     { name = "P7 mkProvider validates source"; ok = P7; }
+    { name = "P8 drv -> __build leaf, known + no-edge"; ok = P8; }
   ];
   failures = builtins.filter (c: !c.ok) checks;
 in

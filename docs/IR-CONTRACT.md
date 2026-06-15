@@ -103,6 +103,25 @@ records that the listed inputs are required, and once those outputs are in the
 ledger, the **next Nix re-eval** produces the concrete value. This is the
 mechanism that forces N>2 phases for chained Nix-mediated dependencies.
 
+## Build outputs (`__build`)
+
+A config leaf that is the **output of a Nix build** (e.g. a resource `source`
+that is a built disk image) is a `__build` leaf carrying its store path:
+
+```jsonc
+{ "__build": { "path": "/nix/store/<hash>-<name>/<file>" } }   // a Nix build output
+```
+
+Unlike `__ref`/`__derived`, a `__build` leaf is a **known** value — its path is
+fixed at evaluation. But `nivis` *evaluates* (it does not build), so before a
+resource is applied the executor **realises** each `__build` path it references
+(building the derivation if the store path is not yet valid) and substitutes the
+concrete path into the provider config. This is done per resource as it becomes
+ready, so a build whose derivation depends on an earlier resource's apply-time
+output is realised in a later phase — the build participates in the phased
+fixpoint. A `__build` leaf is not an edge and not unknown-pending; authors emit it
+with the `drv` helper (`source = drv image`).
+
 ## Sensitive values across the boundary
 
 Provider schema marks attributes `sensitive`. Sensitive outputs:

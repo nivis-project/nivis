@@ -3,7 +3,7 @@
 # encodes any remaining __ref/__derived placeholders and derives the edge list.
 { lib, ref }:
 let
-  inherit (ref) isRef isDerived isSensitiveRef resolve;
+  inherit (ref) isRef isDerived isSensitiveRef isBuild resolve;
 
   # cleanLeaf strips internal-only fields from a __derived leaf so the IR carries
   # only { inputs } as the contract specifies (the render closure and input refs
@@ -19,8 +19,8 @@ let
     v:
     if isDerived v then
       cleanLeaf v
-    else if isRef v || isSensitiveRef v then
-      v # __ref/__sensitiveRef are already in wire shape
+    else if isRef v || isSensitiveRef v || isBuild v then
+      v # __ref/__sensitiveRef/__build are already in wire shape
     else if builtins.isAttrs v then
       builtins.mapAttrs (_: encode) v
     else if builtins.isList v then

@@ -64,7 +64,7 @@ resources that ship it — that two-domain mix is the whole point of this tutori
       # --- domain 2: the infra, as Nivis resources, fed by that image -----
       pipeline = import (nivis + "/nix/example/ec2.nix") {
         nivis = nivis.lib;
-        nixosImage = image;   # its .vhd path becomes aws_s3_object.source
+        nixosImage = image;   # `drv image` -> aws_s3_object.source (realised at apply)
       };
     in {
       nivis.plan = ledger: pipeline (ledger // { vars.suffix = "demo"; });
@@ -86,19 +86,21 @@ shown in Part 1, or inline it.
 
 ```nix
 {
-  nivis,        # the Nivis library (mkResource / mkProvider / toIR)
+  nivis,        # the Nivis library (mkResource / mkProvider / toIR / drv)
   nixosImage,   # the NixOS amazon image derivation from Part 1
 }:
 ledger:
 let
-  inherit (nivis) mkResource mkProvider toIR;
+  inherit (nivis) mkResource mkProvider toIR drv;
 
   suffix = (ledger.vars or { }).suffix or "demo";
   bucketName = "nivis-ec2nix-${suffix}";
 
-  # The OS crossing into the infra: the .vhd is a FILE inside the image's store
-  # output. filePath is relative; the absolute path is "${image}/${filePath}".
-  imgPath = "${nixosImage}/${nixosImage.passthru.filePath}";
+  # The OS crossing into the infra: `drv` marks the image as a build output —
+  # a __build leaf that `nivis apply` realises (builds) before uploading, then
+  # substitutes the concrete .vhd path. No manual store-path interpolation; no
+  # separate `nix build`. (drv uses the image's passthru.filePath, the .vhd.)
+  imgSource = drv nixosImage;
 
   # --- the vmimport service role AWS requires to import a disk image ---------
   role = mkResource {
@@ -152,7 +154,7 @@ let
 
   image = mkResource {
     provider = "aws"; type = "aws_s3_object"; name = "image";
-    config = { bucket = bucket.refAttr "id"; key = "nixos.vhd"; source = imgPath; };
+    config = { bucket = bucket.refAttr "id"; key = "nixos.vhd"; source = imgSource; };
   };
 
   # --- S3 .vhd -> EBS snapshot ----------------------------------------------
@@ -221,28 +223,18 @@ AMI. The IAM role + policy create the `vmimport` service role AWS requires for
 disk-image import. The only per-deployment knob is `suffix` (unique resource
 names).
 
-## Part 3 — Build the image, then apply
-
-One wrinkle: `nivis` *evaluates* your flake (it runs `nix eval`) — it does **not
-build** derivations. So the image's `.vhd` must be **realised before apply**, or
-the S3 upload fails with `no such file or directory`. Build it first (this repo
-exposes it as `ec2-image`; in your own flake, expose the `image` derivation as a
-package the same way):
-
-```sh
-nix build .#ec2-image        # realises the ~2 GB .vhd (the heavy step)
-```
-
-Then apply:
+## Part 3 — Apply
 
 ```sh
 export AWS_PROFILE=your-profile
 nivis plan      # 9 resources to create across phases
-nivis apply     # upload (~2 GB), import the snapshot (minutes), register, launch
+nivis apply     # build the image, upload (~2 GB), import, register, launch
 ```
 
-> A single `nivis apply` that realises store paths itself is planned
-> (beans-qcwb); until then, `nix build` the image first.
+Because `source` is a `drv` (`__build`) leaf, **`nivis apply` builds the image
+itself** before uploading it — no separate `nix build` step. The image build is
+the heavy part (it uses the Nix binary cache, ≈2 GB); everything after is pure
+AWS. (`--no-build` skips realising if you've pre-built.)
 
 A real run of this pipeline (verified against AWS) resolves across four phases —
 the AWS chain can't all happen at once:

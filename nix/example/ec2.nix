@@ -17,25 +17,22 @@
 # nixpkgs); only `suffix` (a unique name) comes from the ledger's vars.
 {
   nivis,
-  # nixpkgs entrypoint for the NixOS image build (the flake supplies it). When
-  # absent (e.g. a pure IR eval in tests) the image is not built and imagePath is
-  # a placeholder — only the AWS resource shapes are exercised.
+  # The NixOS amazon image derivation (the flake supplies it). When absent (a
+  # pure IR eval in tests) source falls back to a placeholder path — only the AWS
+  # resource shapes are exercised.
   nixosImage ? null,
 }:
 ledger:
 let
-  inherit (nivis) mkResource mkProvider toIR;
+  inherit (nivis) mkResource mkProvider toIR drv;
 
   vars = ledger.vars or { };
   suffix = vars.suffix or "demo";
-  # The image path is the BUILD OUTPUT of the NixOS image derivation (its .vhd),
-  # referenced right here — the domain mix. Falls back to vars.imagePath, then a
-  # placeholder, so a pure IR eval (no nixpkgs) still works.
-  # filePath is relative to the image's store dir; the absolute .vhd path is
-  # "${image}/${filePath}" — that's what aws_s3_object.source uploads.
-  imgPath =
-    if nixosImage != null then "${nixosImage}/${nixosImage.passthru.filePath}"
-    else (vars.imagePath or "/path/to/nixos.vhd");
+  # The image is a Nix BUILD OUTPUT, marked with `drv`: a __build leaf the
+  # executor realises (builds) before uploading — the OS crossing into the infra,
+  # no manual store-path interpolation. `drv` uses the image's passthru.filePath
+  # (the .vhd) automatically. A pure IR eval (no nixpkgs/image) uses a placeholder.
+  imgSource = if nixosImage != null then drv nixosImage else (vars.imagePath or "/path/to/nixos.vhd");
   bucketName = "nivis-ec2nix-${suffix}";
   amiName = "nivis-ec2nix-${suffix}";
 
@@ -89,7 +86,7 @@ let
 
   image = mkResource {
     provider = "aws"; type = "aws_s3_object"; name = "image";
-    config = { bucket = bucket.refAttr "id"; key = "nixos.vhd"; source = imgPath; };
+    config = { bucket = bucket.refAttr "id"; key = "nixos.vhd"; source = imgSource; };
   };
 
   snapshot = mkResource {
