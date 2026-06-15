@@ -1,118 +1,131 @@
 # Tutorial: an S3 bucket on AWS
 
-A from-scratch walkthrough: create a real Amazon S3 bucket with terrae nivis,
-inspect it, and tear it down. By the end you'll have driven a real provider
-through the full `plan → apply → state → destroy` cycle and seen the bucket's
-computed attributes flow back into `tn`.
+A genuinely from-scratch walkthrough. You start in an **empty directory on your
+own machine** — not a checkout of terrae nivis — install the `tn` CLI, scaffold a
+fresh flake that *uses* terrae nivis as a dependency, declare one S3 bucket, and
+drive it through `plan → apply → inspect → destroy`. By the end you'll have a
+small infra flake you own and a real bucket created and torn down.
 
-> ⚠️ **This creates a real resource in your AWS account.** It's a single S3
-> bucket (no objects, no storage cost to speak of) that you destroy at the end.
-> Every command below was run against real AWS while writing this tutorial.
+> ⚠️ **This creates a real resource in your AWS account** — a single S3 bucket
+> (no objects, negligible cost) that you destroy at the end. The commands and
+> outputs below come from real runs.
 
-## Prerequisites
+**Prerequisites:** Nix (with flakes enabled) on your `PATH`, and AWS credentials
+you can use locally.
 
-- **An AWS account** and credentials you can use locally (see *Credentials* below).
-- **Go 1.22+** and **Nix** — to get the `tn` CLI.
-- A few hundred MB of disk and a moment of patience on first run: terrae nivis
-  downloads the AWS provider (~900 MB) from the OpenTofu registry once and caches
-  it.
+## Part 1 — Install `tn`
 
-## 1. Get the `tn` CLI
-
-Either build it with Go:
+The CLI is `tn`. You don't need to clone anything; the quickest path is to run it
+straight from the flake:
 
 ```sh
-go build -o bin/tn ./cmd/tn
+nix run github:wearetechnative/terrae-nivis#tn -- --version
 ```
 
-…or run it straight from the flake (builds from source via nixpkgs):
+If you'd rather have `tn` on your `PATH` for the rest of this tutorial, install it
+persistently or open a shell with it — see **[Installing terrae
+nivis](INSTALL.md)** for all the options (`nix run`, `nix shell`, `nix profile
+install`, building from a clone). The rest of this tutorial writes `tn …`; if you
+chose the ad-hoc form, read that as `nix run github:wearetechnative/terrae-nivis#tn -- …`.
+
+## Part 2 — A fresh infra flake
+
+### 2.1 Scaffold the flake
 
 ```sh
-nix run .#tn -- --version
+mkdir my-infra && cd my-infra
+nix flake init
 ```
 
-This tutorial writes `./bin/tn`; if you prefer the flake, read `./bin/tn` as
-`nix run .#tn --` everywhere.
+`nix flake init` drops a placeholder `flake.nix` (a `hello` package). Replace its
+contents with the infra flake below.
 
-## 2. Configure AWS credentials
-
-terrae nivis uses the **AWS SDK default credential chain** — the same one the AWS
-CLI and Terraform use. The simplest path is a named profile:
-
-```sh
-export AWS_PROFILE=your-profile
-```
-
-Any chain entry works (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, SSO, an
-assumed role, an instance profile). Check it resolves:
-
-```sh
-aws sts get-caller-identity
-```
-
-Note: **only credentials** come from the environment. The **region** is set in
-the Nix config (next step), not via `AWS_REGION`.
-
-## 3. The configuration (explained)
-
-The example lives in `nix/example/aws.nix` and is exposed as the flake attribute
-`terraeNivis.aws`. Here is the whole thing:
+### 2.2 The boilerplate
 
 ```nix
-{ terraeNivis }:
-ledger:
-let
-  inherit (terraeNivis) mkResource mkProvider toIR;
+{
+  description = "My infrastructure, as Nix code (terrae nivis).";
 
-  bucket = mkResource {
-    provider = "aws";
-    type = "aws_s3_bucket";
-    name = "demo";
-    config = {
-      force_destroy = true;
-      tags = { nixform-test = "terrae-nivis-aws-example"; };
+  # Pull terrae nivis in as a dependency. `nix flake lock` (run automatically by
+  # the first tn command) records the exact revision in flake.lock.
+  inputs.terrae-nivis.url = "github:wearetechnative/terrae-nivis";
+
+  outputs =
+    { self, terrae-nivis }:
+    let
+      # tn is the terrae nivis Nix library: mkResource, mkProvider, toIR, …
+      tn = terrae-nivis.lib;
+    in
+    {
+      # `tn` looks for the attribute `terraeNivis.plan` by default. It's a
+      # function of the outputs ledger (the apply-time values fed back in each
+      # phase); for a single bucket there's just one phase, so we ignore it.
+      terraeNivis.plan =
+        ledger:
+        tn.toIR {
+          # --- providers --------------------------------------------------
+          providers.aws = tn.mkProvider {
+            source = "registry.opentofu.org/hashicorp/aws";
+            config = {
+              region = "eu-central-1"; # set in Nix, not via AWS_REGION
+              # default_tags is a *list-nested* block in the AWS provider, so it
+              # takes a list (a bare attrset is rejected at configure time).
+              default_tags = [ { tags = { managed-by = "terrae-nivis"; }; } ];
+            };
+          };
+
+          # --- resources --------------------------------------------------
+          resources = [
+            (tn.mkResource {
+              provider = "aws";
+              type = "aws_s3_bucket";
+              name = "demo"; # id becomes aws.aws_s3_bucket.demo
+              config = {
+                force_destroy = true; # let `tn destroy` delete it even if non-empty
+                # `bucket` is omitted, so AWS generates a globally-unique name.
+              };
+            })
+          ];
+
+          inherit ledger;
+        };
     };
-  };
-in
-toIR {
-  providers = {
-    aws = mkProvider {
-      source = "registry.opentofu.org/hashicorp/aws";
-      config = {
-        region = "eu-central-1";
-        default_tags = [ { tags = { managed-by = "terrae-nivis"; }; } ];
-      };
-    };
-  };
-  resources = [ bucket ];
-  inherit ledger;
 }
 ```
 
-Reading it top to bottom:
+Reading it:
 
-- **`mkResource { provider; type; name; config }`** declares one resource. Its
-  stable id is `aws.aws_s3_bucket.demo` (`<provider>.<type>.<name>`).
-  - `force_destroy = true` lets `tn destroy` delete the bucket even if it has
-    objects — convenient for a throwaway.
-  - We **omit** `bucket` (the name), so AWS generates a globally-unique one. (Set
-    `bucket = "my-name";` if you want a specific name — it must be globally unique.)
-- **`mkProvider { source; config }`** declares the AWS provider. `source` is its
-  registry address; terrae nivis resolves, downloads, and checksum-verifies the
-  binary.
-  - `region` lives **here**, in Nix — not in the environment.
-  - `default_tags` is a **list** (`[ { … } ]`), because in the AWS provider it is
-    a *list-nested block*. Tags here are applied to every resource. A bare attrset
-    (`default_tags = { … }`) is rejected by the provider at configure time.
-- **`toIR { providers; resources; ledger }`** serializes everything to the JSON
-  IR the executor consumes. `ledger` is the outputs-injection slot the phased
-  loop fills in; for a single bucket with no cross-references there's just one
-  phase.
+- **`inputs.terrae-nivis.url`** makes terrae nivis a dependency; `tn = terrae-nivis.lib`
+  binds its Nix library.
+- **`terraeNivis.plan`** is the attribute `tn` evaluates by default — a function
+  `ledger → IR`. (Name it something else and pass `tn plan --attr <name>`.)
+- **`mkProvider`** declares the AWS provider: `source` is its registry address,
+  `region` lives in Nix, and `default_tags` is a one-element list because that
+  block is list-nested in the AWS provider.
+- **`mkResource`** declares one `aws_s3_bucket` with a stable id
+  `aws.aws_s3_bucket.demo`; `force_destroy` makes teardown easy and omitting
+  `bucket` lets AWS pick a unique name.
 
-## 4. Plan
+### 2.3 Credentials
+
+`tn` uses the **AWS SDK default credential chain** (the same one the AWS CLI
+uses). Point it at your account — typically a named profile:
 
 ```sh
-./bin/tn plan --attr terraeNivis.aws
+export AWS_PROFILE=your-profile
+aws sts get-caller-identity   # sanity check
+```
+
+Only credentials come from the environment; the **region** is in the flake above.
+
+## Part 3 — Plan, apply, inspect, destroy
+
+Run these from your `my-infra` directory.
+
+### Plan
+
+```sh
+tn plan
 ```
 
 ```
@@ -121,13 +134,13 @@ Reading it top to bottom:
 1 resource(s) to resolve across phases. Run `tn apply`.
 ```
 
-The `+` means a resource will be created. (The first `plan`/`apply` is slower
-while the provider downloads.)
+The first `tn` command resolves the `terrae-nivis` input (writing `flake.lock`)
+and, on first use of a real provider, downloads it — so the first run is slower.
 
-## 5. Apply
+### Apply
 
 ```sh
-./bin/tn apply --attr terraeNivis.aws
+tn apply
 ```
 
 ```
@@ -135,37 +148,33 @@ Applied 1 resource(s) across 1 phase(s):
   ✓ aws.aws_s3_bucket.demo
 ```
 
-The bucket now exists in AWS. `tn` wrote the resulting state to
-`terrae-nivis.state.json` in the working directory.
+The bucket now exists. `tn` writes the resulting state to
+`terrae-nivis.state.json` in `my-infra`.
 
-## 6. Inspect the round trip
+### Inspect the round trip
 
 ```sh
-./bin/tn state show aws.aws_s3_bucket.demo
+tn state show aws.aws_s3_bucket.demo
 ```
 
 ```
   arn = arn:aws:s3:::terraform-20260615165907082000000001
   bucket_regional_domain_name = terraform-20260615165907082000000001.s3.eu-central-1.amazonaws.com
-  bucket_domain_name = terraform-20260615165907082000000001.s3.amazonaws.com
-  tags_all = map[managed-by:terrae-nivis nixform-test:terrae-nivis-aws-example]
+  tags_all = map[managed-by:terrae-nivis]
   force_destroy = true
   region = eu-central-1
-  tags = map[nixform-test:terrae-nivis-aws-example]
   id = terraform-20260615165907082000000001
   …
 ```
 
 The bucket name (`terraform-2026…`) was **generated by AWS** and read back into
-`tn` — that's the round trip in miniature: a value that did not exist until apply
-is now concrete in state. Note `tags_all` merges your resource `tags` with the
-provider's `default_tags` (`managed-by = terrae-nivis`), confirming the provider
-config took effect.
+state — a value that didn't exist until apply is now concrete. `tags_all` shows
+the provider's `default_tags` were applied.
 
-## 7. Destroy
+### Destroy
 
 ```sh
-./bin/tn destroy --attr terraeNivis.aws
+tn destroy
 ```
 
 ```
@@ -173,36 +182,34 @@ Destroyed 1 resource(s):
   - aws.aws_s3_bucket.demo
 ```
 
-Confirm it's gone:
+Confirm nothing's left:
 
 ```sh
 aws s3api list-buckets --query 'Buckets[?contains(Name, `terraform-`)].Name'
 ```
 
-Nothing should be listed (for this tutorial). No resource is left behind.
-
-## 8. Make it your own
+## Make it your own
 
 - **A specific bucket name:** add `bucket = "globally-unique-name";` to the
   resource `config`.
 - **A different region:** change `region` in the provider `config`.
-- **More provider settings:** `mkProvider`'s `config` is a raw attribute tree the
-  provider validates; nested blocks (`assume_role`, `endpoints`, `default_tags`,
-  …) are nested attrsets/lists — list-nested ones (like `default_tags`) take a
-  `[ { … } ]` list. See the IR contract and the `nix-lib` spec for the rules.
-- **A different resource or provider:** point `type`/`source` elsewhere; the same
-  `plan/apply/state/destroy` cycle applies.
+- **More resources:** add more `mkResource` entries to the `resources` list; wire
+  one resource's output into another with the reference helpers (`refAttr`) and
+  terrae nivis resolves them across phases.
+- **Pin terrae nivis:** the input floats on the default branch; `flake.lock` pins
+  the exact revision. Re-pin deliberately with `nix flake update terrae-nivis`.
 
 ## Troubleshooting
 
-- **`NoCredentialProviders` / `could not find credentials`** — the SDK chain
-  found nothing. Set `AWS_PROFILE` (or the access-key vars) and confirm with
-  `aws sts get-caller-identity`.
+- **`NoCredentialProviders` / `could not find credentials`** — the SDK chain found
+  nothing. Set `AWS_PROFILE` (or the access-key vars) and confirm with `aws sts
+  get-caller-identity`.
 - **`expected array … got map[string]interface {}` for a provider block** — that
   block is *list-nested*; wrap it in a list, e.g.
   `default_tags = [ { tags = { … }; } ]`.
-- **First run is slow / seems to hang** — it's downloading the ~900 MB AWS
-  provider once. Subsequent runs use the cache.
-- **`BucketAlreadyExists`** — you set an explicit `bucket` name that someone else
-  already owns (S3 names are global). Omit `bucket` to let AWS generate one, or
-  pick another name.
+- **First run is slow / seems to hang** — it's resolving the flake input and
+  downloading the ~900&nbsp;MB AWS provider once; later runs use the cache.
+- **`BucketAlreadyExists`** — you set an explicit `bucket` name someone already
+  owns (S3 names are global). Omit `bucket`, or pick another.
+- **`tn` can't find your flake** — run `tn` from the directory containing
+  `flake.nix`, or pass `tn plan --flake /path/to/my-infra`.

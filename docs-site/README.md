@@ -47,6 +47,7 @@ links to it — neither copies it. New duplication is caught by
 
 | Topic | Canonical source | Used by |
 |---|---|---|
+| Installing `tn` | `docs/INSTALL.md` | site `INSTALL.md` (include); tutorial + README link |
 | Pitch + "how it works" | `docs/OVERVIEW.md` (anchors `pitch`, `how-it-works`) | site `index.md` (include), README (link) |
 | Fake-provider walkthrough + build/run | `docs/GETTING-STARTED.md` | site `getting-started.md` (include), README (link) |
 | Real provider (AWS) intro | `docs/GETTING-STARTED.md` §7 (anchor `aws`) | site `real-providers.md` (include), README (link) |

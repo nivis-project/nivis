@@ -2,6 +2,7 @@
 
 [Terrae Nivis](./index.md)
 
+- [Install](./INSTALL.md)
 - [Getting started](./getting-started.md)
 - [Real providers (AWS)](./real-providers.md)
   - [Tutorial: an S3 bucket](./TUTORIAL-AWS-S3.md)
