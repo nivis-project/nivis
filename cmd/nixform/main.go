@@ -30,6 +30,15 @@ func main() {
 	root := &cobra.Command{
 		Use:   "nixform",
 		Short: "Nix-native infra: provider resources as first-class Nix values",
+		// We print runtime failures ourselves as a clean `error:` line; don't let
+		// cobra print the error a second time.
+		SilenceErrors: true,
+		// Silence usage only AFTER flags parse successfully: flag/argument misuse
+		// happens before this hook and still shows usage, but a RunE (runtime)
+		// failure does not dump the usage block.
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			cmd.SilenceUsage = true
+		},
 	}
 	root.PersistentFlags().StringVar(&flakeRef, "flake", ".", "flake reference exposing nixform.plan")
 	root.PersistentFlags().StringVar(&statePath, "state", "./nixform.state.json", "path to the local state file")

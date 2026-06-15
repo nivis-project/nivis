@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/wearetechnative/nixform/internal/ledger"
 )
@@ -62,11 +63,38 @@ func (n NixEval) Eval(ctx context.Context, l *ledger.Ledger) ([]byte, error) {
 	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("nixeval: nix eval failed: %w\nstderr: %s", err, ee.Stderr)
+			return nil, fmt.Errorf("nix evaluation of %s#%s failed:\n%s",
+				n.FlakeRef, n.Attr, cleanNixStderr(string(ee.Stderr)))
 		}
-		return nil, fmt.Errorf("nixeval: %w", err)
+		return nil, fmt.Errorf("running nix eval: %w", err)
 	}
 	return out, nil
+}
+
+// cleanNixStderr keeps the actionable lines from nix's stderr (the `error:` and
+// its indented context) and drops non-actionable noise like the "Git tree is
+// dirty" warning, so the user sees the real cause, not Nix's internal verbiage.
+func cleanNixStderr(stderr string) string {
+	lines := strings.Split(strings.TrimRight(stderr, "\n"), "\n")
+	var kept []string
+	inError := false
+	for _, ln := range lines {
+		trimmed := strings.TrimSpace(ln)
+		switch {
+		case strings.HasPrefix(trimmed, "warning:"):
+			inError = false // skip warnings (e.g. dirty tree) and their context
+		case strings.HasPrefix(trimmed, "error:"):
+			inError = true
+			kept = append(kept, ln)
+		case inError:
+			kept = append(kept, ln) // indented context under an error
+		}
+	}
+	if len(kept) == 0 {
+		// Fall back to the raw stderr if we couldn't find an error line.
+		return strings.TrimSpace(stderr)
+	}
+	return strings.Join(kept, "\n")
 }
 
 func absPath(p string) string {
