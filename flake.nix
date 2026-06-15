@@ -21,6 +21,8 @@
       # and feeds the resulting IR to the executor.
       nixform = {
         plan = import ./nix/example { inherit nixform; };
+        # A cyclic variant for the headline e2e's cycle-rejection assertion.
+        planCycle = import ./nix/example/cycle.nix { inherit nixform; };
       };
     };
 }
