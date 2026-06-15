@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -15,6 +16,11 @@ import (
 // Backend wraps a tfprotov5 gRPC client as a version-neutral provider.Client.
 type Backend struct {
 	client tfplugin5.ProviderClient
+
+	// Provider schema is fetched once and cached (see the v6 backend for why).
+	schemaOnce sync.Once
+	schemaResp *tfplugin5.GetProviderSchema_Response
+	schemaErr  error
 }
 
 // New wraps a tfplugin5.ProviderClient.
@@ -27,12 +33,26 @@ type schemaRaw struct {
 	computed map[string]bool
 }
 
+// schema returns the provider schema, fetching it at most once per backend.
+func (b *Backend) schema(ctx context.Context) (*tfplugin5.GetProviderSchema_Response, error) {
+	b.schemaOnce.Do(func() {
+		resp, err := b.client.GetSchema(ctx, &tfplugin5.GetProviderSchema_Request{})
+		if err != nil {
+			b.schemaErr = fmt.Errorf("GetSchema: %w", err)
+			return
+		}
+		if err := provider.DiagError(normDiags(resp.GetDiagnostics())); err != nil {
+			b.schemaErr = err
+			return
+		}
+		b.schemaResp = resp
+	})
+	return b.schemaResp, b.schemaErr
+}
+
 func (b *Backend) ListResourceTypes(ctx context.Context) ([]string, error) {
-	resp, err := b.client.GetSchema(ctx, &tfplugin5.GetProviderSchema_Request{})
+	resp, err := b.schema(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("GetSchema: %w", err)
-	}
-	if err := provider.DiagError(normDiags(resp.GetDiagnostics())); err != nil {
 		return nil, err
 	}
 	var types []string
@@ -44,11 +64,8 @@ func (b *Backend) ListResourceTypes(ctx context.Context) ([]string, error) {
 }
 
 func (b *Backend) GetSchema(ctx context.Context, resourceType string) (provider.ResourceSchema, error) {
-	resp, err := b.client.GetSchema(ctx, &tfplugin5.GetProviderSchema_Request{})
+	resp, err := b.schema(ctx)
 	if err != nil {
-		return provider.ResourceSchema{}, fmt.Errorf("GetSchema: %w", err)
-	}
-	if err := provider.DiagError(normDiags(resp.GetDiagnostics())); err != nil {
 		return provider.ResourceSchema{}, err
 	}
 	sch, ok := resp.GetResourceSchemas()[resourceType]

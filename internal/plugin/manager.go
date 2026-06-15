@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/hashicorp/go-hclog"
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
@@ -110,6 +111,10 @@ func (m *Manager) Client(identity, path string) (provider.Client, error) {
 		Cmd:              exec.Command(path),
 		AllowedProtocols: []goplugin.Protocol{goplugin.ProtocolGRPC},
 		Managed:          false,
+		// Quiet by default: real providers (e.g. AWS) emit enormous TRACE/DEBUG
+		// output during schema fetch that would flood the executor's stderr.
+		// Warnings and errors still surface.
+		Logger: hclog.New(&hclog.LoggerOptions{Name: "provider", Level: hclog.Warn}),
 	})
 
 	rpcClient, err := c.Client()

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -16,6 +17,13 @@ import (
 // Backend wraps a tfprotov6 gRPC client as a version-neutral provider.Client.
 type Backend struct {
 	client tfplugin6.ProviderClient
+
+	// The provider schema is fetched once and cached: GetProviderSchema is
+	// expensive (multi-MB for large providers like AWS) and was previously
+	// re-issued per resource type, which is O(resources) round trips.
+	schemaOnce sync.Once
+	schemaResp *tfplugin6.GetProviderSchema_Response
+	schemaErr  error
 }
 
 // New wraps a tfplugin6.ProviderClient.
@@ -30,12 +38,26 @@ type schemaRaw struct {
 	computed map[string]bool
 }
 
+// schema returns the provider schema, fetching it at most once per backend.
+func (b *Backend) schema(ctx context.Context) (*tfplugin6.GetProviderSchema_Response, error) {
+	b.schemaOnce.Do(func() {
+		resp, err := b.client.GetProviderSchema(ctx, &tfplugin6.GetProviderSchema_Request{})
+		if err != nil {
+			b.schemaErr = fmt.Errorf("GetProviderSchema: %w", err)
+			return
+		}
+		if err := provider.DiagError(normDiags(resp.GetDiagnostics())); err != nil {
+			b.schemaErr = err
+			return
+		}
+		b.schemaResp = resp
+	})
+	return b.schemaResp, b.schemaErr
+}
+
 func (b *Backend) ListResourceTypes(ctx context.Context) ([]string, error) {
-	resp, err := b.client.GetProviderSchema(ctx, &tfplugin6.GetProviderSchema_Request{})
+	resp, err := b.schema(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("GetProviderSchema: %w", err)
-	}
-	if err := provider.DiagError(normDiags(resp.GetDiagnostics())); err != nil {
 		return nil, err
 	}
 	var types []string
@@ -47,11 +69,8 @@ func (b *Backend) ListResourceTypes(ctx context.Context) ([]string, error) {
 }
 
 func (b *Backend) GetSchema(ctx context.Context, resourceType string) (provider.ResourceSchema, error) {
-	resp, err := b.client.GetProviderSchema(ctx, &tfplugin6.GetProviderSchema_Request{})
+	resp, err := b.schema(ctx)
 	if err != nil {
-		return provider.ResourceSchema{}, fmt.Errorf("GetProviderSchema: %w", err)
-	}
-	if err := provider.DiagError(normDiags(resp.GetDiagnostics())); err != nil {
 		return provider.ResourceSchema{}, err
 	}
 	sch, ok := resp.GetResourceSchemas()[resourceType]
