@@ -121,6 +121,7 @@ adjust the generated output.
 
 ## 7. A real provider (AWS)
 
+<!-- ANCHOR: aws -->
 Everything above is offline against the fakes. The same `tn` commands drive
 **real** providers — `tn` resolves a provider by address from the OpenTofu
 registry, downloads and checksum-verifies the binary, negotiates the plugin
@@ -159,6 +160,7 @@ providers.aws = mkProvider {
 are just nested attrsets/lists, and `toIR` resolves any `__ref`/`__derived`
 leaves in it against the outputs ledger like resource config. Point the `region`,
 `source`, or resource at anything else to drive a different provider/setting.
+<!-- ANCHOR_END: aws -->
 
 ## Where to go next
 

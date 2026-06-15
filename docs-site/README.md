@@ -36,5 +36,22 @@ The built site is written to `docs-site/book/` (git-ignored).
 ## Editing content
 
 Edit the canonical docs (`docs/*.md`, `DESIGN.md`, `ROADMAP.md`) — the site picks
-up the change. Pages unique to the site (`index.md`, `real-providers.md`) live in
-`src/`.
+up the change. The site pages in `src/` are thin: they `{{#include}}` a canonical
+file (whole, or an anchored range) and add only nav/framing.
+
+## Single source of truth (per topic)
+
+Each shared topic has **one** canonical file; the site includes it and `README.md`
+links to it — neither copies it. New duplication is caught by
+`tests/check-docs-ssot.sh`. Canonical owners:
+
+| Topic | Canonical source | Used by |
+|---|---|---|
+| Pitch + "how it works" | `docs/OVERVIEW.md` (anchors `pitch`, `how-it-works`) | site `index.md` (include), README (link) |
+| Fake-provider walkthrough + build/run | `docs/GETTING-STARTED.md` | site `getting-started.md` (include), README (link) |
+| Real provider (AWS) | `docs/GETTING-STARTED.md` §7 (anchor `aws`) | site `real-providers.md` (include), README (link) |
+| IR contract / testing / design / roadmap / brand | `docs/*.md`, `DESIGN.md`, `ROADMAP.md` | site pages (include) |
+
+When a section must render in more than one place, give it an mdBook anchor
+(`<!-- ANCHOR: name -->` … `<!-- ANCHOR_END: name -->`) and `{{#include
+file:name}}` it — do not paste a copy.

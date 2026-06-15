@@ -18,90 +18,38 @@ secret) back into Nix, which **re-evaluates** to produce dependent configuration
 repeating to a fixpoint. This is proven end to end across two providers with
 unknown values originating on both sides (see the demo below).
 
-## How it works (one paragraph)
+## Quickstart (offline, no credentials)
 
-Nix evaluates your configuration to a JSON **IR** (`docs/IR-CONTRACT.md`). Values
-that aren't known until apply-time are emitted as typed placeholders — a `__ref`
-(a direct reference to another resource's output) or a `__derived` (a value Nix
-*computed* from an output, e.g. a string built from an IP). The Go executor
-ingests the IR, spawns the relevant provider binaries, drives
-`GetProviderSchema`/`PlanResourceChange`/`ApplyResourceChange`, and collects the
-real outputs into an **outputs ledger**. It then **re-evaluates Nix** with the
-ledger injected, so placeholders resolve to concrete values; the new IR may
-unlock more resources. This loop repeats to a **fixpoint** (no new value
-resolves). Because each Nix-mediated (`__derived`) hop needs its own
-re-evaluation, deep chains take more than two phases — the loop generalizes to
-N phases. See `DESIGN.md` for why this (not an `Output<T>` promise model) is the
-honest, Nix-shaped approach.
-
-## Try the demo (offline, no network, no credentials)
-
-Everything runs against in-repo **fake providers** that speak `tfprotov6` — no
-registry, no cloud account. You need Go 1.22+ and Nix.
+Everything here runs against in-repo **fake providers** — no registry, no cloud
+account. You need Go 1.22+ and Nix.
 
 ```sh
-# Build the fake providers and the CLI.
 go build -o bin/provider-alpha ./cmd/provider-alpha
 go build -o bin/provider-beta  ./cmd/provider-beta
 go build -o bin/tn ./cmd/tn
 
-# Plan and apply the headline topology (resolves across 3 phases to a fixpoint).
-./bin/tn plan
-./bin/tn apply
-
-# Inspect state — note C's label is a value Nix derived from BOTH providers.
-./bin/tn state list
-./bin/tn state show alpha.alpha_token.C
-
-# Reconcile (no changes) and tear down (reverse dependency order: C, B, A).
-./bin/tn refresh
+./bin/tn plan      # plan the headline topology
+./bin/tn apply     # resolves across 3 phases to a fixpoint
+./bin/tn state show alpha.alpha_token.C   # a value Nix derived from BOTH providers
 ./bin/tn destroy
 ```
 
-Generate typed Nix constructors from a provider's schema:
+Prefer Nix? `nix run .#tn -- plan` / `apply` (and `nix build .#tn`) build the CLI
+from source — the library outputs stay pure-builtins.
 
-```sh
-go run ./cmd/tn-gen -- --provider ./bin/provider-alpha --out ./generated
-cat ./generated/alpha/alpha_token.nix
-```
+That's the round trip in miniature. For the full story:
 
-Prefer Nix? The flake builds the CLIs too — `nix run .#tn -- plan`,
-`nix run .#tn -- apply`, `nix run .#tn-gen -- --provider … --out …` (and
-`nix build .#tn`). These use a real Go toolchain from the pinned `nixpkgs`; the
-library outputs (`lib`, `terraeNivis.*`) stay pure-builtins and don't depend on
-it.
+- **[`docs/OVERVIEW.md`](docs/OVERVIEW.md)** — how it works (the IR, the outputs
+  ledger, phased re-evaluation to a fixpoint).
+- **[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md)** — the guided
+  walkthrough: the example topology, plan/apply/inspect/destroy, schema codegen
+  with `tn-gen`, **and driving a real provider (AWS)**.
+- **[Docs site](https://wearetechnative.github.io/terrae-nivis/)** — the same
+  docs, browsable.
 
-See `docs/GETTING-STARTED.md` for a guided walkthrough.
-
-## Real providers (AWS)
-
-Terrae Nivis drives **real** Terraform/OpenTofu providers, not just the fakes: it
-resolves a provider by address from the OpenTofu registry, downloads and
-**checksum-verifies** the binary from its release host, negotiates the plugin
-protocol (v5 or v6), configures it, and runs the same plan/apply/destroy cycle.
-
-> ⚠️ **This creates a real resource in your AWS account.** The example below
-> creates a single (free-tier) S3 bucket and then destroys it. Provider settings
-> like `region` live in the **Nix config** (via `mkProvider`); only credentials
-> come from the environment (the AWS SDK default chain) — set `AWS_PROFILE` (or
-> `AWS_ACCESS_KEY_ID`/…). First run downloads the ~900&nbsp;MB AWS provider
-> (cached after).
-
-```sh
-export AWS_PROFILE=your-profile          # credentials only; region is in the Nix config
-
-./bin/tn plan    --attr terraeNivis.aws  # show the planned bucket
-./bin/tn apply   --attr terraeNivis.aws  # create a real S3 bucket (AWS-generated name)
-./bin/tn state show aws.aws_s3_bucket.demo
-./bin/tn destroy --attr terraeNivis.aws  # delete it
-```
-
-The `terraeNivis.aws` flake attribute (`nix/example/aws.nix`) declares the
-provider with `mkProvider { source = "registry.opentofu.org/hashicorp/aws";
-config = { region = "eu-central-1"; default_tags = …; }; }` and one
-`aws_s3_bucket` — change the `region`, source, or resource to drive any other
-provider/setting/resource the same way. Provider config (including nested blocks
-like `default_tags`) flows into the provider's `Configure` call.
+> Terrae Nivis also drives **real** providers (registry fetch, checksum
+> verification, plugin protocol v5/v6, plan/apply/destroy) — see the AWS
+> walkthrough in `docs/GETTING-STARTED.md`. ⚠️ that creates a real cloud resource.
 
 ## Layout
 
@@ -148,6 +96,7 @@ See `docs-site/README.md` for details.
 go test ./...                      # Go unit + e2e (uses the fake providers)
 bash tests/run-nix-tests.sh        # Nix property tests + IR conformance
 python3 tests/ir-conformance/check.py test   # IR schema/referential conformance
+bash tests/check-docs-ssot.sh      # docs single-source-of-truth (no duplicated sections)
 ```
 
 The milestone exit test is `tests/e2e` (`TestHeadlineRoundTrip`): two providers,
@@ -168,5 +117,5 @@ This repository was built autonomously following a spec-driven process: see
 `DESIGN.md` (architecture decisions), `ROADMAP.md` (epics), `CLAUDE.md` (the
 builder's instructions), and `openspec/` (the per-change specs). The core test
 suite is hermetic (fakes, no network); real-provider support (registry download +
-checksum verification, tfprotov5/6) is proven against AWS — see **Real providers
-(AWS)** above.
+checksum verification, tfprotov5/6) is proven against AWS — see the AWS
+walkthrough in `docs/GETTING-STARTED.md`.
