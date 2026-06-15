@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package v5
@@ -9,8 +9,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nixform/internal/tfcodec"
-	"github.com/wearetechnative/nixform/internal/tfplugin5"
+	"github.com/wearetechnative/terrae-nivis/internal/tfcodec"
+	"github.com/wearetechnative/terrae-nivis/internal/tfplugin5"
 )
 
 // This is the v5 mirror of internal/tfvalue: the same encode/decode logic

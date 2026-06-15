@@ -20,7 +20,7 @@ config-free fakes. This change adds provider configuration so real providers
   provider's `config` from the IR (`providers.<id>.config`), before returning the
   client for plan/apply. Configuration happens once and is remembered (the
   process is pooled).
-- A real, network+credential-gated test (NIXFORM_NET_TESTS=1 + AWS creds via
+- A real, network+credential-gated test (TERRAE_NIVIS_NET_TESTS=1 + AWS creds via
   AWS_PROFILE) that configures the real AWS provider and PLANS `aws_s3_bucket`
   (no required inputs; no resource created), asserting a planned state comes back
   with no error.

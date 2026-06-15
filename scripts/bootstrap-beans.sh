@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap the beans tracker for nixform: one milestone + the epics under it,
+# Bootstrap the beans tracker for terrae nivis: one milestone + the epics under it,
 # wired with the real critical-path dependency edges (see ROADMAP.md).
 #
 # Verified against beans 1.4.x CLI (2026-06): create uses --parent for hierarchy
@@ -25,10 +25,10 @@ mk() {
     | python3 -c 'import sys,json; print(json.load(sys.stdin)["bean"]["id"])'
 }
 
-echo "Seeding nixform milestone + epics..."
+echo "Seeding terrae nivis milestone + epics..."
 
 # --- Milestone -------------------------------------------------------------
-MILESTONE=$(mk "nixform PoC / alpha base" \
+MILESTONE=$(mk "terrae nivis PoC / alpha base" \
   --type milestone --priority high --status todo --tag poc \
   --body "Exit criterion: headline two-provider e2e passes (unknowns on both \
 sides, >=3 phases, Nix-side consumer reads both providers). See ROADMAP.md and \
@@ -40,7 +40,7 @@ echo "  milestone: $MILESTONE"
 # ordering as --blocked-by edges so `beans list --no-blocked` surfaces the next
 # unblocked epic. cc should still consult ROADMAP.md for rationale.
 
-E1=$(mk "E1 Nix library core (nixform-lib)" \
+E1=$(mk "E1 Nix library core (terrae-nivis-lib)" \
   --type epic --priority high --status todo --parent "$MILESTONE" --tag critical-path \
   --body "mkResource, reference system, meta-args, module system, IR serializer, \
 flake interface. Tasks tracked as OpenSpec changes. See ROADMAP.md Epic 1. \
@@ -60,7 +60,7 @@ E4a=$(mk "E4a Fake tfprotov6 providers (alpha, beta)" \
 Build early. Spec in docs/TESTING.md. OpenSpec changes: (record here).")
 echo "  E4a:  $E4a"
 
-E3=$(mk "E3 Go executor (nixform)" \
+E3=$(mk "E3 Go executor (terrae nivis)" \
   --type epic --priority high --status todo --parent "$MILESTONE" --tag critical-path \
   --body "IR ingestion, trivial JSON state, plugin manager (spawn, plain v6 \
 handshake), DAG + TF->TF resolution, plan/apply, refresh/destroy/CLI. ROADMAP \
@@ -81,7 +81,7 @@ both. Full spec docs/TESTING.md. This passing == milestone done. OpenSpec \
 changes: (record here).")
 echo "  E4b:  $E4b"
 
-E2=$(mk "E2 Provider schema codegen (nixform-gen)" \
+E2=$(mk "E2 Provider schema codegen (tn-gen)" \
   --type epic --priority normal --status todo --parent "$MILESTONE" --tag off-critical-path \
   --body "OFF critical path; build AFTER E4b. Schema->Nix type model + \
 constructor codegen + override seam. Registry download is network-gated, \

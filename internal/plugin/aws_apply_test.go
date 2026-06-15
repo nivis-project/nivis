@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -8,12 +8,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/provider"
-	"github.com/wearetechnative/nixform/internal/registry"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/registry"
 )
 
-// TestAWSApplyDestroyS3Bucket is gated by NIXFORM_NET_TESTS=1 and AWS creds. It
+// TestAWSApplyDestroyS3Bucket is gated by TERRAE_NIVIS_NET_TESTS=1 and AWS creds. It
 // CREATES a real S3 bucket and then DESTROYS it, proving the full real-provider
 // round trip (plan -> apply -> destroy) against AWS.
 //
@@ -25,8 +25,8 @@ import (
 //     while the provider is still alive, then the process is closed. A failed
 //     destroy is reported loudly so the bucket can be cleaned up manually.
 func TestAWSApplyDestroyS3Bucket(t *testing.T) {
-	if os.Getenv("NIXFORM_NET_TESTS") != "1" {
-		t.Skip("net/creds test; set NIXFORM_NET_TESTS=1 with AWS creds")
+	if os.Getenv("TERRAE_NIVIS_NET_TESTS") != "1" {
+		t.Skip("net/creds test; set TERRAE_NIVIS_NET_TESTS=1 with AWS creds")
 	}
 	ctx := context.Background()
 
@@ -45,7 +45,7 @@ func TestAWSApplyDestroyS3Bucket(t *testing.T) {
 
 	cfg := map[string]interface{}{
 		"force_destroy": true,
-		"tags":          map[string]interface{}{"nixform-test": "apply-destroy"},
+		"tags":          map[string]interface{}{"terrae-nivis-test": "apply-destroy"},
 	}
 
 	pr, err := client.Plan(ctx, provider.PlanRequest{Schema: rs, TypeName: "aws_s3_bucket", ResolvedCfg: cfg})

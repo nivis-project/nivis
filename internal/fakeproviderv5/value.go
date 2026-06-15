@@ -1,7 +1,7 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package fakeproviderv5 provides the shared tfprotov5 plumbing for nixform's
+// Package fakeproviderv5 provides the shared tfprotov5 plumbing for terrae-nivis'
 // in-repo fake providers (DESIGN D6). It mirrors internal/fakeprovider (which
 // targets tfprotov6) for the older Terraform plugin protocol version 5.
 // Concrete providers (provider-gamma) declare a small set of Resources and
@@ -18,15 +18,15 @@ import (
 )
 
 // Counter is a per-process, seedable counter used to make computed outputs
-// deterministic for tests. It is seeded from NIXFORM_FAKE_COUNTER (default 0)
+// deterministic for tests. It is seeded from TERRAE_NIVIS_FAKE_COUNTER (default 0)
 // and incremented once per applied resource. No clocks, no randomness.
 type Counter struct{ n int64 }
 
-// NewCounter reads the NIXFORM_FAKE_COUNTER env var (default 0) as the starting
+// NewCounter reads the TERRAE_NIVIS_FAKE_COUNTER env var (default 0) as the starting
 // value. The first Next() returns the seed, the second seed+1, and so on.
 func NewCounter() *Counter {
 	start := int64(0)
-	if s := os.Getenv("NIXFORM_FAKE_COUNTER"); s != "" {
+	if s := os.Getenv("TERRAE_NIVIS_FAKE_COUNTER"); s != "" {
 		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
 			start = v
 		}

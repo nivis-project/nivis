@@ -2,7 +2,7 @@
 
 ## Purpose
 The in-repo fake providers are the hermetic, offline test substrate for every
-integration and e2e test in nixform (DESIGN D6). Two are required so the
+integration and e2e test in terrae nivis (DESIGN D6). Two are required so the
 milestone exit criterion can have unknown values originating on both provider
 sides. They speak `tfprotov6` over go-plugin exactly as a real provider does,
 producing computed-unknown-at-plan outputs that become known, deterministic
@@ -68,11 +68,11 @@ known after apply.
 
 ### Requirement: Deterministic, hermetic outputs
 Provider outputs SHALL be a pure function of inputs and a per-process counter
-seedable via the `NIXFORM_FAKE_COUNTER` environment variable (default 0). The
+seedable via the `TERRAE_NIVIS_FAKE_COUNTER` environment variable (default 0). The
 providers SHALL make no network calls, read no clock, and use no randomness.
 
 #### Scenario: same inputs and seed yield identical outputs
-- GIVEN two runs of `provider-alpha` with `NIXFORM_FAKE_COUNTER=5` applying the same `alpha_token` config
+- GIVEN two runs of `provider-alpha` with `TERRAE_NIVIS_FAKE_COUNTER=5` applying the same `alpha_token` config
 - WHEN both produce `NewState`
 - THEN the `id` and `value` are byte-identical across runs.
 

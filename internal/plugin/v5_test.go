@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
 )
 
 // TestV5NegotiationAndRoundTrip spawns the REAL fake v5 provider (provider-gamma)
@@ -18,7 +18,7 @@ import (
 // (buildProvider, repoRoot, contains are shared with integration_test.go.)
 func TestV5NegotiationAndRoundTrip(t *testing.T) {
 	bin := buildProvider(t, "provider-gamma")
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	ctx := context.Background()
 
 	mgr := plugin.NewManager()

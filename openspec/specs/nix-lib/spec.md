@@ -1,7 +1,7 @@
 # Spec: nix-lib
 
 ## Purpose
-The nixform Nix library is the configuration frontend: users describe resources
+The terrae nivis Nix library is the configuration frontend: users describe resources
 as Nix values and the library serializes them to the canonical JSON IR the Go
 executor consumes. It is the input side of the round trip — how a Nix author
 references apply-time provider outputs (`__ref`) and computes values from them
@@ -56,7 +56,7 @@ edges derived from `__ref` usage. The output SHALL conform to
 - THEN the IR contains an edge `{ from: A, to: B, via: "from" }`.
 
 ### Requirement: Plan interface accepts the outputs ledger
-The flake `nixform.plan` SHALL be a function of an injected outputs ledger
+The flake `terraeNivis.plan` SHALL be a function of an injected outputs ledger
 (`{ phase, outputs }`, empty on phase 0) and SHALL resolve `__ref`/`__derived`
 leaves whose inputs are present in the ledger to concrete values, leaving the
 rest as placeholders.

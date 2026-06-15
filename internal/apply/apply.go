@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package apply runs the provider apply operation and persists the resulting
@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wearetechnative/nixform/internal/ir"
-	"github.com/wearetechnative/nixform/internal/provider"
-	"github.com/wearetechnative/nixform/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/ir"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
 )
 
 // Apply applies a planned resource, extracts the now-known outputs, and writes

@@ -1,10 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nixform/ir-schema.json",
-  "title": "nixform IR (schemaVersion 1)",
-  "description": "Normative machine-checkable schema for the nixform JSON IR. This is the frozen contract between the Nix library (Epic 1), codegen (Epic 2), and the Go executor (Epic 3/3.5). Authoritative prose lives in docs/IR-CONTRACT.md; this file encodes its structural rules so both producers (toIR) and consumers (IngestIR) can validate against one artifact. Breaking changes require an OpenSpec change against the contract first and a schemaVersion bump.",
+  "$id": "https://terrae-nivis/ir-schema.json",
+  "title": "terrae-nivis IR (schemaVersion 1)",
+  "description": "Normative machine-checkable schema for the terrae-nivis JSON IR. This is the frozen contract between the Nix library (Epic 1), codegen (Epic 2), and the Go executor (Epic 3/3.5). Authoritative prose lives in docs/IR-CONTRACT.md; this file encodes its structural rules so both producers (toIR) and consumers (IngestIR) can validate against one artifact. Breaking changes require an OpenSpec change against the contract first and a schemaVersion bump.",
   "type": "object",
-  "required": ["schemaVersion", "providers", "resources", "edges", "nixConsumers"],
+  "required": [
+    "schemaVersion",
+    "providers",
+    "resources",
+    "edges",
+    "nixConsumers"
+  ],
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {
@@ -14,26 +20,37 @@
     "providers": {
       "type": "object",
       "description": "Map of provider-id -> provider declaration.",
-      "additionalProperties": { "$ref": "#/$defs/provider" }
+      "additionalProperties": {
+        "$ref": "#/$defs/provider"
+      }
     },
     "resources": {
       "type": "array",
-      "items": { "$ref": "#/$defs/resource" }
+      "items": {
+        "$ref": "#/$defs/resource"
+      }
     },
     "edges": {
       "type": "array",
-      "items": { "$ref": "#/$defs/edge" }
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
     },
     "nixConsumers": {
       "type": "array",
       "description": "Values Nix computed FROM resource outputs, surfaced for the round trip. Leaves may still be unknown on a given phase.",
-      "items": { "$ref": "#/$defs/nixConsumer" }
+      "items": {
+        "$ref": "#/$defs/nixConsumer"
+      }
     }
   },
   "$defs": {
     "provider": {
       "type": "object",
-      "required": ["source", "config"],
+      "required": [
+        "source",
+        "config"
+      ],
       "additionalProperties": false,
       "properties": {
         "source": {
@@ -48,7 +65,13 @@
     },
     "resource": {
       "type": "object",
-      "required": ["id", "provider", "type", "name", "config"],
+      "required": [
+        "id",
+        "provider",
+        "type",
+        "name",
+        "config"
+      ],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -60,10 +83,18 @@
           "type": "string",
           "description": "Must be a key in top-level 'providers'. (Referential integrity checked by the conformance harness, not by JSON Schema.)"
         },
-        "type": { "type": "string" },
-        "name": { "type": "string" },
-        "config": { "$ref": "#/$defs/configTree" },
-        "meta": { "$ref": "#/$defs/meta" }
+        "type": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/$defs/configTree"
+        },
+        "meta": {
+          "$ref": "#/$defs/meta"
+        }
       }
     },
     "meta": {
@@ -73,17 +104,23 @@
       "properties": {
         "dependsOn": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Explicit edges (additive to the implicit ref-derived edges)."
         },
         "lifecycle": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "preventDestroy": { "type": "boolean" },
+            "preventDestroy": {
+              "type": "boolean"
+            },
             "ignoreChanges": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             }
           }
         }
@@ -91,43 +128,75 @@
     },
     "edge": {
       "type": "object",
-      "required": ["from", "to", "via"],
+      "required": [
+        "from",
+        "to",
+        "via"
+      ],
       "additionalProperties": false,
       "properties": {
-        "from": { "type": "string", "description": "Source resource id." },
-        "to": { "type": "string", "description": "Target resource id." },
-        "via": { "type": "string", "description": "Config path in 'to' that carries the dependency." }
+        "from": {
+          "type": "string",
+          "description": "Source resource id."
+        },
+        "to": {
+          "type": "string",
+          "description": "Target resource id."
+        },
+        "via": {
+          "type": "string",
+          "description": "Config path in 'to' that carries the dependency."
+        }
       }
     },
     "nixConsumer": {
       "type": "object",
-      "required": ["id", "value"],
+      "required": [
+        "id",
+        "value"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "value": { "$ref": "#/$defs/configTree" }
+        "id": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/configTree"
+        }
       }
     },
-
     "ref": {
       "type": "object",
-      "required": ["__ref"],
+      "required": [
+        "__ref"
+      ],
       "additionalProperties": false,
       "properties": {
         "__ref": {
           "type": "object",
-          "required": ["resource", "path"],
+          "required": [
+            "resource",
+            "path"
+          ],
           "additionalProperties": false,
           "properties": {
-            "resource": { "type": "string", "description": "Concrete target resource id." },
+            "resource": {
+              "type": "string",
+              "description": "Concrete target resource id."
+            },
             "path": {
               "type": "array",
               "minItems": 1,
               "description": "Ordered keys (string) / indices (integer >= 0) into the target's output object. Uniformly covers nested attrs, list/set indices, and map keys.",
               "items": {
                 "oneOf": [
-                  { "type": "string" },
-                  { "type": "integer", "minimum": 0 }
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  }
                 ]
               }
             }
@@ -137,12 +206,16 @@
     },
     "derived": {
       "type": "object",
-      "required": ["__derived"],
+      "required": [
+        "__derived"
+      ],
       "additionalProperties": false,
       "properties": {
         "__derived": {
           "type": "object",
-          "required": ["inputs"],
+          "required": [
+            "inputs"
+          ],
           "additionalProperties": false,
           "properties": {
             "inputs": {
@@ -161,22 +234,34 @@
     "sensitiveRef": {
       "type": "object",
       "description": "Placeholder for a sensitive value. Points at the executor's restricted-mode (0600) channel; the secret itself never appears in IR JSON or the Nix store.",
-      "required": ["__sensitiveRef"],
+      "required": [
+        "__sensitiveRef"
+      ],
       "additionalProperties": false,
       "properties": {
         "__sensitiveRef": {
           "type": "object",
-          "required": ["resource", "path"],
+          "required": [
+            "resource",
+            "path"
+          ],
           "additionalProperties": false,
           "properties": {
-            "resource": { "type": "string" },
+            "resource": {
+              "type": "string"
+            },
             "path": {
               "type": "array",
               "minItems": 1,
               "items": {
                 "oneOf": [
-                  { "type": "string" },
-                  { "type": "integer", "minimum": 0 }
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  }
                 ]
               }
             }
@@ -184,30 +269,62 @@
         }
       }
     },
-
     "configTree": {
       "description": "An attribute tree. Leaves are concrete JSON scalars, a __ref, a __derived, or a __sensitiveRef. Objects/arrays nest configTrees. An object carrying a reserved marker key (__ref/__derived/__sensitiveRef) is dispatched to that exact subschema via if/then, so a malformed marker reports a precise error (e.g. 'path is a required property') rather than a generic 'no branch matched'.",
-      "if": { "type": "object", "required": ["__ref"] },
-      "then": { "$ref": "#/$defs/ref" },
+      "if": {
+        "type": "object",
+        "required": [
+          "__ref"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/ref"
+      },
       "else": {
-        "if": { "type": "object", "required": ["__derived"] },
-        "then": { "$ref": "#/$defs/derived" },
+        "if": {
+          "type": "object",
+          "required": [
+            "__derived"
+          ]
+        },
+        "then": {
+          "$ref": "#/$defs/derived"
+        },
         "else": {
-          "if": { "type": "object", "required": ["__sensitiveRef"] },
-          "then": { "$ref": "#/$defs/sensitiveRef" },
+          "if": {
+            "type": "object",
+            "required": [
+              "__sensitiveRef"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/sensitiveRef"
+          },
           "else": {
             "anyOf": [
-              { "type": "string" },
-              { "type": "number" },
-              { "type": "boolean" },
-              { "type": "null" },
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
               {
                 "type": "array",
-                "items": { "$ref": "#/$defs/configTree" }
+                "items": {
+                  "$ref": "#/$defs/configTree"
+                }
               },
               {
                 "type": "object",
-                "additionalProperties": { "$ref": "#/$defs/configTree" }
+                "additionalProperties": {
+                  "$ref": "#/$defs/configTree"
+                }
               }
             ]
           }

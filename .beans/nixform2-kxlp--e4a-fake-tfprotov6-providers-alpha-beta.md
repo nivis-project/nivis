@@ -26,14 +26,14 @@ plus a shared package:
   ProviderServer RPCs (meaningful: schema/validate/plan/apply/read/upgrade;
   rest return unimplemented diagnostics). Resource abstraction + generic
   plan(computed->unknown)/apply(compute known) logic. Seedable per-process
-  counter (NIXFORM_FAKE_COUNTER, default 0). DynamicValue<->tftypes marshalling.
+  counter (TERRAE_NIVIS_FAKE_COUNTER, default 0). DynamicValue<->tftypes marshalling.
 - `cmd/provider-alpha` — alpha_token: label(opt) -> computed id="alpha-N",
   value="alpha:LABEL:N".
 - `cmd/provider-beta` — beta_record: from(req) -> computed endpoint="beta://FROM".
 - `internal/fakeprovider/conformance_test.go` — 6 in-process tests: schema,
   unknown-at-plan/known-at-apply with exact values, label-absent, counter
   increment, env seed, beta required-input diagnostic. Hermetic (pass under
-  ambient NIXFORM_FAKE_COUNTER).
+  ambient TERRAE_NIVIS_FAKE_COUNTER).
 
 Dependency: terraform-plugin-go v0.31.0 (fetched via module proxy).
 Tests: `go test ./...` + `go vet ./...` pass; `go build ./cmd/...` -> binaries

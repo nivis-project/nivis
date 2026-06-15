@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package v5 implements provider.Client over the tfprotov5 wire protocol.
@@ -12,8 +12,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nixform/internal/provider"
-	"github.com/wearetechnative/nixform/internal/tfplugin5"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/tfplugin5"
 )
 
 // Backend wraps a tfprotov5 gRPC client as a version-neutral provider.Client.

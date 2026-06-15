@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package v6
@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/wearetechnative/nixform/internal/tfplugin6"
+	"github.com/wearetechnative/terrae-nivis/internal/tfplugin6"
 )
 
 // countingClient is a minimal tfplugin6.ProviderClient that records how many

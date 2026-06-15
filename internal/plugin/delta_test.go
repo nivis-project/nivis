@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
 )
 
 // TestDeltaCollectionsRoundTrip drives the REAL provider-delta binary through
@@ -18,7 +18,7 @@ import (
 // (buildProvider/contains are shared with integration_test.go.)
 func TestDeltaCollectionsRoundTrip(t *testing.T) {
 	bin := buildProvider(t, "provider-delta")
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	ctx := context.Background()
 
 	mgr := plugin.NewManager()

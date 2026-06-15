@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -8,20 +8,20 @@ import (
 	"os"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/provider"
-	"github.com/wearetechnative/nixform/internal/registry"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/registry"
 )
 
-// TestAWSConfigureAndPlan is gated by NIXFORM_NET_TESTS=1 and requires AWS
+// TestAWSConfigureAndPlan is gated by TERRAE_NIVIS_NET_TESTS=1 and requires AWS
 // credentials in the environment (e.g. AWS_PROFILE + AWS_REGION). It fetches the
 // real AWS provider via the registry, lets the manager negotiate the protocol
 // (v5) and Configure it (all-null config -> the AWS SDK default credential/region
 // chain), then PLANS aws_s3_bucket with no inputs. Read-only: no resource is
 // created. This validates the whole real-provider stack end to end.
 func TestAWSConfigureAndPlan(t *testing.T) {
-	if os.Getenv("NIXFORM_NET_TESTS") != "1" {
-		t.Skip("net/creds test; set NIXFORM_NET_TESTS=1 with AWS creds")
+	if os.Getenv("TERRAE_NIVIS_NET_TESTS") != "1" {
+		t.Skip("net/creds test; set TERRAE_NIVIS_NET_TESTS=1 with AWS creds")
 	}
 	ctx := context.Background()
 

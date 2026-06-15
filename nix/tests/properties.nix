@@ -1,4 +1,4 @@
-# Property tests for the nixform Nix library, run via `nix eval`. Returns
+# Property tests for the terrae-nivis Nix library, run via `nix eval`. Returns
 # { ok = true; } when all properties hold, or throws with the failing case.
 #
 # Properties checked over several hand-rolled small graphs (Nix has no quickcheck;
@@ -10,9 +10,9 @@
 #   P4. A direct ref produces an edge; a derived value does not.
 #   P5. Injecting a ledger resolves __ref and __derived leaves to concrete values.
 let
-  nixform = import ../lib { };
-  inherit (nixform) mkResource toIR str;
-  lib = nixform.lib;
+  terraeNivis = import ../lib { };
+  inherit (terraeNivis) mkResource toIR str;
+  lib = terraeNivis.lib;
 
   # --- graphs under test ----------------------------------------------------
   A = mkResource {

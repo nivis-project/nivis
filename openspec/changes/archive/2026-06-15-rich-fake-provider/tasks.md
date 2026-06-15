@@ -8,7 +8,7 @@
 - [x] 1.2 `cmd/provider-delta/main.go`: resource `delta_thing` — inputs `tags`
       map(string), `ports` list(number), `label` string(opt); computed `id`
       string, `endpoints` list(string) (ep-<port>-<counter> per port), `meta`
-      object({region,count}) from tags. Deterministic (NIXFORM_FAKE_COUNTER);
+      object({region,count}) from tags. Deterministic (TERRAE_NIVIS_FAKE_COUNTER);
       tf6server.
 - [x] 1.3 `internal/plugin/delta_test.go`: spawns the REAL provider-delta via the
       manager; plan asserts id/endpoints/meta unknown; apply with

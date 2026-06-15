@@ -1,10 +1,10 @@
 # A small example config exercising the headline-e2e shape (a subset): two
 # providers, a direct ref, and a Nix-derived value that forces a later phase.
 # `plan` is a function of the injected outputs ledger.
-{ nixform }:
+{ terraeNivis }:
 ledger:
 let
-  inherit (nixform) mkResource toIR str;
+  inherit (terraeNivis) mkResource toIR str;
 
   A = mkResource {
     provider = "alpha";

@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package gen
@@ -7,7 +7,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/wearetechnative/nixform/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
 )
 
 // Fetch returns the normalized resource models for codegen via the

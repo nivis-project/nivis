@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package registry
@@ -13,10 +13,10 @@ import (
 
 // TestFetchHcloudReal really resolves, downloads, verifies, and caches the
 // Hetzner hcloud provider from the OpenTofu registry + GitHub releases. It is
-// skipped unless NIXFORM_NET_TESTS=1, since it makes real network calls.
+// skipped unless TERRAE_NIVIS_NET_TESTS=1, since it makes real network calls.
 func TestFetchHcloudReal(t *testing.T) {
-	if os.Getenv("NIXFORM_NET_TESTS") != "1" {
-		t.Skip("network test; set NIXFORM_NET_TESTS=1 to run")
+	if os.Getenv("TERRAE_NIVIS_NET_TESTS") != "1" {
+		t.Skip("network test; set TERRAE_NIVIS_NET_TESTS=1 to run")
 	}
 	c := New(t.TempDir())
 	bin, err := c.Fetch(context.Background(), "hetznercloud/hcloud")

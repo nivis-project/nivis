@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package graph builds the executor's dependency DAG from an ingested IR and
@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wearetechnative/nixform/internal/ir"
+	"github.com/wearetechnative/terrae-nivis/internal/ir"
 )
 
 // DAG is a dependency graph over resource ids. An edge from A to B means "B

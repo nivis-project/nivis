@@ -17,7 +17,7 @@
 - [x] 1.6 Unit tests (hermetic): address parsing, LooksLikeAddress, SHASUMS
       parse + verify (match/tampered/missing), storeBinary unzip + reject, cache
       hit + resolver passthrough.
-- [x] 1.7 Network-gated test (NIXFORM_NET_TESTS=1): really resolved + downloaded
+- [x] 1.7 Network-gated test (TERRAE_NIVIS_NET_TESTS=1): really resolved + downloaded
       + verified hetznercloud/hcloud; ran it once — PASS. Also probed end-to-end:
       registry fetch -> spawn -> negotiate v5 -> read real schema (29 resource
       types).

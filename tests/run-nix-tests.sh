@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the nixform Nix-library tests:
+# Run the terrae-nivis Nix-library tests:
 #   1. property eval (nix/tests/properties.nix)
 #   2. conformance: toIR output (phase 0) validates against docs/ir-schema.json
 #   3. phased resolution: a derived value resolves to concrete once the ledger
@@ -17,14 +17,14 @@ echo "   ok"
 
 echo "== 2. toIR conforms to ir-schema.json (phase 0) =="
 nix eval --impure --json \
-  --expr 'let nf = import ./nix/lib { }; in (import ./nix/example { nixform = nf; }) { phase = 0; outputs = {}; }' \
-  2>/dev/null > /tmp/nixform-ir-phase0.json
-python3 tests/ir-conformance/check.py validate /tmp/nixform-ir-phase0.json
-rm -f /tmp/nixform-ir-phase0.json
+  --expr 'let nf = import ./nix/lib { }; in (import ./nix/example { terraeNivis = nf; }) { phase = 0; outputs = {}; }' \
+  2>/dev/null > /tmp/tn-ir-phase0.json
+python3 tests/ir-conformance/check.py validate /tmp/tn-ir-phase0.json
+rm -f /tmp/tn-ir-phase0.json
 
 echo "== 3. phased resolution (derived -> concrete) =="
 got=$(nix eval --impure --raw \
-  --expr 'let nf = import ./nix/lib { }; ir = (import ./nix/example { nixform = nf; }) { phase = 2; outputs = { "alpha.alpha_token.A" = { value = "alpha::0"; }; "beta.beta_record.B" = { endpoint = "beta://rec-alpha::0"; }; }; }; in (builtins.elemAt ir.resources 2).config.label' \
+  --expr 'let nf = import ./nix/lib { }; ir = (import ./nix/example { terraeNivis = nf; }) { phase = 2; outputs = { "alpha.alpha_token.A" = { value = "alpha::0"; }; "beta.beta_record.B" = { endpoint = "beta://rec-alpha::0"; }; }; }; in (builtins.elemAt ir.resources 2).config.label' \
   2>/dev/null)
 want="beta://rec-alpha::0::alpha::0"
 if [ "$got" != "$want" ]; then
@@ -50,9 +50,9 @@ nix eval --impure --json --expr '
       };
     };
   in nf.toModuleIR { modules = [ mod ]; }
-' 2>/dev/null > /tmp/nixform-ir-modules.json
-python3 tests/ir-conformance/check.py validate /tmp/nixform-ir-modules.json
-rm -f /tmp/nixform-ir-modules.json
+' 2>/dev/null > /tmp/tn-ir-modules.json
+python3 tests/ir-conformance/check.py validate /tmp/tn-ir-modules.json
+rm -f /tmp/tn-ir-modules.json
 
 echo
 echo "All Nix tests passed."

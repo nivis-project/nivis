@@ -1,4 +1,4 @@
-# DESIGN.md — nixform architecture & decisions
+# DESIGN.md — terrae nivis architecture & decisions
 
 This is the decision ledger. It exists so that a future session does not
 re-derive (or undo) conclusions that were expensive to reach. Each decision

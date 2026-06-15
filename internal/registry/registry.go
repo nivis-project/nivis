@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package registry
@@ -19,14 +19,14 @@ type Client struct {
 	cacheDir string
 }
 
-// New returns a Client. cacheDir defaults to <user cache>/nixform/providers when
+// New returns a Client. cacheDir defaults to <user cache>/terrae-nivis/providers when
 // empty.
 func New(cacheDir string) *Client {
 	if cacheDir == "" {
 		if base, err := os.UserCacheDir(); err == nil {
-			cacheDir = filepath.Join(base, "nixform", "providers")
+			cacheDir = filepath.Join(base, "terrae-nivis", "providers")
 		} else {
-			cacheDir = filepath.Join(os.TempDir(), "nixform-providers")
+			cacheDir = filepath.Join(os.TempDir(), "terrae-nivis-providers")
 		}
 	}
 	return &Client{

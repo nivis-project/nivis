@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package fakeprovider_test
@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nixform/internal/fakeprovider"
+	"github.com/wearetechnative/terrae-nivis/internal/fakeprovider"
 )
 
 // helpers ---------------------------------------------------------------------
@@ -102,14 +102,14 @@ func betaResource() fakeprovider.Resource {
 
 // alphaServer / betaServer build a server with the counter explicitly seeded to
 // 0 (env cleared) so the seed-0 assertions are hermetic regardless of ambient
-// NIXFORM_FAKE_COUNTER. TestCounterSeedFromEnv sets the env itself.
+// TERRAE_NIVIS_FAKE_COUNTER. TestCounterSeedFromEnv sets the env itself.
 func alphaServer(t *testing.T) *fakeprovider.Server {
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	return fakeprovider.New(alphaResource())
 }
 
 func betaServer(t *testing.T) *fakeprovider.Server {
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	return fakeprovider.New(betaResource())
 }
 
@@ -128,7 +128,7 @@ func TestGetProviderSchema(t *testing.T) {
 
 func TestAlphaPlanApplyRoundTrip(t *testing.T) {
 	ctx := context.Background()
-	srv := alphaServer(t) // counter seeds at 0 (NIXFORM_FAKE_COUNTER unset)
+	srv := alphaServer(t) // counter seeds at 0 (TERRAE_NIVIS_FAKE_COUNTER unset)
 
 	cfg := map[string]tftypes.Value{
 		"label": tftypes.NewValue(tftypes.String, "rec-X"),
@@ -226,7 +226,7 @@ func TestAlphaCounterIncrements(t *testing.T) {
 }
 
 func TestCounterSeedFromEnv(t *testing.T) {
-	t.Setenv("NIXFORM_FAKE_COUNTER", "5")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "5")
 	ctx := context.Background()
 	srv := fakeprovider.New(alphaResource()) // New() reads the env at construction
 	cfg := dynamic(t, alphaType, map[string]tftypes.Value{

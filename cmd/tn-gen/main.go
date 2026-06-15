@@ -1,7 +1,7 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Command nixform-gen generates typed Nix constructors from a provider's schema.
+// Command tn-gen generates typed Nix constructors from a provider's schema.
 // Spawn a provider, fetch its schema, emit <out>/<provider>/<type>.nix. The path
 // to "all providers with zero per-provider work" (DESIGN D2).
 package main
@@ -14,8 +14,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/wearetechnative/nixform/internal/gen"
-	"github.com/wearetechnative/nixform/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/gen"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 		outDir       string
 	)
 	root := &cobra.Command{
-		Use:   "nixform-gen",
+		Use:   "tn-gen",
 		Short: "Generate typed Nix constructors from a provider schema",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if providerPath == "" {

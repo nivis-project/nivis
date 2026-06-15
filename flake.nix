@@ -1,5 +1,5 @@
 {
-  description = "nixform — Terraform/OpenTofu provider resources as first-class Nix values";
+  description = "terrae nivis — Terraform/OpenTofu provider resources as first-class Nix values";
 
   # No external inputs: the Nix library is pure builtins (no nixpkgs), so it
   # evaluates without the binary cache (CLAUDE.md §6). The Go side is built with
@@ -9,20 +9,20 @@
   outputs =
     { self }:
     let
-      nixform = import ./nix/lib { };
+      terraeNivis = import ./nix/lib { };
     in
     {
       # The public library, for `import`/`lib` consumers.
-      lib = nixform;
+      lib = terraeNivis;
 
-      # nixform.plan is a function of the injected outputs ledger (empty on phase
+      # terraeNivis.plan is a function of the injected outputs ledger (empty on phase
       # 0). The phased-eval driver (E3.5) calls:
-      #   nix eval .#nixform.plan --apply 'plan: plan { outputs = <ledger>; }' --json
+      #   nix eval .#terraeNivis.plan --apply 'plan: plan { outputs = <ledger>; }' --json
       # and feeds the resulting IR to the executor.
-      nixform = {
-        plan = import ./nix/example { inherit nixform; };
+      terraeNivis = {
+        plan = import ./nix/example { inherit terraeNivis; };
         # A cyclic variant for the headline e2e's cycle-rejection assertion.
-        planCycle = import ./nix/example/cycle.nix { inherit nixform; };
+        planCycle = import ./nix/example/cycle.nix { inherit terraeNivis; };
       };
     };
 }

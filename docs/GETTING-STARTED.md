@@ -1,4 +1,4 @@
-# Getting started with nixform
+# Getting started with terrae nivis
 
 A hands-on walkthrough using the in-repo **fake providers**. Everything here runs
 **offline** — no provider registry, no cloud account, no credentials. You need
@@ -9,17 +9,17 @@ A hands-on walkthrough using the in-repo **fake providers**. Everything here run
 ```sh
 go build -o bin/provider-alpha ./cmd/provider-alpha
 go build -o bin/provider-beta  ./cmd/provider-beta
-go build -o bin/nixform        ./cmd/nixform
+go build -o bin/tn ./cmd/tn
 ```
 
 `provider-alpha` and `provider-beta` are minimal `tfprotov6` providers used as a
 hermetic test substrate. Their outputs are a deterministic function of inputs (a
-per-process counter seeded by `NIXFORM_FAKE_COUNTER`, default 0), so every run is
+per-process counter seeded by `TERRAE_NIVIS_FAKE_COUNTER`, default 0), so every run is
 reproducible.
 
 ## 2. The example configuration
 
-The flake's `nixform.plan` (in `nix/example/`) describes three resources and a
+The flake's `terraeNivis.plan` (in `nix/example/`) describes three resources and a
 consumer, wired so each hop crosses the Nix boundary:
 
 ```
@@ -42,7 +42,7 @@ forces multiple phases.
 ## 3. Plan and apply
 
 ```sh
-./bin/nixform plan
+./bin/tn plan
 ```
 
 ```
@@ -50,11 +50,11 @@ forces multiple phases.
 + beta.beta_record.B (beta_record)
 + alpha.alpha_token.C (alpha_token)
 
-3 resource(s) to resolve across phases. Run `nixform apply`.
+3 resource(s) to resolve across phases. Run `tn apply`.
 ```
 
 ```sh
-./bin/nixform apply
+./bin/tn apply
 ```
 
 ```
@@ -71,8 +71,8 @@ The loop halts at a fixpoint once nothing new resolves.
 ## 4. Inspect the round trip
 
 ```sh
-./bin/nixform state list
-./bin/nixform state show alpha.alpha_token.C
+./bin/tn state list
+./bin/tn state show alpha.alpha_token.C
 ```
 
 ```
@@ -89,8 +89,8 @@ and Nix re-evaluated. That is the round trip.
 ## 5. Refresh and destroy
 
 ```sh
-./bin/nixform refresh    # reconciles state via ReadResource; no changes here
-./bin/nixform destroy    # tears down in reverse dependency order
+./bin/tn refresh    # reconciles state via ReadResource; no changes here
+./bin/tn destroy    # tears down in reverse dependency order
 ```
 
 ```
@@ -102,10 +102,10 @@ Destroyed 3 resource(s):
 
 ## 6. Generate constructors from a provider schema
 
-`nixform-gen` turns any provider's schema into typed Nix constructors:
+`tn-gen` turns any provider's schema into typed Nix constructors:
 
 ```sh
-go run ./cmd/nixform-gen -- --provider ./bin/provider-alpha --out ./generated
+go run ./cmd/tn-gen -- --provider ./bin/provider-alpha --out ./generated
 cat ./generated/alpha/alpha_token.nix
 ```
 

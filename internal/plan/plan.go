@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package plan runs the provider plan operation for a ready resource and renders
@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wearetechnative/nixform/internal/ir"
-	"github.com/wearetechnative/nixform/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/ir"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
 )
 
 // Result is the outcome of planning one resource.

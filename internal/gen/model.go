@@ -1,8 +1,8 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package gen turns a provider's tfprotov6 schema into typed Nix constructors
-// (nixform-gen). It is the path to "all providers with zero per-provider work"
+// (tn-gen). It is the path to "all providers with zero per-provider work"
 // (DESIGN D2): generic, schema-driven, no per-provider code.
 package gen
 

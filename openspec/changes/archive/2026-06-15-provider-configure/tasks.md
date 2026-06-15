@@ -19,7 +19,7 @@
 - [x] 1.7 Fixed PriorState: Plan/Apply now send a NULL-encoded value of the
       resource type, not an empty DynamicValue — SDKv2 providers panic (EOF)
       decoding empty msgpack. (The fakes tolerated it; real AWS did not.)
-- [x] 1.8 Gated real-AWS test `internal/plugin/aws_test.go` (NIXFORM_NET_TESTS=1 +
+- [x] 1.8 Gated real-AWS test `internal/plugin/aws_test.go` (TERRAE_NIVIS_NET_TESTS=1 +
       AWS creds): registry-fetch hashicorp/aws -> negotiate v5 -> Configure ->
       Plan aws_s3_bucket -> planned state, 26 known-after-apply attrs, no error,
       no resource created. RAN IT: PASS.

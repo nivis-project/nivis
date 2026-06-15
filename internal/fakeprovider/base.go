@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package fakeprovider
@@ -20,7 +20,7 @@ type Server struct {
 }
 
 // New builds a Server from a list of Resources, seeding the deterministic
-// counter from NIXFORM_FAKE_COUNTER.
+// counter from TERRAE_NIVIS_FAKE_COUNTER.
 func New(resources ...Resource) *Server {
 	m := make(map[string]Resource, len(resources))
 	for _, r := range resources {

@@ -1,4 +1,4 @@
-module github.com/wearetechnative/nixform
+module github.com/wearetechnative/terrae-nivis
 
 go 1.26.3
 

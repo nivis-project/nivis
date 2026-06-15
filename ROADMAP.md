@@ -1,4 +1,4 @@
-# ROADMAP.md — nixform PoC
+# ROADMAP.md — terrae nivis PoC
 
 One **milestone** (the PoC / alpha base). Each epic below becomes a beans epic
 under it (see `scripts/bootstrap-beans.sh`). Inside each epic, every task is an
@@ -35,7 +35,7 @@ Rationale in `DESIGN.md` D5. Do not build E2 (general codegen) before E3.5/E4b.
 
 ---
 
-## Epic 1 — Nix library core (`nixform-lib`)
+## Epic 1 — Nix library core (`terrae-nivis-lib`)
 Pure deterministic config layer. Emits the IR. No Go.
 
 - **1.1 Resource constructor** — `mkResource { provider, type, name, config }`
@@ -56,7 +56,7 @@ Pure deterministic config layer. Emits the IR. No Go.
 - **1.5 IR serializer** — `toIR :: ResourceGraph -> JSON` emitting the canonical
   IR (types, provider, config with refs encoded, meta-args, edge list, the
   outputs-injection slot). Conforms to `docs/IR-CONTRACT.md`.
-- **1.6 Flake interface** — `nixform.plan`, `nixform.state`, `nixform.providers`
+- **1.6 Flake interface** — `terraeNivis.plan`, `terraeNivis.state`, `terraeNivis.providers`
   outputs; `plan` accepts an injected-outputs argument (the phased-eval input).
 
 ## Epic 1.5 — IR contract (linchpin) ⟵ write first
@@ -68,7 +68,7 @@ Pure deterministic config layer. Emits the IR. No Go.
   for this already exists at `openspec/changes/define-ir-contract/` — implement
   it first; everything keys off it.
 
-## Epic 2 — Provider schema codegen (`nixform-gen`)  ⟵ OFF critical path
+## Epic 2 — Provider schema codegen (`tn-gen`)  ⟵ OFF critical path
 Generates typed Nix constructors from live provider schemas. Build *after* E4b.
 - **2.1** Go tool: spawn provider, handshake, `GetProviderSchema` → `schema.json`.
 - **2.2** Schema → Nix type model (string/number/bool/list/set/map/object,
@@ -78,9 +78,9 @@ Generates typed Nix constructors from live provider schemas. Build *after* E4b.
   lesson) — generated code is usable, not idiomatic.
 - **2.4** Provider registry resolve/download/verify/cache. **Network-gated; not
   in PoC scope** — see CLAUDE.md §6. Track as its own bean; use fakes meanwhile.
-- **2.5** Package codegen as a flake app (`nix run nixform#gen -- --provider …`).
+- **2.5** Package codegen as a flake app (`nix run terrae nivis#gen -- --provider …`).
 
-## Epic 3 — Go executor (`nixform`)
+## Epic 3 — Go executor (`terrae nivis`)
 Pure orchestration. No HCL, no policy.
 - **3a.1 IR ingestion** — read+validate IR → `ResourceNode`, `RefEdge`,
   `ProviderConfig`, `MetaArgs`.
@@ -107,7 +107,7 @@ roadmap was missing.
   phases, in the injection format from the IR contract. World-readable-safe
   handling of sensitive outputs.
 - **3.5.2 Phase driver** — loop:
-  1. `nix eval .#nixform.plan` with the current outputs ledger injected
+  1. `nix eval .#terraeNivis.plan` with the current outputs ledger injected
      (empty on phase 0).
   2. Ingest IR; via the DAG, find resources whose inputs are now fully known;
      plan+apply them; collect new computed outputs.

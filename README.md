@@ -1,4 +1,4 @@
-# nixform
+# terrae nivis
 
 A Nix-native infrastructure tool where Terraform/OpenTofu **provider resources
 are first-class Nix values**. A thin Go executor speaks the Terraform plugin
@@ -36,25 +36,25 @@ registry, no cloud account. You need Go 1.22+ and Nix.
 # Build the fake providers and the CLI.
 go build -o bin/provider-alpha ./cmd/provider-alpha
 go build -o bin/provider-beta  ./cmd/provider-beta
-go build -o bin/nixform        ./cmd/nixform
+go build -o bin/tn ./cmd/tn
 
 # Plan and apply the headline topology (resolves across 3 phases to a fixpoint).
-./bin/nixform plan
-./bin/nixform apply
+./bin/tn plan
+./bin/tn apply
 
 # Inspect state — note C's label is a value Nix derived from BOTH providers.
-./bin/nixform state list
-./bin/nixform state show alpha.alpha_token.C
+./bin/tn state list
+./bin/tn state show alpha.alpha_token.C
 
 # Reconcile (no changes) and tear down (reverse dependency order: C, B, A).
-./bin/nixform refresh
-./bin/nixform destroy
+./bin/tn refresh
+./bin/tn destroy
 ```
 
 Generate typed Nix constructors from a provider's schema:
 
 ```sh
-go run ./cmd/nixform-gen -- --provider ./bin/provider-alpha --out ./generated
+go run ./cmd/tn-gen -- --provider ./bin/provider-alpha --out ./generated
 cat ./generated/alpha/alpha_token.nix
 ```
 
@@ -64,11 +64,11 @@ See `docs/GETTING-STARTED.md` for a guided walkthrough.
 
 - `nix/lib/` — the Nix library: `mkResource`, references (`__ref`/`__derived`),
   `toIR`, `count`/`for_each` expansion, and a module system (`evalModules`).
-- `flake.nix` — exposes `nixform.plan` (a function of the outputs ledger → IR).
+- `flake.nix` — exposes `terraeNivis.plan` (a function of the outputs ledger → IR).
 - `internal/` — the Go executor: `ir` (ingest/validate), `graph` (DAG, TF→TF
   resolution), `state`, `plugin` (spawn + go-plugin v6 handshake), `plan`/`apply`,
   `phase` (the fixpoint loop), `destroy`/`refresh`, `gen` (schema codegen).
-- `cmd/` — `nixform` (the CLI), `nixform-gen` (codegen), and the fake providers.
+- `cmd/` — `tn` (the CLI), `tn-gen` (codegen), and the fake providers.
 - `tests/`, `nix/tests/` — Go unit/e2e tests, the IR conformance checker, and Nix
   property tests.
 
@@ -80,7 +80,7 @@ These are versioned interfaces — change the spec before the shape:
   normative JSON Schema). Both the Nix `toIR` producer and the Go `IngestIR`
   consumer validate against it; `tests/ir-conformance/check.py` is the executable
   conformance suite.
-- **The flake interface**: `nixform.plan = ledger → IR`, evaluated each phase
+- **The flake interface**: `terraeNivis.plan = ledger → IR`, evaluated each phase
   with the outputs ledger injected.
 
 ## Testing
@@ -96,7 +96,7 @@ unknowns on both sides, ≥3 phases to fixpoint, a Nix consumer reading both.
 
 ## License
 
-nixform's own code is **Apache-2.0** (`LICENSE`). It is free to use commercially.
+terrae nivis's own code is **Apache-2.0** (`LICENSE`). It is free to use commercially.
 The vendored Terraform-protocol files (`proto/tfplugin{5,6}.proto` and the
 generated `internal/tfplugin{5,6}` stubs) and some HashiCorp/IBM dependencies are
 **MPL-2.0**, which also permits commercial use. There is **no BUSL** (the

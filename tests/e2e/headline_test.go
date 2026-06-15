@@ -11,11 +11,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/ledger"
-	"github.com/wearetechnative/nixform/internal/phase"
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/state"
-	"github.com/wearetechnative/nixform/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/ledger"
+	"github.com/wearetechnative/terrae-nivis/internal/phase"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
 )
 
 func repoRoot(t *testing.T) string {
@@ -85,9 +85,9 @@ func TestHeadlineRoundTrip(t *testing.T) {
 	requireNix(t)
 	root := repoRoot(t)
 	buildBinaries(t, root)
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
-	d, closer := newDriver(t, root, "nixform.plan", 10)
+	d, closer := newDriver(t, root, "terraeNivis.plan", 10)
 	defer closer()
 
 	res, err := d.Run(context.Background())
@@ -141,9 +141,9 @@ func TestTwoPhaseCapInsufficient(t *testing.T) {
 	requireNix(t)
 	root := repoRoot(t)
 	buildBinaries(t, root)
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
-	d, closer := newDriver(t, root, "nixform.plan", 2)
+	d, closer := newDriver(t, root, "terraeNivis.plan", 2)
 	defer closer()
 
 	res, err := d.Run(context.Background())
@@ -161,9 +161,9 @@ func TestCycleRejected(t *testing.T) {
 	requireNix(t)
 	root := repoRoot(t)
 	buildBinaries(t, root)
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
-	d, closer := newDriver(t, root, "nixform.planCycle", 10)
+	d, closer := newDriver(t, root, "terraeNivis.planCycle", 10)
 	defer closer()
 
 	_, err := d.Run(context.Background())

@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package ledger is the outputs ledger the phased-eval loop accumulates and
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/wearetechnative/nixform/internal/graph"
+	"github.com/wearetechnative/terrae-nivis/internal/graph"
 )
 
 // Ledger is the contract's { phase, outputs } shape.

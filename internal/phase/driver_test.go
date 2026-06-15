@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package phase_test
@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/ledger"
-	"github.com/wearetechnative/nixform/internal/phase"
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/ledger"
+	"github.com/wearetechnative/terrae-nivis/internal/phase"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
 )
 
 // These tests stub the Nix-eval step (StubEvaluator) but use the REAL plugin
@@ -99,7 +99,7 @@ func newDriver(t *testing.T, eval phase.NixEvaluator) (*phase.Driver, func()) {
 }
 
 func TestThreePhaseChain(t *testing.T) {
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	alpha := buildProvider(t, "provider-alpha")
 	beta := buildProvider(t, "provider-beta")
 
@@ -125,7 +125,7 @@ func TestThreePhaseChain(t *testing.T) {
 }
 
 func TestTwoPhaseCapLeavesPending(t *testing.T) {
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	alpha := buildProvider(t, "provider-alpha")
 	beta := buildProvider(t, "provider-beta")
 
@@ -143,7 +143,7 @@ func TestTwoPhaseCapLeavesPending(t *testing.T) {
 }
 
 func TestStuckResourceNamed(t *testing.T) {
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	alpha := buildProvider(t, "provider-alpha")
 
 	// B depends (derived) on a producer that never appears -> stuck at fixpoint.

@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package main_test
@@ -11,15 +11,15 @@ import (
 	"testing"
 )
 
-// build the nixform binary once for the error-UX tests.
+// build the tn binary once for the error-UX tests.
 func buildCLI(t *testing.T) string {
 	t.Helper()
 	root := repoRoot(t)
-	bin := filepath.Join(t.TempDir(), "nixform")
-	cmd := exec.Command("go", "build", "-o", bin, "./cmd/nixform")
+	bin := filepath.Join(t.TempDir(), "tn")
+	cmd := exec.Command("go", "build", "-o", bin, "./cmd/tn")
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Skipf("cannot build nixform: %v\n%s", err, out)
+		t.Skipf("cannot build tn: %v\n%s", err, out)
 	}
 	return bin
 }
@@ -46,7 +46,7 @@ func TestRuntimeErrorIsClean(t *testing.T) {
 		t.Skip("nix not on PATH")
 	}
 	bin := buildCLI(t)
-	cmd := exec.Command(bin, "plan", "--attr", "nixform.doesNotExist")
+	cmd := exec.Command(bin, "plan", "--attr", "terraeNivis.doesNotExist")
 	cmd.Dir = repoRoot(t)
 	out, err := cmd.CombinedOutput()
 	if err == nil {

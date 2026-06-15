@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package destroy tears down applied resources in reverse dependency order via
@@ -10,11 +10,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wearetechnative/nixform/internal/graph"
-	"github.com/wearetechnative/nixform/internal/ir"
-	"github.com/wearetechnative/nixform/internal/plan"
-	"github.com/wearetechnative/nixform/internal/provider"
-	"github.com/wearetechnative/nixform/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/graph"
+	"github.com/wearetechnative/terrae-nivis/internal/ir"
+	"github.com/wearetechnative/terrae-nivis/internal/plan"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
 )
 
 // Manager is the provider-client seam (internal/plugin.Manager satisfies it).

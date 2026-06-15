@@ -1,8 +1,8 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Command nixform is the executor CLI: plan/apply/destroy/refresh/state over a
-// Nix flake that exposes nixform.plan. Pure orchestration; providers are spawned
+// Command tn is the terrae-nivis executor CLI: plan/apply/destroy/refresh/state over a
+// Nix flake that exposes terraeNivis.plan. Pure orchestration; providers are spawned
 // from the IR's provider source paths.
 package main
 
@@ -13,14 +13,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/wearetechnative/nixform/internal/destroy"
-	"github.com/wearetechnative/nixform/internal/ir"
-	"github.com/wearetechnative/nixform/internal/ledger"
-	"github.com/wearetechnative/nixform/internal/phase"
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/refresh"
-	"github.com/wearetechnative/nixform/internal/registry"
-	"github.com/wearetechnative/nixform/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/destroy"
+	"github.com/wearetechnative/terrae-nivis/internal/ir"
+	"github.com/wearetechnative/terrae-nivis/internal/ledger"
+	"github.com/wearetechnative/terrae-nivis/internal/phase"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/refresh"
+	"github.com/wearetechnative/terrae-nivis/internal/registry"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
 )
 
 var (
@@ -32,7 +32,7 @@ var (
 
 func main() {
 	root := &cobra.Command{
-		Use:   "nixform",
+		Use:   "tn",
 		Short: "Nix-native infra: provider resources as first-class Nix values",
 		// We print runtime failures ourselves as a clean `error:` line; don't let
 		// cobra print the error a second time.
@@ -44,9 +44,9 @@ func main() {
 			cmd.SilenceUsage = true
 		},
 	}
-	root.PersistentFlags().StringVar(&flakeRef, "flake", ".", "flake reference exposing nixform.plan")
-	root.PersistentFlags().StringVar(&statePath, "state", "./nixform.state.json", "path to the local state file")
-	root.PersistentFlags().StringVar(&attr, "attr", "nixform.plan", "flake attribute to evaluate")
+	root.PersistentFlags().StringVar(&flakeRef, "flake", ".", "flake reference exposing terraeNivis.plan")
+	root.PersistentFlags().StringVar(&statePath, "state", "./terrae-nivis.state.json", "path to the local state file")
+	root.PersistentFlags().StringVar(&attr, "attr", "terraeNivis.plan", "flake attribute to evaluate")
 	root.PersistentFlags().StringVar(&target, "target", "", "restrict the operation to a single resource id")
 
 	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd())
@@ -95,7 +95,7 @@ func planCmd() *cobra.Command {
 			for _, id := range g.Order {
 				fmt.Printf("+ %s (%s)\n", id, g.Nodes[id].Resource.Type)
 			}
-			fmt.Printf("\n%d resource(s) to resolve across phases. Run `nixform apply`.\n", len(g.Order))
+			fmt.Printf("\n%d resource(s) to resolve across phases. Run `tn apply`.\n", len(g.Order))
 			return nil
 		},
 	}

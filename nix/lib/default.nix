@@ -1,9 +1,9 @@
-# The public nixform Nix library. Pure: depends on builtins + a self-contained
+# The public terrae-nivis Nix library. Pure: depends on builtins + a self-contained
 # minilib (no <nixpkgs>, so it evaluates without the binary cache).
 #
 # Usage:
-#   let nixform = import ./nix/lib { };
-#   in nixform.toIR { providers = {...}; resources = [ (nixform.mkResource {...}) ]; }
+#   let terraeNivis = import ./nix/lib { };
+#   in terraeNivis.toIR { providers = {...}; resources = [ (terraeNivis.mkResource {...}) ]; }
 {
   lib ? import ./minilib.nix,
 }:

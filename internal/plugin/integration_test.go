@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/apply"
-	"github.com/wearetechnative/nixform/internal/ir"
-	"github.com/wearetechnative/nixform/internal/plan"
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/apply"
+	"github.com/wearetechnative/terrae-nivis/internal/ir"
+	"github.com/wearetechnative/terrae-nivis/internal/plan"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
 )
 
 // buildProvider compiles a fake provider binary into a temp dir and returns its
@@ -57,7 +57,7 @@ func node(id, typ, name string, cfg map[string]interface{}) *ir.ResourceNode {
 
 func TestAlphaEndToEnd(t *testing.T) {
 	bin := buildProvider(t, "provider-alpha")
-	t.Setenv("NIXFORM_FAKE_COUNTER", "") // deterministic seed 0
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "") // deterministic seed 0
 
 	mgr := plugin.NewManager()
 	defer mgr.Close()

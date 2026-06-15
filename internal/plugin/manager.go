@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package plugin spawns provider binaries and speaks the Terraform plugin
@@ -17,11 +17,11 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	"github.com/wearetechnative/nixform/internal/provider"
-	v5 "github.com/wearetechnative/nixform/internal/provider/v5"
-	v6 "github.com/wearetechnative/nixform/internal/provider/v6"
-	"github.com/wearetechnative/nixform/internal/tfplugin5"
-	"github.com/wearetechnative/nixform/internal/tfplugin6"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	v5 "github.com/wearetechnative/terrae-nivis/internal/provider/v5"
+	v6 "github.com/wearetechnative/terrae-nivis/internal/provider/v6"
+	"github.com/wearetechnative/terrae-nivis/internal/tfplugin5"
+	"github.com/wearetechnative/terrae-nivis/internal/tfplugin6"
 )
 
 // handshake matches the values tfprotov6's tf6server serves with. They MUST be
@@ -40,7 +40,7 @@ type v6Plugin struct {
 }
 
 func (v6Plugin) GRPCServer(*goplugin.GRPCBroker, *grpc.Server) error {
-	return fmt.Errorf("nixform is a plugin client, not a server")
+	return fmt.Errorf("terrae-nivis is a plugin client, not a server")
 }
 func (v6Plugin) GRPCClient(_ context.Context, _ *goplugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return tfplugin6.NewProviderClient(c), nil
@@ -51,7 +51,7 @@ type v5Plugin struct {
 }
 
 func (v5Plugin) GRPCServer(*goplugin.GRPCBroker, *grpc.Server) error {
-	return fmt.Errorf("nixform is a plugin client, not a server")
+	return fmt.Errorf("terrae-nivis is a plugin client, not a server")
 }
 func (v5Plugin) GRPCClient(_ context.Context, _ *goplugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return tfplugin5.NewProviderClient(c), nil

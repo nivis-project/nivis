@@ -246,19 +246,19 @@ plan or apply changes.
 - THEN each resource's state is unchanged and no apply is performed.
 
 ### Requirement: Command-line interface
-The system SHALL provide a `nixform` CLI with `plan`, `apply`, `destroy`,
+The system SHALL provide a `terrae nivis` CLI with `plan`, `apply`, `destroy`,
 `refresh`, and `state` (`list`, `show`, `rm`) subcommands, a `--target` id
 filter, and `--state`/`--flake` options. `plan`/`apply` drive the phased-eval
 loop; `destroy`/`refresh` use their engines.
 
 #### Scenario: state list shows applied resources
 - GIVEN a state store with applied resources
-- WHEN `nixform state list` runs
+- WHEN `terrae nivis state list` runs
 - THEN it prints each resource id.
 
 #### Scenario: state rm removes one resource
 - GIVEN a state store containing resource R
-- WHEN `nixform state rm R` runs
+- WHEN `terrae nivis state rm R` runs
 - THEN R is no longer in the store.
 
 ### Requirement: Version-neutral provider client interface

@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package tfvalue bridges the executor's plain Go config maps and the wire
@@ -13,8 +13,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nixform/internal/tfcodec"
-	"github.com/wearetechnative/nixform/internal/tfplugin6"
+	"github.com/wearetechnative/terrae-nivis/internal/tfcodec"
+	"github.com/wearetechnative/terrae-nivis/internal/tfplugin6"
 )
 
 // ObjectType builds the tftypes.Object for a schema block: one attribute per

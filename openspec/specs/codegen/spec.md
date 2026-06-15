@@ -1,7 +1,7 @@
 # Spec: codegen
 
 ## Purpose
-The codegen (nixform-gen) turns any provider's tfprotov6 schema into typed Nix
+The codegen (tn-gen) turns any provider's tfprotov6 schema into typed Nix
 constructors, the path to "all providers with zero per-provider work" (DESIGN
 D2). It spawns a provider, fetches its schema, maps the schema to a Nix type
 model, and emits `<provider>/<type>.nix` constructors with required-field throws,
@@ -60,15 +60,15 @@ through when present, omits computed-only attributes from inputs, and accepts an
 
 ### Requirement: Codegen command
 The codegen SHALL be runnable as a command
-`nixform-gen --provider <path> --out <dir>` (built with `go build`/`go run`,
-e.g. `go run ./cmd/nixform-gen -- --provider <path> --out <dir>`), writing
+`tn-gen --provider <path> --out <dir>` (built with `go build`/`go run`,
+e.g. `go run ./cmd/tn-gen -- --provider <path> --out <dir>`), writing
 `<provider>/<type>.nix` files for each resource type. Packaging it as a flake
 `apps.gen` is network-gated (it requires nixpkgs `buildGoModule`, and the binary
 cache is unreachable per CLAUDE.md §6) and is tracked separately.
 
 #### Scenario: end-to-end generation against a fake provider
 - GIVEN the `provider-alpha` binary
-- WHEN `nixform-gen` runs with `--provider <path> --out <dir>`
+- WHEN `tn-gen` runs with `--provider <path> --out <dir>`
 - THEN `<dir>` contains a generated constructor file for `alpha_token` that, when
   imported, produces a valid `mkResource` for that type.
 

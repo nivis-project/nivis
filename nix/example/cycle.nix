@@ -2,10 +2,10 @@
 # cycle-rejection assertion (docs/TESTING.md). A.label depends on C.value and
 # C.label depends on A.value, so neither can ever become ready: the driver must
 # reach fixpoint with A and C unapplied and report them.
-{ nixform }:
+{ terraeNivis }:
 ledger:
 let
-  inherit (nixform) mkResource toIR str;
+  inherit (terraeNivis) mkResource toIR str;
 
   A = mkResource {
     provider = "alpha";

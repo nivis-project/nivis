@@ -1,7 +1,7 @@
 # Spec: cli
 
 ## Purpose
-The `nixform` CLI is the user-facing surface of the executor. Beyond the
+The `terrae nivis` CLI is the user-facing surface of the executor. Beyond the
 commands themselves (plan/apply/destroy/refresh/state — see the executor spec),
 this capability governs error presentation: failures must be actionable and carry
 the identity of the offending entity, never a raw stack trace or an unhelpful

@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/destroy"
-	"github.com/wearetechnative/nixform/internal/ir"
-	"github.com/wearetechnative/nixform/internal/ledger"
-	"github.com/wearetechnative/nixform/internal/phase"
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/refresh"
-	"github.com/wearetechnative/nixform/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/destroy"
+	"github.com/wearetechnative/terrae-nivis/internal/ir"
+	"github.com/wearetechnative/terrae-nivis/internal/ledger"
+	"github.com/wearetechnative/terrae-nivis/internal/phase"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/refresh"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
 )
 
 // TestLifecycleRefreshThenDestroy completes the headline-e2e lifecycle
@@ -20,7 +20,7 @@ func TestLifecycleRefreshThenDestroy(t *testing.T) {
 	requireNix(t)
 	root := repoRoot(t)
 	buildBinaries(t, root)
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
 	statePath := t.TempDir() + "/state.json"
 	st, _ := state.Open(statePath)
@@ -31,7 +31,7 @@ func TestLifecycleRefreshThenDestroy(t *testing.T) {
 
 	// 1. Apply the headline topology to a fixpoint.
 	d := &phase.Driver{
-		Eval:      phase.NixEval{FlakeRef: ".", Attr: "nixform.plan", WorkDir: root},
+		Eval:      phase.NixEval{FlakeRef: ".", Attr: "terraeNivis.plan", WorkDir: root},
 		Manager:   rmgr,
 		Store:     st,
 		Ledger:    ledger.New(),
@@ -87,7 +87,7 @@ func TestLifecycleRefreshThenDestroy(t *testing.T) {
 // refresh ordering. Destroy/refresh use stored state for values, not config.
 func phase0Graph(t *testing.T, ctx context.Context, root string) *ir.Graph {
 	t.Helper()
-	ev := phase.NixEval{FlakeRef: ".", Attr: "nixform.plan", WorkDir: root}
+	ev := phase.NixEval{FlakeRef: ".", Attr: "terraeNivis.plan", WorkDir: root}
 	irJSON, err := ev.Eval(ctx, ledger.New())
 	if err != nil {
 		t.Fatalf("phase-0 eval: %v", err)

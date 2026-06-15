@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package phase_test
@@ -9,15 +9,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/nixform/internal/ledger"
-	"github.com/wearetechnative/nixform/internal/phase"
-	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/provider"
-	"github.com/wearetechnative/nixform/internal/state"
+	"github.com/wearetechnative/terrae-nivis/internal/ledger"
+	"github.com/wearetechnative/terrae-nivis/internal/phase"
+	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/state"
 )
 
 // TestRealNixRoundTrip is the headline mechanism end-to-end: the REAL Nix flake
-// (.#nixform.plan) re-evaluated each phase with the accumulating ledger, driving
+// (.#terraeNivis.plan) re-evaluated each phase with the accumulating ledger, driving
 // the REAL fake provider binaries through plan/apply, to a fixpoint. This is the
 // round trip the project exists to prove (DESIGN D3 / docs/TESTING.md).
 //
@@ -38,14 +38,14 @@ func TestRealNixRoundTrip(t *testing.T) {
 	buildInto(t, root, "provider-alpha")
 	buildInto(t, root, "provider-beta")
 
-	t.Setenv("NIXFORM_FAKE_COUNTER", "")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
 	mgr := plugin.NewManager()
 	defer mgr.Close()
 	st, _ := state.Open(filepath.Join(t.TempDir(), "state.json"))
 
 	d := &phase.Driver{
-		Eval:      phase.NixEval{FlakeRef: ".", Attr: "nixform.plan", WorkDir: root},
+		Eval:      phase.NixEval{FlakeRef: ".", Attr: "terraeNivis.plan", WorkDir: root},
 		Manager:   relativeManager{mgr: mgr, root: root},
 		Store:     st,
 		Ledger:    ledger.New(),

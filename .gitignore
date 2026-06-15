@@ -17,11 +17,11 @@ result-*
 go.work
 go.work.sum
 
-# --- nixform runtime artifacts ---
+# --- terrae-nivis runtime artifacts ---
 # The outputs ledger is 0600 and MUST NOT be committed (may hold sensitive provider outputs).
 # See docs/IR-CONTRACT.md "Sensitive values across the boundary".
 *.ledger.json
-/.nixform/
+/.terrae-nivis/
 
 # --- editor / OS noise ---
 *.swp

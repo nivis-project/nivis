@@ -1,4 +1,4 @@
-# OpenSpec — project conventions (nixform)
+# OpenSpec — project conventions (terrae nivis)
 
 This project uses OpenSpec for spec-driven development. The spec is the source
 of truth; code follows an approved change.

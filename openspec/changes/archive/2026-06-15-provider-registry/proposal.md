@@ -26,7 +26,7 @@ GitHub releases are reachable from this environment.
   local binary before spawn; a filesystem path still works as before.
 - Tests: unit tests for resolution parsing, SHA-256 verification (good + tampered),
   and cache hit/miss using local fixtures (hermetic). A network-gated test
-  (skipped unless `NIXFORM_NET_TESTS=1`) that really resolves+downloads+verifies
+  (skipped unless `TERRAE_NIVIS_NET_TESTS=1`) that really resolves+downloads+verifies
   Hetzner hcloud.
 
 ## Non-goals

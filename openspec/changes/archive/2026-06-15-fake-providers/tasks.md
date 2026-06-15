@@ -9,7 +9,7 @@
       (Compile-time `_ tfprotov6.ProviderServer = (*Server)(nil)` assertion.)
 - [x] 1.3 `internal/fakeprovider/value.go`: helpers to build a resource schema,
       marshal/unmarshal `DynamicValue` <-> `tftypes.Object`, and read the seedable
-      per-process counter (`NIXFORM_FAKE_COUNTER`, default 0; atomic increment).
+      per-process counter (`TERRAE_NIVIS_FAKE_COUNTER`, default 0; atomic increment).
 - [x] 1.4 `internal/fakeprovider/resource.go`: a `Resource` abstraction holding
       the resource type name, its attribute set, and an apply func; wire generic
       `GetProviderSchema`, `ValidateResourceConfig`, `PlanResourceChange`
@@ -24,7 +24,7 @@
       test driving each provider server through GetProviderSchema -> Plan ->
       Apply; asserts unknown-at-plan, known-at-apply, exact derived values,
       counter determinism + env seed, and beta's required-input diagnostic.
-      Tests are hermetic (pass under ambient NIXFORM_FAKE_COUNTER).
+      Tests are hermetic (pass under ambient TERRAE_NIVIS_FAKE_COUNTER).
 - [x] 1.8 Build both binaries (`go build -o bin/...`); `go vet ./...` and
       `go test ./...` pass. Binaries refuse to run without the go-plugin
       handshake (correct). Built paths: `bin/provider-alpha`, `bin/provider-beta`
