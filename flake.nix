@@ -23,6 +23,9 @@
         plan = import ./nix/example { inherit terraeNivis; };
         # A cyclic variant for the headline e2e's cycle-rejection assertion.
         planCycle = import ./nix/example/cycle.nix { inherit terraeNivis; };
+        # A real-provider example (AWS S3 bucket) — drive with `tn ... --attr
+        # terraeNivis.aws`; creates a real resource (see nix/example/aws.nix).
+        aws = import ./nix/example/aws.nix { inherit terraeNivis; };
       };
     };
 }

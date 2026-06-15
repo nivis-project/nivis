@@ -67,6 +67,33 @@ cat ./generated/alpha/alpha_token.nix
 
 See `docs/GETTING-STARTED.md` for a guided walkthrough.
 
+## Real providers (AWS)
+
+Terrae Nivis drives **real** Terraform/OpenTofu providers, not just the fakes: it
+resolves a provider by address from the OpenTofu registry, downloads and
+**checksum-verifies** the binary from its release host, negotiates the plugin
+protocol (v5 or v6), configures it, and runs the same plan/apply/destroy cycle.
+
+> ⚠️ **This creates a real resource in your AWS account.** The example below
+> creates a single (free-tier) S3 bucket and then destroys it. Credentials and
+> region come from the environment (the AWS SDK default chain) — set
+> `AWS_PROFILE`/`AWS_REGION` (Nix-side provider config is a separate, planned
+> feature). First run downloads the ~900&nbsp;MB AWS provider (cached after).
+
+```sh
+export AWS_PROFILE=your-profile          # or AWS_ACCESS_KEY_ID/…
+export AWS_REGION=eu-central-1
+
+./bin/tn plan    --attr terraeNivis.aws  # show the planned bucket
+./bin/tn apply   --attr terraeNivis.aws  # create a real S3 bucket (AWS-generated name)
+./bin/tn state show aws.aws_s3_bucket.demo
+./bin/tn destroy --attr terraeNivis.aws  # delete it
+```
+
+The `terraeNivis.aws` flake attribute (`nix/example/aws.nix`) declares
+`source = "registry.opentofu.org/hashicorp/aws"` and one `aws_s3_bucket` — change
+those to drive any other provider/resource the same way.
+
 ## Layout
 
 - `nix/lib/` — the Nix library: `mkResource`, references (`__ref`/`__derived`),
@@ -114,6 +141,7 @@ project. See `LICENSING.md` for the full breakdown and `NOTICE` for attributions
 
 This repository was built autonomously following a spec-driven process: see
 `DESIGN.md` (architecture decisions), `ROADMAP.md` (epics), `CLAUDE.md` (the
-builder's instructions), and `openspec/` (the per-change specs). Real provider
-support via the OpenTofu registry is network-gated and out of the current PoC
-scope; the codegen and executor are validated hermetically against the fakes.
+builder's instructions), and `openspec/` (the per-change specs). The core test
+suite is hermetic (fakes, no network); real-provider support (registry download +
+checksum verification, tfprotov5/6) is proven against AWS — see **Real providers
+(AWS)** above.

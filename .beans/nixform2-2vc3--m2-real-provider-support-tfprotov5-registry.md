@@ -7,7 +7,7 @@ priority: high
 tags:
     - milestone-2
 created_at: 2026-06-15T12:49:06Z
-updated_at: 2026-06-15T14:56:49Z
+updated_at: 2026-06-15T15:42:44Z
 parent: nixform2-hj4w
 ---
 
@@ -45,3 +45,14 @@ Found+fixed a test-teardown ordering bug (mgr.Close ran before t.Cleanup destroy
 orphaning the first bucket — cleaned up manually via aws cli; fixed with LIFO
 cleanup ordering + inline destroy). The real-provider stack now does the complete
 lifecycle against a real cloud.
+
+
+
+## Real AWS now user-runnable + documented
+OpenSpec aws-example-docs (archived): added flake attr terraeNivis.aws
+(nix/example/aws.nix, hashicorp/aws + aws_s3_bucket) and a 'Real providers (AWS)'
+section in README + getting-started with the exact tn plan/apply/state/destroy
+flow, real-resource warning, and env-credentials note. Stale 'out of scope'
+disclaimers corrected. VERIFIED the documented tn CLI flow end-to-end against real
+AWS (create+destroy a bucket, no orphan). Creds/region via env until beans-prj4
+(Nix-side provider config).

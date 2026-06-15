@@ -114,6 +114,34 @@ named error if missing), passes optional inputs through, omits computed-only
 attributes (they're outputs), and accepts an `overrides` argument so you can
 adjust the generated output.
 
+## 7. A real provider (AWS)
+
+Everything above is offline against the fakes. The same `tn` commands drive
+**real** providers — `tn` resolves a provider by address from the OpenTofu
+registry, downloads and checksum-verifies the binary, negotiates the plugin
+protocol (AWS speaks v5), configures it, and runs plan/apply/destroy.
+
+> ⚠️ **This creates a real resource in your AWS account** — one (free-tier) S3
+> bucket, then destroys it. Credentials and region come from the environment
+> (the AWS SDK default chain); set `AWS_PROFILE`/`AWS_REGION`. The first run
+> downloads the ~900&nbsp;MB AWS provider (cached afterwards).
+
+```sh
+export AWS_PROFILE=your-profile
+export AWS_REGION=eu-central-1
+
+./bin/tn plan    --attr terraeNivis.aws
+./bin/tn apply   --attr terraeNivis.aws        # creates a real S3 bucket
+./bin/tn state show aws.aws_s3_bucket.demo     # AWS-generated bucket name, region, etc.
+./bin/tn destroy --attr terraeNivis.aws        # deletes it
+```
+
+The example lives in `nix/example/aws.nix` (flake attr `terraeNivis.aws`): it
+declares `source = "registry.opentofu.org/hashicorp/aws"` and an `aws_s3_bucket`
+with `force_destroy = true` and a generated name. Point it at a different
+provider/resource to drive anything else. (Expressing provider config — region,
+profile — in Nix rather than the environment is a planned addition.)
+
 ## Where to go next
 
 - `docs/IR-CONTRACT.md` + `docs/ir-schema.json` — the IR, the stable contract
@@ -122,6 +150,6 @@ adjust the generated output.
 - `DESIGN.md` — why the architecture is the way it is (spawn-not-link,
   batch-not-live, phased re-eval to a fixpoint).
 
-Real provider support (e.g. AWS, Hetzner) via the OpenTofu registry is
-network-gated and out of the current PoC scope; the executor and codegen are
-validated hermetically against these fake providers.
+The core test suite is hermetic (fakes, no network/credentials); real-provider
+support (registry download + checksum verification, tfprotov5/6) is proven
+against AWS as shown above.
