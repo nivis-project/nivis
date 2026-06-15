@@ -1,43 +1,218 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="Terrae Nivis — Infrastructure as Nix Code">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="0%" r="100%">
-      <stop offset="0%" stop-color="#1A4170"/>
-      <stop offset="55%" stop-color="#102E52"/>
-      <stop offset="100%" stop-color="#08213C"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 1280 640"
+   width="1280"
+   height="640"
+   role="img"
+   aria-label="Nivis — Infrastructure as Nix Code"
+   version="1.1"
+   id="svg13"
+   sodipodi:docname="banner.svg"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   inkscape:export-filename="banner.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview13"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.88388348"
+     inkscape:cx="814.02133"
+     inkscape:cy="289.06525"
+     inkscape:window-width="2516"
+     inkscape:window-height="1359"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg13" />
+  <defs
+     id="defs3">
+    <radialGradient
+       id="bg"
+       cx="50%"
+       cy="0%"
+       r="100%">
+      <stop
+         offset="0%"
+         stop-color="#1A4170"
+         id="stop1" />
+      <stop
+         offset="55%"
+         stop-color="#102E52"
+         id="stop2" />
+      <stop
+         offset="100%"
+         stop-color="#08213C"
+         id="stop3" />
     </radialGradient>
-    <clipPath id="tnDisc"><circle cx="100" cy="100" r="84"/></clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath1">
+      <circle
+         cx="100"
+         cy="100"
+         r="84"
+         id="circle1"
+         style="stroke-width:1" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath2">
+      <circle
+         cx="100"
+         cy="100"
+         r="84"
+         id="circle2"
+         style="stroke-width:1" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath3">
+      <circle
+         cx="100"
+         cy="100"
+         r="84"
+         id="circle6"
+         style="stroke-width:1" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath6">
+      <circle
+         cx="100"
+         cy="100"
+         r="84"
+         id="circle7"
+         style="stroke-width:1" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath7">
+      <circle
+         cx="100"
+         cy="100"
+         r="84"
+         id="circle8"
+         style="stroke-width:1" />
+    </clipPath>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath8">
+      <circle
+         cx="640"
+         cy="180"
+         r="50.400002"
+         id="circle9"
+         style="stroke-width:0.6" />
+    </clipPath>
   </defs>
-
-  <rect width="1280" height="640" fill="url(#bg)"/>
-
+  <rect
+     width="1280"
+     height="640"
+     fill="url(#bg)"
+     id="rect3" />
   <!-- Emblem (~120px), centred, top -->
-  <g transform="translate(580,120) scale(0.6)">
-    <circle cx="100" cy="100" r="96" fill="#0B2A48"/>
-    <circle cx="100" cy="100" r="96" fill="none" stroke="#9FC0DC" stroke-width="3"/>
-    <g clip-path="url(#tnDisc)">
-      <rect x="16" y="16" width="168" height="168" fill="#0B2A48"/>
-      <polygon points="16,150 100,150 100,150 16,184" fill="#163C5E"/>
-      <polygon points="60,150 100,70 100,150" fill="#3C6286"/>
-      <polygon points="100,70 140,150 100,150" fill="#22466A"/>
-      <polygon points="100,70 118,108 111,102 100,111 89,102 82,108" fill="#EEF6FC"/>
-      <polygon points="44,150 70,116 96,150" fill="#355B80"/>
-      <polygon points="70,116 80,134 75,130 70,135 65,130 60,134" fill="#E6F2FB"/>
-    </g>
-    <path d="M150 50 L152.4 58 L160 60 L152.4 62 L150 70 L147.6 62 L140 60 L147.6 58 Z" fill="#F2632E"/>
-  </g>
-
+  <circle
+     cx="640"
+     cy="180"
+     r="57.599998"
+     fill="#0b2a48"
+     id="circle4"
+     style="stroke-width:0.6" />
+  <circle
+     cx="640"
+     cy="180"
+     r="57.599998"
+     fill="none"
+     stroke="#9fc0dc"
+     stroke-width="1.8"
+     id="circle5" />
+  <rect
+     x="589.59998"
+     y="129.60001"
+     width="100.8"
+     height="100.8"
+     fill="#0b2a48"
+     id="rect5"
+     style="stroke-width:0.6"
+     clip-path="url(#clipPath8)" />
+  <polygon
+     points="100,150 60,150 100,70 "
+     fill="#3c6286"
+     id="polygon6"
+     transform="matrix(0.99,0,0,0.99,541,61.5)"
+     clip-path="url(#clipPath7)" />
+  <polygon
+     points="100,150 100,70 140,150 "
+     fill="#22466a"
+     id="polygon7"
+     transform="matrix(0.99,0,0,0.99,541,61.5)"
+     clip-path="url(#clipPath6)" />
+  <polygon
+     points="82,108 100,70 118,108 111,102 100,111 89,102 "
+     fill="#eef6fc"
+     id="polygon8"
+     transform="matrix(0.99,0,0,0.99,541,61.5)"
+     clip-path="url(#clipPath3)" />
+  <path
+     d="m 670,150 1.44,4.8 4.56,1.2 -4.56,1.2 -1.44,4.8 -1.44,-4.8 -4.56,-1.2 4.56,-1.2 z"
+     fill="#f2632e"
+     id="path10"
+     style="stroke-width:0.6" />
   <!-- Wordmark -->
-  <text x="640" y="360" text-anchor="middle" font-family="Cinzel" font-weight="600"
-        font-size="84" letter-spacing="5.9" fill="#EAF3F9">TERRAE NIVIS</text>
-
+  <text
+     x="640"
+     y="360"
+     text-anchor="middle"
+     font-family="Cinzel"
+     font-weight="600"
+     font-size="84px"
+     letter-spacing="5.9"
+     fill="#eaf3f9"
+     id="text11">NIVIS</text>
   <!-- Tagline -->
-  <text x="640" y="412" text-anchor="middle" font-family="Schibsted Grotesk, sans-serif"
-        font-size="30" letter-spacing="1.5" fill="#AECFE6">Infrastructure as Nix Code</text>
-
+  <text
+     x="640"
+     y="412"
+     text-anchor="middle"
+     font-family="'Schibsted Grotesk', sans-serif"
+     font-size="30px"
+     letter-spacing="1.5"
+     fill="#aecfe6"
+     id="text12"><tspan
+       style="fill:#c4361a;fill-opacity:1"
+       id="tspan1">All your base belongs to Nix</tspan></text>
   <!-- Mono pill -->
-  <g transform="translate(640,470)">
-    <rect x="-360" y="0" width="720" height="44" rx="22" fill="#0E3157" stroke="#2D5E8E" stroke-width="1"/>
-    <text x="0" y="29" text-anchor="middle" font-family="IBM Plex Mono, monospace"
-          font-size="17" letter-spacing="0.5" fill="#AECFE6">provider resources as first-class Nix values · resolves to a fixpoint</text>
+  <g
+     transform="translate(640,470)"
+     id="g13">
+    <rect
+       x="-366.03162"
+       y="0"
+       width="734.03162"
+       height="44"
+       rx="22"
+       fill="#0e3157"
+       stroke="#2d5e8e"
+       stroke-width="1"
+       id="rect12" />
+    <text
+       x="0"
+       y="29"
+       text-anchor="middle"
+       font-family="'IBM Plex Mono', monospace"
+       font-size="17px"
+       letter-spacing="0.5"
+       fill="#aecfe6"
+       id="text13">TF provider resources as first-class Nix values · resolves to a fixpoint</text>
   </g>
 </svg>

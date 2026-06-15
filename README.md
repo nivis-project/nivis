@@ -5,7 +5,7 @@
 # Nivis
 
 **Infrastructure as Nix Code.** *All your base belongs to Nix.* *(Nivis — Latin,
-"of snow"; it belongs to Nix. Formerly `nixform`, then Terrae Nivis.)*
+"belongs to snow"; it belongs to Nix. Formerly `nixform`, then Terrae Nivis.)*
 
 A Nix-native infrastructure tool where Terraform/OpenTofu **provider resources
 are first-class Nix values**. A thin Go executor speaks the Terraform plugin
