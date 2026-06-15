@@ -59,7 +59,8 @@ var versionedPlugins = map[int]goplugin.PluginSet{
 // Manager spawns and pools provider processes, keyed by provider identity.
 type Manager struct {
 	mu      sync.Mutex
-	clients map[string]*entry
+	clients  map[string]*entry
+	resolver Resolver
 }
 
 type entry struct {
@@ -67,8 +68,19 @@ type entry struct {
 	provider provider.Client
 }
 
-// NewManager returns an empty manager.
+// Resolver turns a provider source into a local binary path. A registry-backed
+// resolver fetches+verifies+caches by address; a filesystem path is returned
+// as-is. nil means "use the source verbatim".
+type Resolver interface {
+	ResolveProvider(ctx context.Context, source string) (string, error)
+}
+
+// NewManager returns an empty manager (no resolver: sources used verbatim).
 func NewManager() *Manager { return &Manager{clients: map[string]*entry{}} }
+
+// WithResolver sets the provider-source resolver (e.g. the registry client) and
+// returns the manager for chaining.
+func (m *Manager) WithResolver(r Resolver) *Manager { m.resolver = r; return m }
 
 // Client spawns (or reuses) the provider binary at path under the given identity
 // and returns a version-neutral provider.Client. Reusing by identity means two
@@ -80,6 +92,16 @@ func (m *Manager) Client(identity, path string) (provider.Client, error) {
 
 	if e, ok := m.clients[identity]; ok {
 		return e.provider, nil
+	}
+
+	// Resolve the source to a local binary path (registry address -> fetched +
+	// verified + cached binary; a filesystem path passes through).
+	if m.resolver != nil {
+		resolved, err := m.resolver.ResolveProvider(context.Background(), path)
+		if err != nil {
+			return nil, fmt.Errorf("plugin %q: resolve %q: %w", identity, path, err)
+		}
+		path = resolved
 	}
 
 	c := goplugin.NewClient(&goplugin.ClientConfig{

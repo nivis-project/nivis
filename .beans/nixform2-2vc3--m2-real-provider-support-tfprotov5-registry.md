@@ -1,13 +1,13 @@
 ---
 # nixform2-2vc3
 title: 'M2: Real provider support (tfprotov5 + registry)'
-status: in-progress
+status: completed
 type: epic
 priority: high
 tags:
     - milestone-2
 created_at: 2026-06-15T12:49:06Z
-updated_at: 2026-06-15T12:50:04Z
+updated_at: 2026-06-15T13:15:18Z
 parent: nixform2-hj4w
 ---
 
@@ -16,3 +16,12 @@ Second milestone: drive REAL providers (AWS, Hetzner) end to end. The registry +
 
 
 In progress: provider-abstraction (change 1/3).
+
+
+
+## Summary
+M2 complete (read/plan path): provider-abstraction + tfprotov5-client +
+provider-registry. The executor speaks v5 and v6 (negotiated), and fetches real
+providers from the registry with checksum verification. Proven: real Hetzner
+hcloud fetched, verified, spawned, schema read (29 types). Out of scope by
+design: live cloud apply with credentials.

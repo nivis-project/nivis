@@ -1,13 +1,13 @@
 ---
 # nixform2-1h7k
 title: Real providers negotiate tfprotov5; executor is v6-only
-status: todo
+status: completed
 type: bug
 priority: high
 tags:
     - discovered
 created_at: 2026-06-15T12:44:15Z
-updated_at: 2026-06-15T12:44:15Z
+updated_at: 2026-06-15T13:15:18Z
 parent: nixform2-8umq
 ---
 
@@ -29,3 +29,10 @@ Options:
       protocol-version agnostic up to GetProviderSchema? — verify) and treat
       live plan/apply against v5 as separate.
 Decision needed before building.
+
+
+
+## Resolved
+tfprotov5 support added (OpenSpec tfprotov5-client): generated v5 stubs, v5
+backend behind provider.Client, manager negotiates v5/v6 by advertised protocol.
+Real v5 providers (hcloud) now spawn and serve schema.

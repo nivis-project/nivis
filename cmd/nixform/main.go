@@ -15,6 +15,7 @@ import (
 	"github.com/wearetechnative/nixform/internal/ledger"
 	"github.com/wearetechnative/nixform/internal/phase"
 	"github.com/wearetechnative/nixform/internal/plugin"
+	"github.com/wearetechnative/nixform/internal/registry"
 	"github.com/wearetechnative/nixform/internal/refresh"
 	"github.com/wearetechnative/nixform/internal/state"
 )
@@ -58,6 +59,13 @@ func evaluator() phase.NixEval {
 	return phase.NixEval{FlakeRef: flakeRef, Attr: attr, WorkDir: ""}
 }
 
+// newManager builds a plugin manager with the registry resolver attached, so a
+// provider `source` that is a registry address (e.g. "hashicorp/aws") is
+// fetched, verified, and cached before spawn; a filesystem path is used directly.
+func newManager() *plugin.Manager {
+	return plugin.NewManager().WithResolver(registry.New(""))
+}
+
 // phase0Graph evaluates the plan once (empty ledger) and ingests it, for the
 // destroy/refresh engines which need the resource set + providers.
 func phase0Graph(ctx context.Context) (*ir.Graph, error) {
@@ -99,7 +107,7 @@ func applyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := plugin.NewManager()
+			mgr := newManager()
 			defer mgr.Close()
 			d := &phase.Driver{
 				Eval:       evaluator(),
@@ -134,7 +142,7 @@ func destroyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := plugin.NewManager()
+			mgr := newManager()
 			defer mgr.Close()
 			res, err := destroy.Run(cmd.Context(), g, mgr, store, destroy.Options{Target: target})
 			if err != nil {
@@ -162,7 +170,7 @@ func refreshCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := plugin.NewManager()
+			mgr := newManager()
 			defer mgr.Close()
 			res, err := refresh.Run(cmd.Context(), g, mgr, store)
 			if err != nil {
