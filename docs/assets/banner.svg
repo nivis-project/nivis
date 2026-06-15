@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="Terrae Nivis — Infrastructure as Nix Code">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="0%" r="100%">
+      <stop offset="0%" stop-color="#1A4170"/>
+      <stop offset="55%" stop-color="#102E52"/>
+      <stop offset="100%" stop-color="#08213C"/>
+    </radialGradient>
+    <clipPath id="tnDisc"><circle cx="100" cy="100" r="84"/></clipPath>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Emblem (~120px), centred, top -->
+  <g transform="translate(580,120) scale(0.6)">
+    <circle cx="100" cy="100" r="96" fill="#0B2A48"/>
+    <circle cx="100" cy="100" r="96" fill="none" stroke="#9FC0DC" stroke-width="3"/>
+    <g clip-path="url(#tnDisc)">
+      <rect x="16" y="16" width="168" height="168" fill="#0B2A48"/>
+      <polygon points="16,150 100,150 100,150 16,184" fill="#163C5E"/>
+      <polygon points="60,150 100,70 100,150" fill="#3C6286"/>
+      <polygon points="100,70 140,150 100,150" fill="#22466A"/>
+      <polygon points="100,70 118,108 111,102 100,111 89,102 82,108" fill="#EEF6FC"/>
+      <polygon points="44,150 70,116 96,150" fill="#355B80"/>
+      <polygon points="70,116 80,134 75,130 70,135 65,130 60,134" fill="#E6F2FB"/>
+    </g>
+    <path d="M150 50 L152.4 58 L160 60 L152.4 62 L150 70 L147.6 62 L140 60 L147.6 58 Z" fill="#F2632E"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="640" y="360" text-anchor="middle" font-family="Cinzel" font-weight="600"
+        font-size="84" letter-spacing="5.9" fill="#EAF3F9">TERRAE NIVIS</text>
+
+  <!-- Tagline -->
+  <text x="640" y="412" text-anchor="middle" font-family="Schibsted Grotesk, sans-serif"
+        font-size="30" letter-spacing="1.5" fill="#AECFE6">Infrastructure as Nix Code</text>
+
+  <!-- Mono pill -->
+  <g transform="translate(640,470)">
+    <rect x="-360" y="0" width="720" height="44" rx="22" fill="#0E3157" stroke="#2D5E8E" stroke-width="1"/>
+    <text x="0" y="29" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+          font-size="17" letter-spacing="0.5" fill="#AECFE6">provider resources as first-class Nix values · resolves to a fixpoint</text>
+  </g>
+</svg>

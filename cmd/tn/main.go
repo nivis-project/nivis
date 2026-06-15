@@ -31,9 +31,13 @@ var (
 )
 
 func main() {
+	var showVersion bool
 	root := &cobra.Command{
 		Use:   "tn",
-		Short: "Nix-native infra: provider resources as first-class Nix values",
+		Short: "Terrae Nivis — Infrastructure as Nix Code",
+		Long: "Terrae Nivis — Infrastructure as Nix Code.\n\n" +
+			"A Nix-native infrastructure tool where Terraform/OpenTofu provider\n" +
+			"resources are first-class Nix values. (Formerly nixform.)",
 		// We print runtime failures ourselves as a clean `error:` line; don't let
 		// cobra print the error a second time.
 		SilenceErrors: true,
@@ -43,11 +47,20 @@ func main() {
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			cmd.SilenceUsage = true
 		},
+		// With no subcommand, print the branded splash (or just the version).
+		Run: func(cmd *cobra.Command, _ []string) {
+			if showVersion {
+				fmt.Fprintln(cmd.OutOrStdout(), "tn (Terrae Nivis) "+version)
+				return
+			}
+			splash(cmd.OutOrStdout())
+		},
 	}
 	root.PersistentFlags().StringVar(&flakeRef, "flake", ".", "flake reference exposing terraeNivis.plan")
 	root.PersistentFlags().StringVar(&statePath, "state", "./terrae-nivis.state.json", "path to the local state file")
 	root.PersistentFlags().StringVar(&attr, "attr", "terraeNivis.plan", "flake attribute to evaluate")
 	root.PersistentFlags().StringVar(&target, "target", "", "restrict the operation to a single resource id")
+	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
 	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd())
 

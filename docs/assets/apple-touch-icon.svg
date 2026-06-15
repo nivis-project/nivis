@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="Terrae Nivis app icon">
+  <!-- 180px navy tile with the glyph at ~72% (≈14% padding each side) -->
+  <rect width="180" height="180" fill="#0E3157"/>
+  <g transform="translate(25.2,25.2) scale(0.648)">
+    <circle cx="100" cy="100" r="96" fill="#0E3157"></circle>
+    <polygon points="60,150 100,66 100,150" fill="#9CC4E4"></polygon>
+    <polygon points="100,66 140,150 100,150" fill="#5E89B0"></polygon>
+    <polygon points="100,66 120,108 112,101 100,112 88,101 80,108" fill="#F2FAFF"></polygon>
+    <path d="M138 56 L140 63 L147 65 L140 67 L138 74 L136 67 L129 65 L136 63 Z" fill="#FF7A3C"></path>
+  </g>
+</svg>

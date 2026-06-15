@@ -1,4 +1,11 @@
-# terrae nivis
+<p align="center">
+  <img src="docs/assets/banner.png" alt="Terrae Nivis — Infrastructure as Nix Code" width="100%">
+</p>
+
+# Terrae Nivis
+
+**Infrastructure as Nix Code.** *(Terrae Nivis — Latin, "lands of snow"; formerly
+`nixform`.)*
 
 A Nix-native infrastructure tool where Terraform/OpenTofu **provider resources
 are first-class Nix values**. A thin Go executor speaks the Terraform plugin

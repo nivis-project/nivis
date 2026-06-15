@@ -7,6 +7,7 @@ require (
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/term v0.38.0
 	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 )

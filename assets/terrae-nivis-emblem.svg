@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="Terrae Nivis emblem">
+  <defs>
+    <clipPath id="tnDisc"><circle cx="100" cy="100" r="84"></circle></clipPath>
+  </defs>
+  
+  <circle cx="100" cy="100" r="84" fill="#0B2A48"></circle>
+  <g clip-path="url(#tnDisc)">
+    
+    <g stroke="#3E78AE" stroke-width="0.8" stroke-opacity="0.4">
+      <line x1="100" y1="124" x2="28" y2="184"></line>
+      <line x1="100" y1="124" x2="50" y2="184"></line>
+      <line x1="100" y1="124" x2="72" y2="184"></line>
+      <line x1="100" y1="124" x2="94" y2="184"></line>
+      <line x1="100" y1="124" x2="116" y2="184"></line>
+      <line x1="100" y1="124" x2="138" y2="184"></line>
+      <line x1="100" y1="124" x2="160" y2="184"></line>
+    </g>
+    <g stroke="#5E9CC8" stroke-width="0.9" stroke-opacity="0.38">
+      <line x1="26" y1="138" x2="174" y2="138"></line>
+      <line x1="26" y1="158" x2="174" y2="158"></line>
+    </g>
+    
+    <line x1="14" y1="124" x2="186" y2="124" stroke="#C8E6F6" stroke-width="1.7" stroke-opacity="0.92"></line>
+    
+    <polygon points="26,124 66,100 104,114 150,102 178,124" fill="#2A4B6E" opacity="0.82"></polygon>
+    <polygon points="60,104 66,98 72,104" fill="#CFE3F2" opacity="0.85"></polygon>
+    <polygon points="144,106 150,100 156,106" fill="#CFE3F2" opacity="0.85"></polygon>
+    
+    <polygon points="54,124 72,86 72,124" fill="#355B80"></polygon>
+    <polygon points="72,86 92,124 72,124" fill="#244C70"></polygon>
+    <polygon points="72,86 81,104 77,99 72,106 67,99 63,104" fill="#E6F2FB"></polygon>
+    
+    <polygon points="78,124 108,60 108,124" fill="#3C6286"></polygon>
+    <polygon points="108,60 140,124 108,124" fill="#22466A"></polygon>
+    <polygon points="108,60 126,96 120,90 113,98 108,92 103,98 96,90 91,96" fill="#EEF6FC"></polygon>
+    
+    <path d="M140 48 L141.6 53 L147 54 L141.6 55 L140 60 L138.4 55 L133 54 L138.4 53 Z" fill="#F2632E"></path>
+    <circle cx="66" cy="60" r="1.2" fill="#BFE0F2"></circle>
+  </g>
+  
+  <circle cx="100" cy="100" r="84" fill="none" stroke="#9FC0DC" stroke-width="2.5"></circle>
+</svg>
