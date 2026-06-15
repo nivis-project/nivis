@@ -20,8 +20,12 @@ import (
 type recordClient struct {
 	requiresReplace bool
 	noop            bool
+	// readAttrs, when non-nil, is what Read returns (the refreshed real state); an
+	// empty map models an out-of-band deletion. nil => Read echoes the stored attrs.
+	readAttrs map[string]interface{}
 
 	planPrior    map[string]interface{}
+	readCalls    int
 	applyCalls   int
 	applyPrior   map[string]interface{}
 	destroyCalls int
@@ -46,8 +50,13 @@ func (c *recordClient) Apply(_ context.Context, req provider.ApplyRequest) (prov
 	c.applyPrior = req.Prior
 	return provider.ApplyResult{Attrs: map[string]interface{}{"id": "new"}}, nil
 }
-func (c *recordClient) Read(context.Context, provider.ReadRequest) (provider.ReadResult, error) {
-	return provider.ReadResult{}, nil
+func (c *recordClient) Read(_ context.Context, req provider.ReadRequest) (provider.ReadResult, error) {
+	c.readCalls++
+	if c.readAttrs != nil {
+		return provider.ReadResult{Attrs: c.readAttrs}, nil
+	}
+	// Default: echo the stored attrs (a no-drift refresh).
+	return provider.ReadResult{Attrs: req.Stored}, nil
 }
 func (c *recordClient) Destroy(_ context.Context, req provider.DestroyRequest) (provider.DestroyResult, error) {
 	c.destroyCalls++
@@ -67,7 +76,10 @@ func newReplaceDriver(t *testing.T, c *recordClient) *Driver {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Driver{Manager: recordManager{c: c}, Store: st, Ledger: ledger.New()}
+	// These tests exercise the create/update/replace/no-op decision against the
+	// STORED prior state; refresh (provider Read) is covered separately in
+	// refresh_test.go, so disable it here.
+	return &Driver{Manager: recordManager{c: c}, Store: st, Ledger: ledger.New(), NoRefresh: true}
 }
 
 func replaceGraphNode(meta *ir.Meta) (*ir.Graph, *ir.ResourceNode) {

@@ -43,6 +43,34 @@ type Driver struct {
 	LedgerPath string
 	// MaxPhases caps the loop as a safety net (0 = a generous default).
 	MaxPhases int
+	// NoRefresh disables reading a resource's real state from the provider before
+	// planning (the `--refresh=false` opt-out). When false (the default), plan/
+	// apply refresh prior state so drift and out-of-band deletion are seen.
+	NoRefresh bool
+}
+
+// priorState returns the prior state for an in-state resource. By default it
+// refreshes — reads the resource through the provider so drift is seen and an
+// out-of-band deletion surfaces as an empty read (which callers treat as a
+// create). With NoRefresh it returns the stored attributes unchanged. The bool
+// reports whether the resource still exists (false => no prior / deleted).
+func (d *Driver) priorState(ctx context.Context, client provider.Client, rs provider.ResourceSchema, node *ir.ResourceNode, stored map[string]interface{}) (map[string]interface{}, bool, error) {
+	if d.NoRefresh {
+		return stored, len(stored) > 0, nil
+	}
+	rr, err := client.Read(ctx, provider.ReadRequest{
+		Schema:   rs,
+		TypeName: node.Resource.Type,
+		Stored:   stored,
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("refresh %q: %w", node.Resource.ID, err)
+	}
+	if len(rr.Attrs) == 0 {
+		// Read returned empty: the resource was deleted out-of-band. No prior.
+		return nil, false, nil
+	}
+	return rr.Attrs, true, nil
 }
 
 // Result summarizes a completed run.
@@ -187,7 +215,19 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 			if err != nil {
 				return nil, err
 			}
-			pr, err := plan.Plan(ctx, client, rs, node, res.Configs[id], stored.Attrs)
+			// Refresh prior state (unless --refresh=false): a drifted resource is
+			// planned against its real state; one deleted out-of-band reads empty
+			// and is reported as a create.
+			prior, exists, err := d.priorState(ctx, client, rs, node, stored.Attrs)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				item.Op = plan.OpCreate
+				items = append(items, item)
+				continue
+			}
+			pr, err := plan.Plan(ctx, client, rs, node, res.Configs[id], prior)
 			if err != nil {
 				return nil, err
 			}
@@ -220,11 +260,16 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	}
 
 	// Prior state for this resource id, if it was applied in an earlier run.
+	// By default this is refreshed from the provider (so drift is seen and an
+	// out-of-band deletion becomes a create); --refresh=false uses stored state.
 	var prior map[string]interface{}
 	if stored, found, err := d.Store.Get(node.Resource.ID); err != nil {
 		return nil, fmt.Errorf("read prior state for %q: %w", node.Resource.ID, err)
 	} else if found {
-		prior = stored.Attrs
+		prior, _, err = d.priorState(ctx, client, rs, node, stored.Attrs)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	pr, err := plan.Plan(ctx, client, rs, node, resolvedCfg, prior)

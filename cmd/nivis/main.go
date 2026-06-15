@@ -29,6 +29,7 @@ var (
 	statePath string
 	target    string
 	attr      string
+	doRefresh bool
 )
 
 func main() {
@@ -61,6 +62,7 @@ func main() {
 	root.PersistentFlags().StringVar(&statePath, "state", "./nivis.state.json", "path to the local state file")
 	root.PersistentFlags().StringVar(&attr, "attr", "nivis.plan", "flake attribute to evaluate")
 	root.PersistentFlags().StringVar(&target, "target", "", "restrict the operation to a single resource id")
+	root.PersistentFlags().BoolVar(&doRefresh, "refresh", true, "read real provider state before planning (false = plan against stored state)")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
 	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), genCmd())
@@ -108,7 +110,7 @@ func planCmd() *cobra.Command {
 			}
 			mgr := newManager()
 			defer mgr.Close()
-			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: ledger.New()}
+			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: ledger.New(), NoRefresh: !doRefresh}
 
 			items, err := d.PlanReport(cmd.Context())
 			if err != nil {
@@ -157,6 +159,7 @@ func applyCmd() *cobra.Command {
 				Store:      store,
 				Ledger:     ledger.New(),
 				LedgerPath: statePath + ".ledger",
+				NoRefresh:  !doRefresh,
 			}
 			res, err := d.Run(cmd.Context())
 			if err != nil {
