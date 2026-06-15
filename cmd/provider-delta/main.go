@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nivis authors
+// Copyright 2026 TechNative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Command provider-delta is a fake tfprotov6 provider whose resource uses

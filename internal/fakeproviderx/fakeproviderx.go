@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the nivis authors
+// Copyright 2026 TechNative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package fakeproviderx is a richer-typed tfprotov6 fake provider than the
