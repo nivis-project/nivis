@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/wearetechnative/nixform/internal/tfcodec"
 	"github.com/wearetechnative/nixform/internal/tfplugin6"
 )
 
@@ -76,32 +77,10 @@ func EncodeConfig(objType tftypes.Object, computed map[string]bool, config map[s
 }
 
 // goToValue converts a decoded-JSON Go value to a tftypes.Value of the given
-// type. Handles the scalar/collection shapes the fake providers use.
+// type (scalars, collections, nested objects). Shared with the v5 backend via
+// internal/tfcodec.
 func goToValue(t tftypes.Type, raw interface{}) (tftypes.Value, error) {
-	if raw == nil {
-		return tftypes.NewValue(t, nil), nil
-	}
-	switch {
-	case t.Is(tftypes.String):
-		s, ok := raw.(string)
-		if !ok {
-			return tftypes.Value{}, fmt.Errorf("expected string, got %T", raw)
-		}
-		return tftypes.NewValue(t, s), nil
-	case t.Is(tftypes.Bool):
-		b, ok := raw.(bool)
-		if !ok {
-			return tftypes.Value{}, fmt.Errorf("expected bool, got %T", raw)
-		}
-		return tftypes.NewValue(t, b), nil
-	case t.Is(tftypes.Number):
-		f, ok := raw.(float64)
-		if !ok {
-			return tftypes.Value{}, fmt.Errorf("expected number, got %T", raw)
-		}
-		return tftypes.NewValue(t, f), nil
-	}
-	return tftypes.Value{}, fmt.Errorf("unsupported attribute type %s (PoC supports string/bool/number)", t)
+	return tfcodec.GoToValue(t, raw)
 }
 
 // EncodeState builds a DynamicValue from a flat stored-attrs map (all values
@@ -192,25 +171,5 @@ func DecodeState(objType tftypes.Object, dv *tfplugin6.DynamicValue) (map[string
 // valueToGo converts a known scalar tftypes.Value to a Go value. The second
 // return is false when the value is unknown (callers skip those).
 func valueToGo(v tftypes.Value) (interface{}, bool, error) {
-	if !v.IsKnown() {
-		return nil, false, nil
-	}
-	if v.IsNull() {
-		return nil, true, nil
-	}
-	switch {
-	case v.Type().Is(tftypes.String):
-		var s string
-		err := v.As(&s)
-		return s, true, err
-	case v.Type().Is(tftypes.Bool):
-		var b bool
-		err := v.As(&b)
-		return b, true, err
-	case v.Type().Is(tftypes.Number):
-		var f float64
-		err := v.As(&f)
-		return f, true, err
-	}
-	return nil, false, fmt.Errorf("unsupported result type %s", v.Type())
+	return tfcodec.ValueToGo(v)
 }
