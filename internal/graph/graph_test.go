@@ -144,6 +144,29 @@ func TestResolveNestedPath(t *testing.T) {
 	}
 }
 
+func TestApplyAndDestroyOrder(t *testing.T) {
+	// A <- B <- C  (B depends on A, C depends on B)
+	const s = `{
+	  "schemaVersion":1,"providers":{"a":{"source":"x","config":{}}},
+	  "resources":[
+	    {"id":"a.t.A","provider":"a","type":"t","name":"A","config":{}},
+	    {"id":"a.t.B","provider":"a","type":"t","name":"B","config":{"in":{"__ref":{"resource":"a.t.A","path":["v"]}}}},
+	    {"id":"a.t.C","provider":"a","type":"t","name":"C","config":{"in":{"__ref":{"resource":"a.t.B","path":["v"]}}}}
+	  ],"edges":[],"nixConsumers":[]}`
+	d, err := graph.Build(mustIngest(t, s))
+	if err != nil {
+		t.Fatal(err)
+	}
+	apply := d.ApplyOrder()
+	if strings.Join(apply, ",") != "a.t.A,a.t.B,a.t.C" {
+		t.Fatalf("apply order = %v, want A,B,C", apply)
+	}
+	destroy := d.DestroyOrder()
+	if strings.Join(destroy, ",") != "a.t.C,a.t.B,a.t.A" {
+		t.Fatalf("destroy order = %v, want C,B,A (reverse)", destroy)
+	}
+}
+
 func contains(ss []string, x string) bool {
 	for _, s := range ss {
 		if s == x {

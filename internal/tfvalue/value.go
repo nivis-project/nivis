@@ -100,6 +100,40 @@ func goToValue(t tftypes.Type, raw interface{}) (tftypes.Value, error) {
 	return tftypes.Value{}, fmt.Errorf("unsupported attribute type %s (PoC supports string/bool/number)", t)
 }
 
+// EncodeState builds a DynamicValue from a flat stored-attrs map (all values
+// known), used as PriorState/CurrentState for destroy and refresh. Attributes in
+// the schema but absent from attrs become null.
+func EncodeState(objType tftypes.Object, attrs map[string]interface{}) (*tfplugin6.DynamicValue, error) {
+	vals := map[string]tftypes.Value{}
+	for name, attrType := range objType.AttributeTypes {
+		raw, present := attrs[name]
+		if !present {
+			vals[name] = tftypes.NewValue(attrType, nil)
+			continue
+		}
+		v, err := goToValue(attrType, raw)
+		if err != nil {
+			return nil, fmt.Errorf("attr %q: %w", name, err)
+		}
+		vals[name] = v
+	}
+	mp, err := tftypes.NewValue(objType, vals).MarshalMsgPack(objType) //nolint:staticcheck
+	if err != nil {
+		return nil, fmt.Errorf("marshal msgpack: %w", err)
+	}
+	return &tfplugin6.DynamicValue{Msgpack: mp}, nil
+}
+
+// NullState builds a null DynamicValue of the object type (the planned state for
+// a destroy).
+func NullState(objType tftypes.Object) (*tfplugin6.DynamicValue, error) {
+	mp, err := tftypes.NewValue(objType, nil).MarshalMsgPack(objType) //nolint:staticcheck
+	if err != nil {
+		return nil, fmt.Errorf("marshal null msgpack: %w", err)
+	}
+	return &tfplugin6.DynamicValue{Msgpack: mp}, nil
+}
+
 // DecodeState reads a DynamicValue (the provider's NewState) into a flat Go attr
 // map of known scalar values, against the resource object type.
 func DecodeState(objType tftypes.Object, dv *tfplugin6.DynamicValue) (map[string]interface{}, error) {
