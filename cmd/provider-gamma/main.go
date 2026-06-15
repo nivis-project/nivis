@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Command provider-gamma is a fake tfprotov5 provider exposing the gamma_widget
 // resource. It is hermetic and deterministic (DESIGN D6); see docs/TESTING.md.
 // It mirrors provider-alpha/provider-beta but speaks plugin protocol version 5.

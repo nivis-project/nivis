@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package registry resolves provider addresses against the OpenTofu registry,
 // downloads the platform binary from its release host, verifies it against the
 // published SHA256SUMS, and caches the unpacked executable. Network is used only

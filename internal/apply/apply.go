@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package apply runs the provider apply operation and persists the resulting
 // computed outputs to the state store. Version-neutral (provider.Client).
 package apply

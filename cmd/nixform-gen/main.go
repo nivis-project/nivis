@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Command nixform-gen generates typed Nix constructors from a provider's schema.
 // Spawn a provider, fetch its schema, emit <out>/<provider>/<type>.nix. The path
 // to "all providers with zero per-provider work" (DESIGN D2).

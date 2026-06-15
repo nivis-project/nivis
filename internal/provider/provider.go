@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package provider is the version-neutral seam between the executor and a
 // provider plugin. plan/apply/destroy/refresh/codegen depend on Client and the
 // normalized types here; protocol-specific backends (v5, v6) live in

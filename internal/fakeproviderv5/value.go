@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package fakeproviderv5 provides the shared tfprotov5 plumbing for nixform's
 // in-repo fake providers (DESIGN D6). It mirrors internal/fakeprovider (which
 // targets tfprotov6) for the older Terraform plugin protocol version 5.

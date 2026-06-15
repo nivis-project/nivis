@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package v6 implements provider.Client over the tfprotov6 wire protocol.
 package v6
 

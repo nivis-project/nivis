@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 package v6
 
 import (
@@ -15,7 +18,7 @@ import (
 // unexpectedly called.
 type countingClient struct {
 	tfplugin6.ProviderClient // embed for the methods we don't implement
-	schemaCalls int
+	schemaCalls              int
 }
 
 func (c *countingClient) GetProviderSchema(_ context.Context, _ *tfplugin6.GetProviderSchema_Request, _ ...grpc.CallOption) (*tfplugin6.GetProviderSchema_Response, error) {

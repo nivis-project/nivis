@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package graph builds the executor's dependency DAG from an ingested IR and
 // resolves the references the executor can resolve itself (TF->TF). It is pure:
 // no provider contact, no I/O.

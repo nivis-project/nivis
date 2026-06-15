@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package phase drives resolution to a fixpoint across N phases (DESIGN D3, the
 // thesis). Each phase: re-evaluate Nix with the accumulated outputs ledger,
 // ingest the resulting IR, apply the resources that are now fully known, and
@@ -20,8 +23,8 @@ import (
 	"github.com/wearetechnative/nixform/internal/ir"
 	"github.com/wearetechnative/nixform/internal/ledger"
 	"github.com/wearetechnative/nixform/internal/plan"
-	"github.com/wearetechnative/nixform/internal/state"
 	"github.com/wearetechnative/nixform/internal/provider"
+	"github.com/wearetechnative/nixform/internal/state"
 )
 
 // ProviderManager spawns/pools provider clients by identity. internal/plugin's

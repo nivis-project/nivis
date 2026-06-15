@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 package registry
 
 import (
@@ -13,9 +16,9 @@ import (
 
 func TestParseAddress(t *testing.T) {
 	cases := []struct {
-		in              string
-		host, ns, name  string
-		wantErr         bool
+		in             string
+		host, ns, name string
+		wantErr        bool
 	}{
 		{"hashicorp/aws", DefaultHost, "hashicorp", "aws", false},
 		{"hetznercloud/hcloud", DefaultHost, "hetznercloud", "hcloud", false},

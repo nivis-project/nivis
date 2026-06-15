@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package refresh reconciles stored state with the provider's view via the
 // provider's read operation. It does not plan or apply. Version-neutral.
 package refresh

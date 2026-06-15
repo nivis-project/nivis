@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 package phase_test
 
 import (
@@ -9,8 +12,8 @@ import (
 	"github.com/wearetechnative/nixform/internal/ledger"
 	"github.com/wearetechnative/nixform/internal/phase"
 	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/state"
 	"github.com/wearetechnative/nixform/internal/provider"
+	"github.com/wearetechnative/nixform/internal/state"
 )
 
 // TestRealNixRoundTrip is the headline mechanism end-to-end: the REAL Nix flake
@@ -19,10 +22,11 @@ import (
 // round trip the project exists to prove (DESIGN D3 / docs/TESTING.md).
 //
 // It exercises the full example topology:
-//   A (alpha)              -> A.value
-//   B (beta) from=rec-+A.value          (__derived on A.value)
-//   C (alpha) label=B.endpoint::A.value (__derived on both)
-//   systemConfig consumer reads from BOTH providers.
+//
+//	A (alpha)              -> A.value
+//	B (beta) from=rec-+A.value          (__derived on A.value)
+//	C (alpha) label=B.endpoint::A.value (__derived on both)
+//	systemConfig consumer reads from BOTH providers.
 func TestRealNixRoundTrip(t *testing.T) {
 	if _, err := exec.LookPath("nix"); err != nil {
 		t.Skip("nix not on PATH")
@@ -41,10 +45,10 @@ func TestRealNixRoundTrip(t *testing.T) {
 	st, _ := state.Open(filepath.Join(t.TempDir(), "state.json"))
 
 	d := &phase.Driver{
-		Eval:    phase.NixEval{FlakeRef: ".", Attr: "nixform.plan", WorkDir: root},
-		Manager: relativeManager{mgr: mgr, root: root},
-		Store:   st,
-		Ledger:  ledger.New(),
+		Eval:      phase.NixEval{FlakeRef: ".", Attr: "nixform.plan", WorkDir: root},
+		Manager:   relativeManager{mgr: mgr, root: root},
+		Store:     st,
+		Ledger:    ledger.New(),
 		MaxPhases: 10,
 	}
 

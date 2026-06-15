@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package ir defines the nixform JSON IR (docs/IR-CONTRACT.md) and the
 // executor's in-memory model: typed resource nodes, provider configs, meta-args,
 // and the reference edge list. It ingests and validates IR before the executor

@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package state is the executor's state backend. For the PoC it is a trivial
 // lockable local JSON file (DESIGN: keep state trivial until the round trip
 // works; no tfstate-format compatibility). The Store interface is the seam a

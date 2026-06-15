@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package destroy tears down applied resources in reverse dependency order via
 // the provider's destroy operation, then removes them from the state store.
 // Version-neutral (provider.Client).

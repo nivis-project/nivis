@@ -94,6 +94,15 @@ python3 tests/ir-conformance/check.py test   # IR schema/referential conformance
 The milestone exit test is `tests/e2e` (`TestHeadlineRoundTrip`): two providers,
 unknowns on both sides, ≥3 phases to fixpoint, a Nix consumer reading both.
 
+## License
+
+nixform's own code is **Apache-2.0** (`LICENSE`). It is free to use commercially.
+The vendored Terraform-protocol files (`proto/tfplugin{5,6}.proto` and the
+generated `internal/tfplugin{5,6}` stubs) and some HashiCorp/IBM dependencies are
+**MPL-2.0**, which also permits commercial use. There is **no BUSL** (the
+source-available license that triggered the OpenTofu fork) anywhere in this
+project. See `LICENSING.md` for the full breakdown and `NOTICE` for attributions.
+
 ---
 
 This repository was built autonomously following a spec-driven process: see

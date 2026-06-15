@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package plan runs the provider plan operation for a ready resource and renders
 // a human-readable plan. It has no side effects. It depends on the
 // version-neutral provider.Client, not a specific protocol.

@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package plugin spawns provider binaries and speaks the Terraform plugin
 // protocol (tfprotov6 over go-plugin/gRPC) to them as a client. We spawn
 // unmodified provider binaries and talk the protocol; we do not link provider
@@ -32,7 +35,9 @@ var handshake = goplugin.HandshakeConfig{
 // v6Plugin / v5Plugin are the client halves of the go-plugin GRPCPlugin
 // interface for each protocol version: GRPCClient returns the matching generated
 // provider client over the dialed connection.
-type v6Plugin struct{ goplugin.NetRPCUnsupportedPlugin }
+type v6Plugin struct {
+	goplugin.NetRPCUnsupportedPlugin
+}
 
 func (v6Plugin) GRPCServer(*goplugin.GRPCBroker, *grpc.Server) error {
 	return fmt.Errorf("nixform is a plugin client, not a server")
@@ -41,7 +46,9 @@ func (v6Plugin) GRPCClient(_ context.Context, _ *goplugin.GRPCBroker, c *grpc.Cl
 	return tfplugin6.NewProviderClient(c), nil
 }
 
-type v5Plugin struct{ goplugin.NetRPCUnsupportedPlugin }
+type v5Plugin struct {
+	goplugin.NetRPCUnsupportedPlugin
+}
 
 func (v5Plugin) GRPCServer(*goplugin.GRPCBroker, *grpc.Server) error {
 	return fmt.Errorf("nixform is a plugin client, not a server")
@@ -59,7 +66,7 @@ var versionedPlugins = map[int]goplugin.PluginSet{
 
 // Manager spawns and pools provider processes, keyed by provider identity.
 type Manager struct {
-	mu      sync.Mutex
+	mu       sync.Mutex
 	clients  map[string]*entry
 	resolver Resolver
 }

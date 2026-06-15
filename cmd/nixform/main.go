@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Command nixform is the executor CLI: plan/apply/destroy/refresh/state over a
 // Nix flake that exposes nixform.plan. Pure orchestration; providers are spawned
 // from the IR's provider source paths.
@@ -15,8 +18,8 @@ import (
 	"github.com/wearetechnative/nixform/internal/ledger"
 	"github.com/wearetechnative/nixform/internal/phase"
 	"github.com/wearetechnative/nixform/internal/plugin"
-	"github.com/wearetechnative/nixform/internal/registry"
 	"github.com/wearetechnative/nixform/internal/refresh"
+	"github.com/wearetechnative/nixform/internal/registry"
 	"github.com/wearetechnative/nixform/internal/state"
 )
 

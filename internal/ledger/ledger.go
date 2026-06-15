@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package ledger is the outputs ledger the phased-eval loop accumulates and
 // injects into each Nix re-evaluation (docs/IR-CONTRACT.md "Outputs ledger").
 // It is the carrier of apply-time provider outputs back into Nix.

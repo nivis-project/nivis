@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Package fakeprovider provides the shared tfprotov6 plumbing for nixform's
 // in-repo fake providers (DESIGN D6). Concrete providers (provider-alpha,
 // provider-beta) declare a small set of Resources and serve via tf6server;

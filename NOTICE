@@ -1,0 +1,53 @@
+nixform
+Copyright 2026 WeareTechnative B.V. and the nixform authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes and/or depends on third-party software under their own
+licenses, as documented below. All such licenses are OSI-approved open-source
+licenses that permit commercial use at no charge. None of them is the Business
+Source License (BUSL) or any other source-available/commercial-restricted
+license. See LICENSING.md for the full discussion.
+
+================================================================================
+Vendored protocol definitions (in this repository)
+================================================================================
+
+The following files are copies of, or generated from, the Terraform plugin RPC
+protocol definition, licensed under the Mozilla Public License 2.0
+(SPDX: MPL-2.0), Copyright IBM Corp.:
+
+  proto/tfplugin5.proto                     (verbatim, go_package adjusted)
+  proto/tfplugin6.proto                     (verbatim, go_package adjusted)
+  internal/tfplugin5/tfplugin5.pb.go        (generated from the above .proto)
+  internal/tfplugin5/tfplugin5_grpc.pb.go   (generated from the above .proto)
+  internal/tfplugin6/tfplugin6.pb.go        (generated from the above .proto)
+  internal/tfplugin6/tfplugin6_grpc.pb.go   (generated from the above .proto)
+
+These retain their MPL-2.0 headers. The .proto files themselves instruct
+downstream implementers to copy the definition and generate stubs. MPL-2.0 is
+file-level copyleft: these files remain under MPL-2.0, which imposes no
+restriction on commercial use and does not affect the license of the rest of
+this project's source.
+
+================================================================================
+Go module dependencies under MPL-2.0
+================================================================================
+
+  github.com/hashicorp/go-plugin                 v1.7.0
+  github.com/hashicorp/go-uuid                    v1.0.3
+  github.com/hashicorp/terraform-plugin-go        v0.31.0
+  github.com/hashicorp/terraform-plugin-log       v0.10.0
+  github.com/hashicorp/terraform-registry-address v0.4.0
+  github.com/hashicorp/terraform-svchost          v0.1.1
+  github.com/hashicorp/yamux                      v0.1.2
+
+================================================================================
+Go module dependencies under permissive licenses (Apache-2.0 / MIT / BSD)
+================================================================================
+
+Includes (non-exhaustive): google.golang.org/grpc, google.golang.org/protobuf,
+go.opentelemetry.io/otel, github.com/spf13/cobra, github.com/spf13/pflag,
+github.com/hashicorp/go-hclog, github.com/vmihailenco/msgpack, golang.org/x/*,
+and their transitive dependencies. Run `go mod download` and inspect each
+module's LICENSE for full terms.

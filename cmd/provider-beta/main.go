@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 // Command provider-beta is a fake tfprotov6 provider exposing the beta_record
 // resource. It is hermetic and deterministic (DESIGN D6); see docs/TESTING.md.
 package main

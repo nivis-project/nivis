@@ -1,3 +1,6 @@
+// Copyright 2026 WeareTechnative B.V. and the nixform authors
+// SPDX-License-Identifier: Apache-2.0
+
 package graph
 
 import (
@@ -5,7 +8,8 @@ import (
 )
 
 // Outputs maps a resource id to its known output attributes.
-//   outputs["alpha.alpha_token.A"]["value"] = "x"
+//
+//	outputs["alpha.alpha_token.A"]["value"] = "x"
 type Outputs map[string]map[string]interface{}
 
 // ResolveResult reports, after a resolution pass, which resources became fully
