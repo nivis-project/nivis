@@ -125,7 +125,9 @@ These are versioned interfaces — change the spec before the shape:
 
 A branded [mdBook](https://rust-lang.github.io/mdBook/) site lives in
 `docs-site/`; it reuses these Markdown docs (one source of truth) and applies the
-brand theme (`docs/BRAND.md`). Build it with:
+brand theme (`docs/BRAND.md`). It is published to GitHub Pages at
+**<https://wearetechnative.github.io/terrae-nivis/>** (deployed by
+`.github/workflows/docs.yml` on every push to `main`). Build it locally with:
 
 ```sh
 cargo install mdbook        # if you don't have it (single static binary)

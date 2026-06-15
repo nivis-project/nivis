@@ -1,0 +1,68 @@
+# Build the mdBook docs site (docs-site/) and deploy it to GitHub Pages.
+# Pages source must be set to "GitHub Actions" (Settings → Pages, or the API).
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs-site/**"
+      - "docs/**"
+      - "DESIGN.md"
+      - "ROADMAP.md"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Least privilege: read the repo, write the Pages deployment, mint the OIDC token
+# deploy-pages uses.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deployments at once; let an in-progress run finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  MDBOOK_VERSION: "0.4.52"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the mdbook binary
+        id: cache-mdbook
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/mdbook
+          key: mdbook-${{ runner.os }}-${{ env.MDBOOK_VERSION }}
+
+      - name: Install mdbook
+        if: steps.cache-mdbook.outputs.cache-hit != 'true'
+        run: cargo install mdbook --version "${MDBOOK_VERSION}" --locked
+
+      - name: Build the site
+        run: mdbook build docs-site
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/book
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

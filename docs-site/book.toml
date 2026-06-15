@@ -7,6 +7,8 @@ src = "src"
 
 [output.html]
 # Brand theme lives in ./theme (custom.css/head.hbs override the defaults).
+# Served as a GitHub Pages project page under the /terrae-nivis/ subpath.
+site-url = "/terrae-nivis/"
 default-theme = "navy"
 preferred-dark-theme = "navy"
 no-section-label = false
