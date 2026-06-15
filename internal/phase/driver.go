@@ -125,6 +125,82 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 	return nil, fmt.Errorf("phase loop exceeded %d phases without reaching fixpoint", maxPhases)
 }
 
+// PlanItem is one resource's planned operation, for `tn plan`.
+type PlanItem struct {
+	ID   string
+	Type string
+	Op   plan.Op
+}
+
+// PlanReport evaluates the configuration once with the stored outputs injected
+// and reports each resource's operation (create / update / replace / no-op)
+// without applying. Resources already in state are planned against their prior
+// state via the provider (so an unchanged resource reports no-op); resources not
+// in state are reported as creates. It is side-effect free.
+func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
+	if d.Ledger == nil {
+		d.Ledger = ledger.New()
+	}
+	// Seed the ledger from stored state so refs to already-applied resources
+	// resolve (a re-plan of an applied graph is then fully known).
+	if stored, err := d.Store.List(); err == nil {
+		for _, rs := range stored {
+			d.Ledger.Append(rs.ID, rs.Attrs)
+		}
+	}
+	irJSON, err := d.Eval.Eval(ctx, d.Ledger)
+	if err != nil {
+		return nil, err
+	}
+	g, err := ir.IngestIR(irJSON)
+	if err != nil {
+		return nil, err
+	}
+	res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
+	resolvable := map[string]bool{}
+	for _, id := range res.FullyKnown {
+		resolvable[id] = true
+	}
+
+	var items []PlanItem
+	for _, id := range g.Order {
+		node := g.Nodes[id]
+		item := PlanItem{ID: id, Type: node.Resource.Type, Op: plan.OpCreate}
+
+		stored, found, err := d.Store.Get(id)
+		if err != nil {
+			return nil, err
+		}
+		// Only plan against the provider when the resource is in state AND its
+		// config is fully resolvable now; otherwise it's a create (or an
+		// as-yet-unresolvable future phase, which we report as a create).
+		if found && resolvable[id] {
+			prov, ok := g.Providers[node.Resource.Provider]
+			if !ok {
+				return nil, fmt.Errorf("provider %q not declared", node.Resource.Provider)
+			}
+			client, err := d.Manager.Client(node.Resource.Provider, prov.Source, prov.Config)
+			if err != nil {
+				return nil, fmt.Errorf("provider client: %w", err)
+			}
+			rs, err := plan.SchemaFor(ctx, client, node.Resource.Type)
+			if err != nil {
+				return nil, err
+			}
+			pr, err := plan.Plan(ctx, client, rs, node, res.Configs[id], stored.Attrs)
+			if err != nil {
+				return nil, err
+			}
+			item.Op = pr.Op
+		} else if found {
+			// In state but not resolvable this pass — treat as an update pending.
+			item.Op = plan.OpUpdate
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
 // applyOne fetches the resource's schema, reads any prior state, plans against
 // it (encoding unresolved refs as unknown), and applies the implied operation:
 // create (no prior), update in place, or replace (destroy the prior resource
@@ -157,6 +233,11 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	}
 
 	switch pr.Op {
+	case plan.OpNoop:
+		// Nothing changed: don't touch the provider. Keep the stored state and
+		// surface the prior attributes as this resource's outputs so dependents
+		// still resolve.
+		return prior, nil
 	case plan.OpReplace:
 		// Refuse if the prior resource is protected; otherwise destroy it first so
 		// nothing is orphaned, then create the new one (prior=nil => create).

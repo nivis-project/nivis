@@ -192,3 +192,14 @@ func goToValue(t tftypes.Type, raw interface{}) (tftypes.Value, error) {
 func valueToGo(v tftypes.Value) (interface{}, bool, error) {
 	return tfcodec.ValueToGo(v)
 }
+
+// attrsEqual compares two decoded attr maps (for no-op detection).
+func attrsEqual(a, b map[string]interface{}) bool {
+	return tfcodec.AttrsEqual(a, b)
+}
+
+// knownAttrsMatchPrior reports a no-op: known planned attrs equal prior (unknown
+// computed attrs ignored).
+func knownAttrsMatchPrior(planned, prior map[string]interface{}, unknown []string) bool {
+	return tfcodec.KnownAttrsMatchPrior(planned, prior, unknown)
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/wearetechnative/terrae-nivis/internal/ir"
 	"github.com/wearetechnative/terrae-nivis/internal/ledger"
 	"github.com/wearetechnative/terrae-nivis/internal/phase"
+	"github.com/wearetechnative/terrae-nivis/internal/plan"
 	"github.com/wearetechnative/terrae-nivis/internal/plugin"
 	"github.com/wearetechnative/terrae-nivis/internal/refresh"
 	"github.com/wearetechnative/terrae-nivis/internal/registry"
@@ -99,28 +100,41 @@ func planCmd() *cobra.Command {
 		Use:   "plan",
 		Short: "Evaluate the configuration and show what would be applied",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// A dry phase-0 ingest + report. We mark each resource create (+) or
-			// change (~) by whether it already exists in state; the precise
-			// update-vs-replace decision is made per-resource during apply (the
-			// phase loop plans against prior state and the provider's schema).
-			g, err := phase0Graph(cmd.Context())
+			// Plan each resource against its prior state via the provider, so an
+			// unchanged resource reports no change (not a blanket "~").
+			store, err := openStore()
 			if err != nil {
 				return err
 			}
-			st, err := openStore()
+			mgr := newManager()
+			defer mgr.Close()
+			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: ledger.New()}
+
+			items, err := d.PlanReport(cmd.Context())
 			if err != nil {
 				return err
 			}
-			for _, id := range g.Order {
+			changes := 0
+			for _, it := range items {
 				marker := "+"
-				if _, found, err := st.Get(id); err != nil {
-					return err
-				} else if found {
+				switch it.Op {
+				case plan.OpNoop:
+					marker = "="
+				case plan.OpUpdate:
 					marker = "~"
+				case plan.OpReplace:
+					marker = "-/+"
 				}
-				fmt.Printf("%s %s (%s)\n", marker, id, g.Nodes[id].Resource.Type)
+				if it.Op != plan.OpNoop {
+					changes++
+				}
+				fmt.Printf("%s %s (%s)\n", marker, it.ID, it.Type)
 			}
-			fmt.Printf("\n%d resource(s) to resolve across phases (+ create, ~ change). Run `tn apply`.\n", len(g.Order))
+			if changes == 0 {
+				fmt.Printf("\nNo changes. %d resource(s) up to date.\n", len(items))
+			} else {
+				fmt.Printf("\n%d change(s) across %d resource(s) (+ create, ~ update, -/+ replace, = no change). Run `tn apply`.\n", changes, len(items))
+			}
 			return nil
 		},
 	}

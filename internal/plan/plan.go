@@ -26,6 +26,8 @@ const (
 	// OpReplace: the resource exists but a force-new attribute changed, so it
 	// must be destroyed and recreated.
 	OpReplace
+	// OpNoop: the resource exists and nothing changed — nothing to do.
+	OpNoop
 )
 
 // Result is the outcome of planning one resource.
@@ -65,6 +67,8 @@ func Plan(ctx context.Context, client provider.Client, rs provider.ResourceSchem
 		op = OpCreate
 	case pr.RequiresReplace:
 		op = OpReplace
+	case pr.NoOp:
+		op = OpNoop
 	default:
 		op = OpUpdate
 	}
@@ -83,6 +87,8 @@ func renderPlan(id string, op Op, unknown []string) string {
 		fmt.Fprintf(&b, "%s will be updated in place", id)
 	case OpReplace:
 		fmt.Fprintf(&b, "%s will be replaced (destroy and re-create)", id)
+	case OpNoop:
+		fmt.Fprintf(&b, "%s is up to date (no change)", id)
 	default:
 		fmt.Fprintf(&b, "%s will be created", id)
 	}

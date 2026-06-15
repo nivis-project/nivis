@@ -12,9 +12,42 @@ package tfcodec
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
+
+// AttrsEqual reports whether two decoded attribute maps are value-equal. Both are
+// produced by ValueToGo from the same object type, so numbers are *big.Float and
+// nested values are []interface{} / map[string]interface{}; reflect.DeepEqual
+// compares them faithfully (big.Float compared by its fields, which is exact for
+// values that round-tripped through the same codec). Used to detect a no-op plan
+// (planned state equals prior state).
+func AttrsEqual(a, b map[string]interface{}) bool {
+	return reflect.DeepEqual(a, b)
+}
+
+// KnownAttrsMatchPrior reports whether a planned state is a no-op against prior:
+// every attribute whose planned value is KNOWN equals the prior value. Attributes
+// listed in `unknown` (computed-after-apply, which the provider re-marks unknown
+// on a re-plan of an unchanged resource — arn, etag, version_id, …) are skipped,
+// since the provider keeps their prior values when nothing changed. An attribute
+// that is known in the plan but differs from prior means a real change.
+func KnownAttrsMatchPrior(planned, prior map[string]interface{}, unknown []string) bool {
+	unk := make(map[string]bool, len(unknown))
+	for _, u := range unknown {
+		unk[u] = true
+	}
+	for k, pv := range planned {
+		if unk[k] {
+			continue // value is unknown-after-apply; not a change signal
+		}
+		if !reflect.DeepEqual(pv, prior[k]) {
+			return false
+		}
+	}
+	return true
+}
 
 // GoToValue converts a decoded-JSON Go value to a tftypes.Value of the given
 // type: scalars (string/number/bool), collections (list/set/tuple from a

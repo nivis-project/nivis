@@ -16,6 +16,7 @@ import (
 // state it was sent and returns a configurable RequiresReplace.
 type stubClient struct {
 	requiresReplace bool
+	noop            bool
 	gotPrior        map[string]interface{}
 }
 
@@ -26,7 +27,7 @@ func (s *stubClient) GetSchema(context.Context, string) (provider.ResourceSchema
 }
 func (s *stubClient) Plan(_ context.Context, req provider.PlanRequest) (provider.PlanResult, error) {
 	s.gotPrior = req.Prior
-	return provider.PlanResult{PlannedState: "planned", RequiresReplace: s.requiresReplace}, nil
+	return provider.PlanResult{PlannedState: "planned", RequiresReplace: s.requiresReplace, NoOp: s.noop}, nil
 }
 func (s *stubClient) Apply(context.Context, provider.ApplyRequest) (provider.ApplyResult, error) {
 	return provider.ApplyResult{}, nil
@@ -86,6 +87,19 @@ func TestPlanOpReplaceWhenPriorAndReplace(t *testing.T) {
 	}
 }
 
+// Prior state + the backend reports NoOp => OpNoop (nothing to do).
+func TestPlanOpNoopWhenPriorAndNoChange(t *testing.T) {
+	c := &stubClient{noop: true}
+	prior := map[string]interface{}{"id": "existing"}
+	res, err := Plan(context.Background(), c, provider.ResourceSchema{}, planNode(), map[string]interface{}{}, prior)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Op != OpNoop {
+		t.Errorf("Op = %v, want OpNoop", res.Op)
+	}
+}
+
 // RequiresReplace is meaningless for a create (no prior): it must not flip the op.
 func TestPlanReplaceIgnoredWithoutPrior(t *testing.T) {
 	c := &stubClient{requiresReplace: true}
@@ -107,6 +121,7 @@ func TestRenderPlanWording(t *testing.T) {
 		{OpCreate, "will be created"},
 		{OpUpdate, "will be updated in place"},
 		{OpReplace, "will be replaced (destroy and re-create)"},
+		{OpNoop, "is up to date (no change)"},
 	}
 	for _, tc := range cases {
 		got := renderPlan("p.t.n", tc.op, nil)

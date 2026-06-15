@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/terrae-nivis/internal/tfcodec"
 	"github.com/wearetechnative/terrae-nivis/internal/tfplugin6"
 	"github.com/wearetechnative/terrae-nivis/internal/tfvalue"
 )
@@ -166,10 +167,20 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 		return provider.PlanResult{}, err
 	}
 	requiresReplace := req.Prior != nil && len(resp.GetRequiresReplace()) > 0
+	// No-op: prior exists, no replace, and every KNOWN planned attr equals prior
+	// (computed attrs re-marked unknown-after-apply are ignored — see v5).
+	noop := false
+	if req.Prior != nil && !requiresReplace {
+		planned, derr := tfvalue.DecodeState(raw.objType, resp.GetPlannedState())
+		if derr == nil {
+			noop = tfcodec.KnownAttrsMatchPrior(planned, req.Prior, unknown)
+		}
+	}
 	return provider.PlanResult{
 		PlannedState:      resp.GetPlannedState(),
 		UnknownAfterApply: unknown,
 		RequiresReplace:   requiresReplace,
+		NoOp:              noop,
 		Diagnostics:       diags,
 	}, nil
 }

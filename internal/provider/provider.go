@@ -67,7 +67,11 @@ type PlanResult struct {
 	// recreating the resource (a force-new attribute changed) rather than an
 	// in-place update. Always false for a create (nil prior state).
 	RequiresReplace bool
-	Diagnostics     []Diagnostic
+	// NoOp is true when there is prior state and the planned state equals it with
+	// nothing unknown and no replace — i.e. nothing to do. The executor skips
+	// ApplyResourceChange for a no-op. Always false for a create.
+	NoOp        bool
+	Diagnostics []Diagnostic
 }
 
 // ApplyRequest / ApplyResult: apply one planned resource.

@@ -160,10 +160,26 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	// A replace is only meaningful when there was a prior resource; for a create
 	// the provider may still report paths, which we ignore.
 	requiresReplace := req.Prior != nil && len(resp.GetRequiresReplace()) > 0
+	// No-op: prior state exists, nothing is unknown-after-apply, no replace, and
+	// the planned state decodes equal to the prior state — nothing to do.
+	// No-op when there is prior state, no replacement, and every attribute whose
+	// planned value is KNOWN equals the prior value. Computed attributes the
+	// provider re-marks unknown-after-apply on a re-plan (arn, etag, …) are
+	// ignored: for an unchanged resource the provider keeps the prior value for
+	// them, so an apply would be a churn-free no change. (We can't gate on
+	// len(unknown)==0 — real resources always have computed attrs.)
+	noop := false
+	if req.Prior != nil && !requiresReplace {
+		planned, derr := decodeState(raw.objType, resp.GetPlannedState())
+		if derr == nil {
+			noop = knownAttrsMatchPrior(planned, req.Prior, unknown)
+		}
+	}
 	return provider.PlanResult{
 		PlannedState:      resp.GetPlannedState(),
 		UnknownAfterApply: unknown,
 		RequiresReplace:   requiresReplace,
+		NoOp:              noop,
 		Diagnostics:       diags,
 	}, nil
 }

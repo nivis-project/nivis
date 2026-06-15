@@ -19,8 +19,10 @@ import (
 // configurable; Apply echoes a deterministic new attr so we can see state move.
 type recordClient struct {
 	requiresReplace bool
+	noop            bool
 
 	planPrior    map[string]interface{}
+	applyCalls   int
 	applyPrior   map[string]interface{}
 	destroyCalls int
 	destroyAttrs map[string]interface{}
@@ -33,9 +35,14 @@ func (c *recordClient) GetSchema(context.Context, string) (provider.ResourceSche
 }
 func (c *recordClient) Plan(_ context.Context, req provider.PlanRequest) (provider.PlanResult, error) {
 	c.planPrior = req.Prior
-	return provider.PlanResult{PlannedState: "planned", RequiresReplace: req.Prior != nil && c.requiresReplace}, nil
+	return provider.PlanResult{
+		PlannedState:    "planned",
+		RequiresReplace: req.Prior != nil && c.requiresReplace,
+		NoOp:            req.Prior != nil && c.noop,
+	}, nil
 }
 func (c *recordClient) Apply(_ context.Context, req provider.ApplyRequest) (provider.ApplyResult, error) {
+	c.applyCalls++
 	c.applyPrior = req.Prior
 	return provider.ApplyResult{Attrs: map[string]interface{}{"id": "new"}}, nil
 }
@@ -137,6 +144,32 @@ func TestApplyOneReplaceDestroysThenCreates(t *testing.T) {
 	}
 	if attrs["id"] != "new" {
 		t.Errorf("state should reflect the new resource; got %v", attrs)
+	}
+}
+
+// Prior in state + the provider reports a no-op: applyOne touches neither Apply
+// nor Destroy, and surfaces the prior attributes as the outputs (so dependents
+// resolve). This is the beans-l2q2 fix: a re-apply of an unchanged resource.
+func TestApplyOneNoopSkipsApply(t *testing.T) {
+	c := &recordClient{noop: true}
+	d := newReplaceDriver(t, c)
+	g, node := replaceGraphNode(nil)
+	if err := d.Store.Set(state.ResourceState{ID: node.Resource.ID, Type: node.Resource.Type, Attrs: map[string]interface{}{"id": "old"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	outs, err := d.applyOne(context.Background(), g, node, map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.applyCalls != 0 {
+		t.Errorf("no-op must not call Apply; applyCalls=%d", c.applyCalls)
+	}
+	if c.destroyCalls != 0 {
+		t.Errorf("no-op must not call Destroy; destroyCalls=%d", c.destroyCalls)
+	}
+	if outs["id"] != "old" {
+		t.Errorf("no-op must surface the prior attrs as outputs; got %v", outs)
 	}
 }
 
