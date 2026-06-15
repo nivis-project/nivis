@@ -118,3 +118,24 @@ drives them exactly as it would a real provider.
 offline — essential given the restricted network, and the right substrate for
 the headline e2e. Real-provider runs are low conceptual risk and network-gated;
 they are out of scope for the PoC and tracked as a separate bean.
+
+## D7. Flake apps use nixpkgs; the library stays input-free
+
+**Decision.** The flake exposes `packages`/`apps` for the `tn` and `tn-gen` CLIs,
+built with nixpkgs `buildGoModule` (Go toolchain from a pinned `nixpkgs` input,
+module deps pinned by a committed `vendorHash`). The library outputs (`lib`,
+`terraeNivis.*`) remain **pure builtins** and do **not** depend on the nixpkgs
+input — evaluating them imports nothing from nixpkgs.
+
+**Why.** Originally the flake took no inputs at all, so the library evaluated
+without the binary cache (the configuration frontend must be cheap to evaluate
+every phase, and the cache was unreachable). A *runnable* CLI needs a real Go
+toolchain, which means nixpkgs. The refinement keeps the property that actually
+matters — **the configuration-frontend outputs never force nixpkgs** — while
+letting `nix run .#tn` build the executor from source. The two concerns are kept
+separate in `flake.nix`: only `packages`/`apps` touch nixpkgs.
+
+**Rejected.** flake-utils (replaced by a few lines of Nix that enumerate
+systems); a committed `vendor/` directory (a one-line `vendorHash` keeps the repo
+lean). Keeping the CLIs go-build-only was the prior state; `nix run` is strictly
+additive — `go build`/`go run` still work unchanged.

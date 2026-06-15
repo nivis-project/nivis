@@ -65,6 +65,12 @@ go run ./cmd/tn-gen -- --provider ./bin/provider-alpha --out ./generated
 cat ./generated/alpha/alpha_token.nix
 ```
 
+Prefer Nix? The flake builds the CLIs too — `nix run .#tn -- plan`,
+`nix run .#tn -- apply`, `nix run .#tn-gen -- --provider … --out …` (and
+`nix build .#tn`). These use a real Go toolchain from the pinned `nixpkgs`; the
+library outputs (`lib`, `terraeNivis.*`) stay pure-builtins and don't depend on
+it.
+
 See `docs/GETTING-STARTED.md` for a guided walkthrough.
 
 ## Real providers (AWS)

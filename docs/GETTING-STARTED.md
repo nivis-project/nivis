@@ -17,6 +17,11 @@ hermetic test substrate. Their outputs are a deterministic function of inputs (a
 per-process counter seeded by `TERRAE_NIVIS_FAKE_COUNTER`, default 0), so every run is
 reproducible.
 
+> Prefer Nix? The flake builds the CLIs from source: `nix run .#tn -- …` and
+> `nix run .#tn-gen -- …` (or `nix build .#tn`). Everywhere below, `./bin/tn` can
+> be read as `nix run .#tn --`. You still build the fake providers with `go build`
+> (they aren't packaged as apps).
+
 ## 2. The example configuration
 
 The flake's `terraeNivis.plan` (in `nix/example/`) describes three resources and a
