@@ -7,7 +7,7 @@ priority: high
 tags:
     - critical-path
 created_at: 2026-06-15T09:02:40Z
-updated_at: 2026-06-15T09:48:47Z
+updated_at: 2026-06-15T14:22:06Z
 parent: nixform2-hj4w
 blocked_by:
     - nixform2-znh8
@@ -40,3 +40,12 @@ Tests: `go test ./...` + `go vet ./...` pass; `go build ./cmd/...` -> binaries
 that correctly require the go-plugin handshake. IR conformance suite still 7/7.
 The exact output derivations here are the contract the E4b headline e2e asserts.
 Unblocks E3 (executor drives these providers).
+
+
+
+## Update (M2 / collections)
+Added provider-delta (internal/fakeproviderx) — a rich-typed fake with map/list
+inputs and list(string)/object computed outputs — and an integration test
+proving collections + nested objects round-trip through the real
+encode->provider->decode pipeline (OpenSpec rich-fake-provider). De-risks the
+real AWS plan hermetically.
