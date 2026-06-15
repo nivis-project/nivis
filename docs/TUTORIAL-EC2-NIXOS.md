@@ -79,25 +79,147 @@ exactly this, ready to run.)
 
 ## Part 2 — The Nivis pipeline
 
-The example `nix/example/ec2.nix` (flake attr `nivis.ec2`) expresses the whole
-AWS side. Its resources, and how they wire together:
+Here is the whole AWS side — a function of the built image and the outputs
+ledger, returning the IR. It's the contents of this repo's `nix/example/ec2.nix`
+(exposed as the flake attr `nivis.ec2`); drop it in your own repo and import it as
+shown in Part 1, or inline it.
 
-- **`aws_iam_role` + `aws_iam_policy` + attachment** — the `vmimport` role AWS
-  requires to import a disk image (trust `vmie.amazonaws.com`; S3-read + EBS
-  import permissions).
-- **`aws_s3_bucket` + `aws_s3_object`** — upload the `.vhd`.
-- **`aws_ebs_snapshot_import`** — turn the S3 `.vhd` into an EBS snapshot
-  (`role_name` = the vmimport role; `disk_container.user_bucket` = the upload).
-- **`aws_ami`** — register the snapshot as a bootable AMI (`ebs_block_device`
-  with the snapshot id).
-- **`aws_security_group`** — ingress on port 80.
-- **`aws_instance`** — launch the AMI (`t3.micro`, the SG attached).
+```nix
+{
+  nivis,        # the Nivis library (mkResource / mkProvider / toIR)
+  nixosImage,   # the NixOS amazon image derivation from Part 1
+}:
+ledger:
+let
+  inherit (nivis) mkResource mkProvider toIR;
 
-The `aws_s3_object`'s `source` is the built image's `.vhd` path (Part 1) — the OS
-crossing into the infra. Each later step references the previous one's output (a
-`__ref`), so Nivis resolves the chain across phases: the snapshot import waits on
-the upload, the AMI on the snapshot, the instance on the AMI. The only knob your
-flake sets is a unique `suffix` (for resource names).
+  suffix = (ledger.vars or { }).suffix or "demo";
+  bucketName = "nivis-ec2nix-${suffix}";
+
+  # The OS crossing into the infra: the .vhd is a FILE inside the image's store
+  # output. filePath is relative; the absolute path is "${image}/${filePath}".
+  imgPath = "${nixosImage}/${nixosImage.passthru.filePath}";
+
+  # --- the vmimport service role AWS requires to import a disk image ---------
+  role = mkResource {
+    provider = "aws"; type = "aws_iam_role"; name = "vmimport";
+    config = {
+      name = "nivis-vmimport-${suffix}";
+      assume_role_policy = builtins.toJSON {
+        Version = "2012-10-17";
+        Statement = [{
+          Effect = "Allow";
+          Principal.Service = "vmie.amazonaws.com";
+          Action = "sts:AssumeRole";
+          Condition.StringEquals."sts:Externalid" = "vmimport";
+        }];
+      };
+    };
+  };
+
+  policy = mkResource {
+    provider = "aws"; type = "aws_iam_policy"; name = "vmimport";
+    config = {
+      name = "nivis-vmimport-${suffix}";
+      policy = builtins.toJSON {
+        Version = "2012-10-17";
+        Statement = [
+          {
+            Effect = "Allow";
+            Action = [ "s3:GetBucketLocation" "s3:GetObject" "s3:ListBucket" "s3:PutObject" "s3:GetBucketAcl" ];
+            Resource = [ "arn:aws:s3:::${bucketName}" "arn:aws:s3:::${bucketName}/*" ];
+          }
+          {
+            Effect = "Allow";
+            Action = [ "ec2:ModifySnapshotAttribute" "ec2:CopySnapshot" "ec2:RegisterImage" "ec2:Describe*" ];
+            Resource = "*";
+          }
+        ];
+      };
+    };
+  };
+
+  attach = mkResource {
+    provider = "aws"; type = "aws_iam_role_policy_attachment"; name = "vmimport";
+    config = { role = role.refAttr "name"; policy_arn = policy.refAttr "arn"; };
+  };
+
+  # --- upload the built .vhd to S3 ------------------------------------------
+  bucket = mkResource {
+    provider = "aws"; type = "aws_s3_bucket"; name = "image";
+    config = { bucket = bucketName; force_destroy = true; };
+  };
+
+  image = mkResource {
+    provider = "aws"; type = "aws_s3_object"; name = "image";
+    config = { bucket = bucket.refAttr "id"; key = "nixos.vhd"; source = imgPath; };
+  };
+
+  # --- S3 .vhd -> EBS snapshot ----------------------------------------------
+  # disk_container and user_bucket are LIST-nested blocks, so each is a
+  # one-element list (a bare attrset is rejected at apply).
+  snapshot = mkResource {
+    provider = "aws"; type = "aws_ebs_snapshot_import"; name = "nixos";
+    config = {
+      role_name = role.refAttr "name";
+      disk_container = [{
+        format = "VHD";
+        user_bucket = [{ s3_bucket = bucket.refAttr "id"; s3_key = "nixos.vhd"; }];
+      }];
+    };
+  };
+
+  # --- register the snapshot as a bootable AMI ------------------------------
+  ami = mkResource {
+    provider = "aws"; type = "aws_ami"; name = "nixos";
+    config = {
+      name = "nivis-ec2nix-${suffix}";
+      virtualization_type = "hvm";
+      root_device_name = "/dev/xvda";
+      ena_support = true;
+      ebs_block_device = [{ device_name = "/dev/xvda"; snapshot_id = snapshot.refAttr "id"; }];
+    };
+  };
+
+  # --- a security group opening port 80 -------------------------------------
+  sg = mkResource {
+    provider = "aws"; type = "aws_security_group"; name = "web";
+    config = {
+      name = "nivis-ec2nix-web-${suffix}";
+      description = "Nivis EC2+NixOS demo: allow HTTP";
+      ingress = [{ from_port = 80; to_port = 80; protocol = "tcp"; cidr_blocks = [ "0.0.0.0/0" ]; description = "http"; }];
+      egress  = [{ from_port = 0;  to_port = 0;  protocol = "-1";  cidr_blocks = [ "0.0.0.0/0" ]; description = "all";  }];
+    };
+  };
+
+  # --- launch the AMI -------------------------------------------------------
+  instance = mkResource {
+    provider = "aws"; type = "aws_instance"; name = "web";
+    config = {
+      ami = ami.refAttr "id";
+      instance_type = "t3.micro";
+      vpc_security_group_ids = [ (sg.refAttr "id") ];
+      tags = { Name = "nivis-ec2nix-${suffix}"; managed-by = "nivis"; };
+    };
+  };
+in
+toIR {
+  providers.aws = mkProvider {
+    source = "registry.opentofu.org/hashicorp/aws";
+    config = { region = "eu-central-1"; };
+  };
+  resources = [ role policy attach bucket image snapshot ami sg instance ];
+  inherit ledger;
+}
+```
+
+Reading the chain: `image`'s `source` is the built `.vhd` path (Part 1) — the OS
+crossing into the infra. Every later resource references the previous one's output
+with `refAttr` (a `__ref`), so Nivis resolves the chain across phases: the
+snapshot import waits on the upload, the AMI on the snapshot, the instance on the
+AMI. The IAM role + policy create the `vmimport` service role AWS requires for
+disk-image import. The only per-deployment knob is `suffix` (unique resource
+names).
 
 ## Part 3 — Build the image, then apply
 
