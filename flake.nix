@@ -1,22 +1,15 @@
 {
   description = "terrae nivis — Terraform/OpenTofu provider resources as first-class Nix values";
-
-  # nixpkgs is used ONLY to build the CLI packages/apps (a real Go toolchain via
-  # buildGoModule). The library outputs (`lib`, `terraeNivis.*`) are pure builtins
-  # and do not depend on this input — see DESIGN.md (they still evaluate without
-  # building anything from nixpkgs). No flake-utils: a few lines of Nix enumerate
-  # systems below.
   inputs.nixpkgs.url = "nixpkgs";
 
   outputs =
     { self, nixpkgs }:
     let
+
       # The pure library: builtins only, no nixpkgs. Evaluating `lib` /
       # `terraeNivis.*` never forces the nixpkgs input.
       terraeNivis = import ./nix/lib { };
 
-      # Inline replacement for flake-utils.eachDefaultSystem: map a thunk over a
-      # fixed list of systems, and a per-system nixpkgs.
       systems = [
         "x86_64-linux"
         "aarch64-linux"
