@@ -1,9 +1,6 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Command tn-gen generates typed Nix constructors from a provider's schema.
-// Spawn a provider, fetch its schema, emit <out>/<provider>/<type>.nix. The path
-// to "all providers with zero per-provider work" (DESIGN D2).
 package main
 
 import (
@@ -14,25 +11,28 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/wearetechnative/terrae-nivis/internal/gen"
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/gen"
+	"github.com/wearetechnative/nivis/internal/plugin"
 )
 
-func main() {
+// genCmd is `nivis gen`: generate typed Nix constructors from a provider's
+// schema. Spawn a provider, fetch its schema, emit <out>/<provider>/<type>.nix.
+// The path to "all providers with zero per-provider work" (DESIGN D2).
+func genCmd() *cobra.Command {
 	var (
 		providerPath string
 		identity     string
 		outDir       string
 	)
-	root := &cobra.Command{
-		Use:   "tn-gen",
+	cmd := &cobra.Command{
+		Use:   "gen",
 		Short: "Generate typed Nix constructors from a provider schema",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if providerPath == "" {
 				return fmt.Errorf("--provider is required")
 			}
 			if identity == "" {
-				identity = filepathBase(providerPath)
+				identity = providerIdentity(providerPath)
 			}
 			mgr := plugin.NewManager()
 			defer mgr.Close()
@@ -57,25 +57,21 @@ func main() {
 				if err := os.WriteFile(out, []byte(gen.Emit(identity, r)), 0o644); err != nil {
 					return err
 				}
-				fmt.Printf("wrote %s\n", out)
+				fmt.Fprintf(cmd.OutOrStdout(), "wrote %s\n", out)
 			}
-			fmt.Printf("generated %d resource constructor(s) for provider %q\n", len(resources), identity)
+			fmt.Fprintf(cmd.OutOrStdout(), "generated %d resource constructor(s) for provider %q\n", len(resources), identity)
 			return nil
 		},
 	}
-	root.Flags().StringVar(&providerPath, "provider", "", "path to the provider binary")
-	root.Flags().StringVar(&identity, "identity", "", "provider identity (default: binary basename)")
-	root.Flags().StringVar(&outDir, "out", "./generated", "output directory")
-
-	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
-	}
+	cmd.Flags().StringVar(&providerPath, "provider", "", "path to the provider binary")
+	cmd.Flags().StringVar(&identity, "identity", "", "provider identity (default: binary basename)")
+	cmd.Flags().StringVar(&outDir, "out", "./generated", "output directory")
+	return cmd
 }
 
-// filepathBase strips the directory and a leading "provider-" prefix so a binary
-// named "provider-alpha" yields identity "alpha".
-func filepathBase(p string) string {
+// providerIdentity strips the directory and a leading "provider-" prefix so a
+// binary named "provider-alpha" yields identity "alpha".
+func providerIdentity(p string) string {
 	b := filepath.Base(p)
 	const pfx = "provider-"
 	if len(b) > len(pfx) && b[:len(pfx)] == pfx {

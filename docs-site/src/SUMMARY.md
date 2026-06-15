@@ -1,6 +1,6 @@
 # Summary
 
-[Terrae Nivis](./index.md)
+[Nivis](./index.md)
 
 - [Install](./INSTALL.md)
 - [Getting started](./getting-started.md)

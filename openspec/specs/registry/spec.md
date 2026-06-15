@@ -1,7 +1,7 @@
 # Spec: registry
 
 ## Purpose
-The registry fetches real providers so terrae nivis can drive them by address instead
+The registry fetches real providers so Nivis can drive them by address instead
 of a hand-built binary path. It resolves a provider address against the OpenTofu
 registry, downloads the platform archive from its release host (GitHub), verifies
 it against the published SHA256SUMS before unpacking, and caches the executable.

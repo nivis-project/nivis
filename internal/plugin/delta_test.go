@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/provider"
 )
 
 // TestDeltaCollectionsRoundTrip drives the REAL provider-delta binary through

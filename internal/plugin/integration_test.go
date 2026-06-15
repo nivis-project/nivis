@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/apply"
-	"github.com/wearetechnative/terrae-nivis/internal/ir"
-	"github.com/wearetechnative/terrae-nivis/internal/plan"
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/apply"
+	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/wearetechnative/nivis/internal/plan"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/state"
 )
 
 // buildProvider compiles a fake provider binary into a temp dir and returns its

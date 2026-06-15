@@ -59,7 +59,7 @@ check_unique \
 #    step-by-step tutorial. getting-started §7 only links to it; README only
 #    links; the site's real-providers.md includes §7 (the link), not the commands.
 check_unique \
-  "tn state show aws.aws_s3_bucket.demo" \
+  "nivis state show aws.aws_s3_bucket.demo" \
   docs/TUTORIAL-AWS-S3.md \
   README.md docs/GETTING-STARTED.md docs-site/src/real-providers.md
 
@@ -74,7 +74,7 @@ check_unique \
 # 5. Install instructions — canonical in docs/INSTALL.md; the tutorial and README
 #    link to it rather than repeating the persistent-install command.
 check_unique \
-  "nix profile install github:wearetechnative/terrae-nivis#tn" \
+  "nix profile install github:wearetechnative/nivis#nivis" \
   docs/INSTALL.md \
   docs/TUTORIAL-AWS-S3.md README.md
 

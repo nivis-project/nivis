@@ -1,9 +1,9 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Command tn is the terrae-nivis executor CLI: plan/apply/destroy/refresh/state over a
-// Nix flake that exposes terraeNivis.plan. Pure orchestration; providers are spawned
-// from the IR's provider source paths.
+// Command nivis is the Nivis executor CLI: plan/apply/destroy/refresh/state/gen
+// over a Nix flake that exposes nivis.plan. Pure orchestration; providers are
+// spawned from the IR's provider source paths.
 package main
 
 import (
@@ -13,15 +13,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/wearetechnative/terrae-nivis/internal/destroy"
-	"github.com/wearetechnative/terrae-nivis/internal/ir"
-	"github.com/wearetechnative/terrae-nivis/internal/ledger"
-	"github.com/wearetechnative/terrae-nivis/internal/phase"
-	"github.com/wearetechnative/terrae-nivis/internal/plan"
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/refresh"
-	"github.com/wearetechnative/terrae-nivis/internal/registry"
-	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/destroy"
+	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/wearetechnative/nivis/internal/ledger"
+	"github.com/wearetechnative/nivis/internal/phase"
+	"github.com/wearetechnative/nivis/internal/plan"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/refresh"
+	"github.com/wearetechnative/nivis/internal/registry"
+	"github.com/wearetechnative/nivis/internal/state"
 )
 
 var (
@@ -34,11 +34,11 @@ var (
 func main() {
 	var showVersion bool
 	root := &cobra.Command{
-		Use:   "tn",
-		Short: "Terrae Nivis — Infrastructure as Nix Code",
-		Long: "Terrae Nivis — Infrastructure as Nix Code.\n\n" +
+		Use:   "nivis",
+		Short: "Nivis — Infrastructure as Nix Code",
+		Long: "Nivis — Infrastructure as Nix Code. All your base belongs to Nix.\n\n" +
 			"A Nix-native infrastructure tool where Terraform/OpenTofu provider\n" +
-			"resources are first-class Nix values. (Formerly nixform.)",
+			"resources are first-class Nix values. (Formerly nixform, then Terrae Nivis.)",
 		// We print runtime failures ourselves as a clean `error:` line; don't let
 		// cobra print the error a second time.
 		SilenceErrors: true,
@@ -51,19 +51,19 @@ func main() {
 		// With no subcommand, print the branded splash (or just the version).
 		Run: func(cmd *cobra.Command, _ []string) {
 			if showVersion {
-				fmt.Fprintln(cmd.OutOrStdout(), "tn (Terrae Nivis) "+version)
+				fmt.Fprintln(cmd.OutOrStdout(), "nivis "+version)
 				return
 			}
 			splash(cmd.OutOrStdout())
 		},
 	}
-	root.PersistentFlags().StringVar(&flakeRef, "flake", ".", "flake reference exposing terraeNivis.plan")
-	root.PersistentFlags().StringVar(&statePath, "state", "./terrae-nivis.state.json", "path to the local state file")
-	root.PersistentFlags().StringVar(&attr, "attr", "terraeNivis.plan", "flake attribute to evaluate")
+	root.PersistentFlags().StringVar(&flakeRef, "flake", ".", "flake reference exposing nivis.plan")
+	root.PersistentFlags().StringVar(&statePath, "state", "./nivis.state.json", "path to the local state file")
+	root.PersistentFlags().StringVar(&attr, "attr", "nivis.plan", "flake attribute to evaluate")
 	root.PersistentFlags().StringVar(&target, "target", "", "restrict the operation to a single resource id")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
-	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd())
+	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), genCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -133,7 +133,7 @@ func planCmd() *cobra.Command {
 			if changes == 0 {
 				fmt.Printf("\nNo changes. %d resource(s) up to date.\n", len(items))
 			} else {
-				fmt.Printf("\n%d change(s) across %d resource(s) (+ create, ~ update, -/+ replace, = no change). Run `tn apply`.\n", changes, len(items))
+				fmt.Printf("\n%d change(s) across %d resource(s) (+ create, ~ update, -/+ replace, = no change). Run `nivis apply`.\n", changes, len(items))
 			}
 			return nil
 		},

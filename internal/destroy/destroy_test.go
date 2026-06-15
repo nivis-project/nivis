@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package destroy_test
@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/destroy"
-	"github.com/wearetechnative/terrae-nivis/internal/ir"
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/destroy"
+	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/state"
 )
 
 func repoRoot(t *testing.T) string {

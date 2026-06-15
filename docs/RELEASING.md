@@ -1,4 +1,4 @@
-# Releasing terrae nivis
+# Releasing Nivis
 
 The version is a single source of truth — the top-level **`VERSION`** file. Both
 the Nix flake and the Go binary derive from it (the flake injects it via
@@ -24,7 +24,7 @@ scripts/release.sh minor --dry-run   # show the plan, change nothing
 
 Pushing the tag runs **`.github/workflows/release.yml`**, which uses
 [goreleaser](https://goreleaser.com) to:
-- cross-build `tn` and `tn-gen` for linux/darwin × amd64/arm64 (version from the
+- cross-build `nivis` and `nivis gen` for linux/darwin × amd64/arm64 (version from the
   tag),
 - write `checksums.txt` and changelog-derived release notes,
 - create the **GitHub release** with the archives attached.

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://terrae-nivis/ir-schema.json",
-  "title": "terrae-nivis IR (schemaVersion 1)",
-  "description": "Normative machine-checkable schema for the terrae-nivis JSON IR. This is the frozen contract between the Nix library (Epic 1), codegen (Epic 2), and the Go executor (Epic 3/3.5). Authoritative prose lives in docs/IR-CONTRACT.md; this file encodes its structural rules so both producers (toIR) and consumers (IngestIR) can validate against one artifact. Breaking changes require an OpenSpec change against the contract first and a schemaVersion bump.",
+  "$id": "https://nivis/ir-schema.json",
+  "title": "nivis IR (schemaVersion 1)",
+  "description": "Normative machine-checkable schema for the nivis JSON IR. This is the frozen contract between the Nix library (Epic 1), codegen (Epic 2), and the Go executor (Epic 3/3.5). Authoritative prose lives in docs/IR-CONTRACT.md; this file encodes its structural rules so both producers (toIR) and consumers (IngestIR) can validate against one artifact. Breaking changes require an OpenSpec change against the contract first and a schemaVersion bump.",
   "type": "object",
   "required": [
     "schemaVersion",

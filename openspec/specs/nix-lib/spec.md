@@ -1,7 +1,7 @@
 # Spec: nix-lib
 
 ## Purpose
-The terrae nivis Nix library is the configuration frontend: users describe resources
+The Nivis Nix library is the configuration frontend: users describe resources
 as Nix values and the library serializes them to the canonical JSON IR the Go
 executor consumes. It is the input side of the round trip — how a Nix author
 references apply-time provider outputs (`__ref`) and computes values from them
@@ -65,7 +65,7 @@ referential rules.
 - THEN the provider's `config` in the IR holds the concrete derived value, not the placeholder.
 
 ### Requirement: Plan interface accepts the outputs ledger
-The flake `terraeNivis.plan` SHALL be a function of an injected outputs ledger
+The flake `nivis.plan` SHALL be a function of an injected outputs ledger
 (`{ phase, outputs }`, empty on phase 0) and SHALL resolve `__ref`/`__derived`
 leaves whose inputs are present in the ledger to concrete values, leaving the
 rest as placeholders.
@@ -163,14 +163,14 @@ build the `tn` and `tn-gen` binaries from source via nixpkgs `buildGoModule`
 (with `default = tn`) so `nix run .#tn -- …` and `nix run .#tn-gen -- …` work.
 System enumeration SHALL use a small inline helper, not `flake-utils`. Adding
 these outputs SHALL NOT make the library outputs depend on nixpkgs: `lib` and
-`terraeNivis.*` SHALL still evaluate without forcing the nixpkgs input.
+`nivis.*` SHALL still evaluate without forcing the nixpkgs input.
 
 #### Scenario: nix run drives the CLI
 - WHEN `nix run .#tn -- --version` is executed
 - THEN it builds `tn` from source and prints the version.
 
 #### Scenario: the library still evaluates input-free
-- WHEN `nix eval .#lib` and `nix eval .#terraeNivis.plan --apply 'p: p { phase = 0; outputs = {}; }'` are evaluated
+- WHEN `nix eval .#lib` and `nix eval .#nivis.plan --apply 'p: p { phase = 0; outputs = {}; }'` are evaluated
 - THEN they succeed without building or importing anything from the nixpkgs input
   (the library remains pure-builtins).
 

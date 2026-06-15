@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package main_test
@@ -15,7 +15,7 @@ import (
 func buildCLI(t *testing.T) string {
 	t.Helper()
 	root := repoRoot(t)
-	bin := filepath.Join(t.TempDir(), "tn")
+	bin := filepath.Join(t.TempDir(), "nivis")
 	cmd := exec.Command("go", "build", "-o", bin, "./cmd/tn")
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -46,7 +46,7 @@ func TestRuntimeErrorIsClean(t *testing.T) {
 		t.Skip("nix not on PATH")
 	}
 	bin := buildCLI(t)
-	cmd := exec.Command(bin, "plan", "--attr", "terraeNivis.doesNotExist")
+	cmd := exec.Command(bin, "plan", "--attr", "nivis.doesNotExist")
 	cmd.Dir = repoRoot(t)
 	out, err := cmd.CombinedOutput()
 	if err == nil {

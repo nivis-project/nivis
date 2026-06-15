@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package phase_test
@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/ledger"
-	"github.com/wearetechnative/terrae-nivis/internal/phase"
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/ledger"
+	"github.com/wearetechnative/nivis/internal/phase"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/state"
 )
 
 // These tests stub the Nix-eval step (StubEvaluator) but use the REAL plugin

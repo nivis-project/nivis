@@ -1,7 +1,7 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package fakeprovider provides the shared tfprotov6 plumbing for terrae-nivis'
+// Package fakeprovider provides the shared tfprotov6 plumbing for nivis'
 // in-repo fake providers (DESIGN D6). Concrete providers (provider-alpha,
 // provider-beta) declare a small set of Resources and serve via tf6server;
 // everything protocol-level lives here and is tested once.

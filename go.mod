@@ -1,4 +1,4 @@
-module github.com/wearetechnative/terrae-nivis
+module github.com/wearetechnative/nivis
 
 go 1.26.3
 

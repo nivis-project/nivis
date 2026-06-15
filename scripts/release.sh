@@ -38,7 +38,7 @@ esac
 next="${major}.${minor}.${patch}"
 tag="v${next}"
 today="$(date +%Y-%m-%d)"
-repo="https://github.com/wearetechnative/terrae-nivis"
+repo="https://github.com/wearetechnative/nivis"
 
 echo "release: ${cur} -> ${next}  (tag ${tag}, ${today})"
 

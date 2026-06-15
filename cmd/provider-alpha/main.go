@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Command provider-alpha is a fake tfprotov6 provider exposing the alpha_token
@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/terrae-nivis/internal/fakeprovider"
+	"github.com/wearetechnative/nivis/internal/fakeprovider"
 )
 
 // AlphaToken is the alpha_token resource definition, exported so the in-process
@@ -39,7 +39,7 @@ func NewServer() *fakeprovider.Server { return fakeprovider.New(AlphaToken) }
 
 func main() {
 	err := tf6server.Serve(
-		"registry.terrae-nivis.test/fake/alpha",
+		"registry.nivis.test/fake/alpha",
 		func() tfprotov6.ProviderServer { return NewServer() },
 	)
 	if err != nil {

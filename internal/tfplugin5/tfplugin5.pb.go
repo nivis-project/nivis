@@ -7453,7 +7453,7 @@ const file_tfplugin5_proto_rawDesc = "" +
 	"\tGetSchema\x12'.tfplugin5.GetProvisionerSchema.Request\x1a(.tfplugin5.GetProvisionerSchema.Response\x12x\n" +
 	"\x19ValidateProvisionerConfig\x12,.tfplugin5.ValidateProvisionerConfig.Request\x1a-.tfplugin5.ValidateProvisionerConfig.Response\x12b\n" +
 	"\x11ProvisionResource\x12$.tfplugin5.ProvisionResource.Request\x1a%.tfplugin5.ProvisionResource.Response0\x01\x129\n" +
-	"\x04Stop\x12\x17.tfplugin5.Stop.Request\x1a\x18.tfplugin5.Stop.ResponseB7Z5github.com/wearetechnative/terrae-nivis/internal/tfplugin5b\x06proto3"
+	"\x04Stop\x12\x17.tfplugin5.Stop.Request\x1a\x18.tfplugin5.Stop.ResponseB<Z:github.com/wearetechnative/terrae-nivis/internal/tfplugin5b\x06proto3"
 
 var (
 	file_tfplugin5_proto_rawDescOnce sync.Once

@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package main
@@ -41,7 +41,7 @@ func colorEnabled(w io.Writer) bool {
 	return term.IsTerminal(int(f.Fd()))
 }
 
-// splash prints the branded Terrae Nivis splash to w. Colour is applied only
+// splash prints the branded Nivis splash to w. Colour is applied only
 // when w is a colour-capable TTY; otherwise it is plain text.
 func splash(w io.Writer) {
 	c := colorEnabled(w)
@@ -55,12 +55,12 @@ func splash(w io.Writer) {
 	// ASCII peak + wordmark (handoff "10 · Command line").
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "          %s\n", paint(ansiEmber, "*"))
-	fmt.Fprintf(w, "         %s        %s\n", paint(ansiIce, "/\\"), paint(ansiSnow, "TERRAE NIVIS"))
-	fmt.Fprintf(w, "        %s       %s\n", paint(ansiIce, "/  \\"), paint(ansiDim, "infrastructure as nix code · "+version))
+	fmt.Fprintf(w, "         %s        %s\n", paint(ansiIce, "/\\"), paint(ansiSnow, "NIVIS"))
+	fmt.Fprintf(w, "        %s       %s\n", paint(ansiIce, "/  \\"), paint(ansiDim, "infrastructure as nix code · all your base belongs to nix · "+version))
 	fmt.Fprintf(w, "       %s\n", paint(ansiIce, "/____\\"))
 	fmt.Fprintf(w, "      %s\n", paint(ansiIce, "/\\/\\/\\/\\"))
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "  %s plan · apply · destroy · refresh · state    (try %s)\n",
-		paint(ansiEmber, "❯"), paint(ansiIce, "tn --help"))
+	fmt.Fprintf(w, "  %s plan · apply · destroy · refresh · state · gen    (try %s)\n",
+		paint(ansiEmber, "❯"), paint(ansiIce, "nivis --help"))
 	fmt.Fprintln(w)
 }

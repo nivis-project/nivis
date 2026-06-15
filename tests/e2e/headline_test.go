@@ -11,11 +11,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/ledger"
-	"github.com/wearetechnative/terrae-nivis/internal/phase"
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/state"
-	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/nivis/internal/ledger"
+	"github.com/wearetechnative/nivis/internal/phase"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/provider"
 )
 
 func repoRoot(t *testing.T) string {
@@ -87,7 +87,7 @@ func TestHeadlineRoundTrip(t *testing.T) {
 	buildBinaries(t, root)
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
-	d, closer := newDriver(t, root, "terraeNivis.plan", 10)
+	d, closer := newDriver(t, root, "nivis.plan", 10)
 	defer closer()
 
 	res, err := d.Run(context.Background())
@@ -143,7 +143,7 @@ func TestTwoPhaseCapInsufficient(t *testing.T) {
 	buildBinaries(t, root)
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
-	d, closer := newDriver(t, root, "terraeNivis.plan", 2)
+	d, closer := newDriver(t, root, "nivis.plan", 2)
 	defer closer()
 
 	res, err := d.Run(context.Background())
@@ -163,7 +163,7 @@ func TestCycleRejected(t *testing.T) {
 	buildBinaries(t, root)
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
-	d, closer := newDriver(t, root, "terraeNivis.planCycle", 10)
+	d, closer := newDriver(t, root, "nivis.planCycle", 10)
 	defer closer()
 
 	_, err := d.Run(context.Background())

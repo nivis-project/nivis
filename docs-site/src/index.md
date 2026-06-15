@@ -1,11 +1,11 @@
 <div class="tn-hero">
-  <img src="./banner.png" alt="Terrae Nivis — Infrastructure as Nix Code" />
+  <img src="./banner.png" alt="Nivis — Infrastructure as Nix Code" />
 </div>
 
-# Terrae Nivis
+# Nivis
 
-**Infrastructure as Nix Code.** *(Terrae Nivis — Latin, "lands of snow";
-formerly `nixform`.)*
+**Infrastructure as Nix Code.** *All your base belongs to Nix.* *(Nivis — Latin,
+"of snow"; it belongs to Nix. Formerly `nixform`, then Terrae Nivis.)*
 
 {{#include ../../docs/OVERVIEW.md:pitch}}
 

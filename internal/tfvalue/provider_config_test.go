@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package tfvalue
@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/tfplugin6"
+	"github.com/wearetechnative/nivis/internal/tfplugin6"
 )
 
 // TestProviderConfigRoundTrip proves that a provider config map declared in Nix
@@ -50,7 +50,7 @@ func TestProviderConfigRoundTrip(t *testing.T) {
 	config := map[string]interface{}{
 		"region": "eu-central-1",
 		"default_tags": map[string]interface{}{
-			"tags": map[string]interface{}{"managed-by": "terrae-nivis"},
+			"tags": map[string]interface{}{"managed-by": "nivis"},
 		},
 	}
 
@@ -70,7 +70,7 @@ func TestProviderConfigRoundTrip(t *testing.T) {
 
 	// The nested block must survive the round trip with its inner map intact.
 	wantBlock := map[string]interface{}{
-		"tags": map[string]interface{}{"managed-by": "terrae-nivis"},
+		"tags": map[string]interface{}{"managed-by": "nivis"},
 	}
 	if !reflect.DeepEqual(got["default_tags"], wantBlock) {
 		t.Errorf("default_tags nested block: got %#v, want %#v", got["default_tags"], wantBlock)

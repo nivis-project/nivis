@@ -57,7 +57,7 @@ let
     builtins.foldl' (
       acc: r:
       if acc ? ${r.id} then
-        throw "terrae-nivis: duplicate resource id '${r.id}' across modules"
+        throw "nivis: duplicate resource id '${r.id}' across modules"
       else
         acc // { ${r.id} = r; }
     ) { } resources;

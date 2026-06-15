@@ -1,4 +1,4 @@
-# Property tests for the terrae-nivis Nix library, run via `nix eval`. Returns
+# Property tests for the nivis Nix library, run via `nix eval`. Returns
 # { ok = true; } when all properties hold, or throws with the failing case.
 #
 # Properties checked over several hand-rolled small graphs (Nix has no quickcheck;
@@ -10,9 +10,9 @@
 #   P4. A direct ref produces an edge; a derived value does not.
 #   P5. Injecting a ledger resolves __ref and __derived leaves to concrete values.
 let
-  terraeNivis = import ../lib { };
-  inherit (terraeNivis) mkResource mkProvider toIR str;
-  lib = terraeNivis.lib;
+  nivis = import ../lib { };
+  inherit (nivis) mkResource mkProvider toIR str;
+  lib = nivis.lib;
 
   # --- graphs under test ----------------------------------------------------
   A = mkResource {
@@ -120,7 +120,7 @@ let
           config = {
             region = "eu-central-1";
             token = str [ "tok-" (A.refAttr "value") ]; # __derived -> resolves to "tok-V"
-            default_tags = { tags = { managed-by = "terrae-nivis"; }; };
+            default_tags = { tags = { managed-by = "nivis"; }; };
           };
         };
       };
@@ -137,7 +137,7 @@ let
     (pc.source == "registry.opentofu.org/hashicorp/aws")
     && (pc.config.region == "eu-central-1")
     && (pc.config.token == "tok-V") # __derived resolved against the ledger
-    && (pc.config.default_tags.tags.managed-by == "terrae-nivis")
+    && (pc.config.default_tags.tags.managed-by == "nivis")
     && (leavesOk pc.config); # encoded to wire shape, no leaked internals
 
   # P7. mkProvider validates source: present+string -> ok; absent/empty -> throw.

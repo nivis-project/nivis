@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to terrae nivis are documented here. The format follows
+All notable changes to Nivis are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project aims to
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -37,5 +37,5 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/terrae-nivis/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/wearetechnative/terrae-nivis/releases/tag/v0.1.0
+[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.1.0

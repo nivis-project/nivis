@@ -1,7 +1,7 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Package fakeproviderv5 provides the shared tfprotov5 plumbing for terrae-nivis'
+// Package fakeproviderv5 provides the shared tfprotov5 plumbing for nivis'
 // in-repo fake providers (DESIGN D6). It mirrors internal/fakeprovider (which
 // targets tfprotov6) for the older Terraform plugin protocol version 5.
 // Concrete providers (provider-gamma) declare a small set of Resources and

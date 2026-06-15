@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package main
@@ -16,7 +16,7 @@ func TestSplashPlainToBuffer(t *testing.T) {
 	splash(&buf)
 	out := buf.String()
 
-	if !strings.Contains(out, "TERRAE NIVIS") {
+	if !strings.Contains(out, "NIVIS") {
 		t.Errorf("splash missing wordmark:\n%s", out)
 	}
 	if !strings.Contains(out, "infrastructure as nix code") {

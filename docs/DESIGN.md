@@ -1,4 +1,4 @@
-# DESIGN.md — terrae nivis architecture & decisions
+# DESIGN.md — Nivis architecture & decisions
 
 This is the decision ledger. It exists so that a future session does not
 re-derive (or undo) conclusions that were expensive to reach. Each decision
@@ -121,10 +121,10 @@ they are out of scope for the PoC and tracked as a separate bean.
 
 ## D7. Flake apps use nixpkgs; the library stays input-free
 
-**Decision.** The flake exposes `packages`/`apps` for the `tn` and `tn-gen` CLIs,
+**Decision.** The flake exposes `packages`/`apps` for the `nivis` and `nivis gen` CLIs,
 built with nixpkgs `buildGoModule` (Go toolchain from a pinned `nixpkgs` input,
 module deps pinned by a committed `vendorHash`). The library outputs (`lib`,
-`terraeNivis.*`) remain **pure builtins** and do **not** depend on the nixpkgs
+`nivis.*`) remain **pure builtins** and do **not** depend on the nixpkgs
 input — evaluating them imports nothing from nixpkgs.
 
 **Why.** Originally the flake took no inputs at all, so the library evaluated
@@ -132,7 +132,7 @@ without the binary cache (the configuration frontend must be cheap to evaluate
 every phase, and the cache was unreachable). A *runnable* CLI needs a real Go
 toolchain, which means nixpkgs. The refinement keeps the property that actually
 matters — **the configuration-frontend outputs never force nixpkgs** — while
-letting `nix run .#tn` build the executor from source. The two concerns are kept
+letting `nix run .#nivis` build the executor from source. The two concerns are kept
 separate in `flake.nix`: only `packages`/`apps` touch nixpkgs.
 
 **Rejected.** flake-utils (replaced by a few lines of Nix that enumerate

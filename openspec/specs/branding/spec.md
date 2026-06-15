@@ -1,19 +1,19 @@
 # Spec: branding
 
 ## Purpose
-The Terrae Nivis brand in the repo: logo assets, icons, README hero banner,
+The Nivis brand in the repo: logo assets, icons, README hero banner,
 branded CLI splash, and the colour/type tokens (docs/BRAND.md). Presentation
 only — no executor/IR/provider behaviour. Formerly nixform.
 ## Requirements
 ### Requirement: Logo assets are vendored and used unmodified
-The repository SHALL include the production logo SVGs (`terrae-nivis-emblem.svg`,
-`terrae-nivis-glyph.svg`) under `assets/`, used as-is. The emblem SHALL NOT be
+The repository SHALL include the production logo SVGs (`nivis-emblem.svg`,
+`nivis-glyph.svg`) under `assets/`, used as-is. The emblem SHALL NOT be
 recoloured, stretched, skewed, rotated, shadowed, or rendered below 40px (the
 glyph is used below that).
 
 #### Scenario: emblem and glyph present
 - WHEN the repo is inspected
-- THEN `assets/terrae-nivis-emblem.svg` and `assets/terrae-nivis-glyph.svg` exist
+- THEN `assets/nivis-emblem.svg` and `assets/nivis-glyph.svg` exist
   and match the handoff artwork byte-for-byte.
 
 ### Requirement: Favicon and app icons derived from the glyph
@@ -35,28 +35,34 @@ NIVIS" wordmark, tagline, mono pill), referenced at the top of `README.md`.
 - THEN it shows a 1280×640 banner image from `docs/assets/banner.png`.
 
 ### Requirement: Branded CLI splash
-The `tn` CLI SHALL print a branded splash (ASCII peak, "TERRAE NIVIS", tagline)
-with the ember accent for the prompt/“fixpoint reached” and ice-blue for resource
+The `nivis` CLI SHALL print a branded splash (ASCII peak, "NIVIS", tagline) with
+the ember accent for the prompt/"fixpoint reached" and ice-blue for resource
 names, when run with no arguments. It SHALL emit plain (uncoloured) text when
-`NO_COLOR` is set or output is not a TTY.
+`NO_COLOR` is set or output is not a TTY. Schema codegen is a subcommand of the
+same binary (`nivis gen`), not a separate executable.
 
 #### Scenario: splash on no-args invocation
-- WHEN `tn` is run with no arguments on a TTY
-- THEN it prints the branded splash with ANSI colours.
+- WHEN `nivis` is run with no arguments on a TTY
+- THEN it prints the branded splash with ANSI colours and the wordmark "NIVIS".
 
 #### Scenario: NO_COLOR / piped output is plain
-- WHEN `tn` runs with `NO_COLOR=1` or its output is piped
+- WHEN `nivis` runs with `NO_COLOR=1` or its output is piped
 - THEN the splash contains no ANSI escape codes.
 
-### Requirement: Product name and tagline
-README and docs SHALL present the product as **Terrae Nivis** with the tagline
-**"Infrastructure as Nix Code,"** noting it was formerly `nixform`. A brand
-tokens reference (`docs/BRAND.md`) SHALL record the colour and typography tokens.
+#### Scenario: codegen is a subcommand
+- WHEN `nivis gen --provider <p> --out <dir>` is run
+- THEN it generates the typed Nix constructors (the former `tn-gen`), from the one `nivis` binary.
 
-#### Scenario: name, tagline, and tokens present
+### Requirement: Product name and tagline
+README and docs SHALL present the product as **Nivis** with the tagline
+**"Infrastructure as Nix Code"** and the payoff line **"All your base belongs to
+Nix,"** noting its lineage (formerly `nixform`, then Terrae Nivis). A brand tokens
+reference (`docs/BRAND.md`) SHALL record the colour and typography tokens.
+
+#### Scenario: name, tagline, payoff, and tokens present
 - WHEN the docs are inspected
-- THEN README states the name + tagline + "formerly nixform", and `docs/BRAND.md`
-  lists the colour and type tokens from the handoff.
+- THEN README states the name **Nivis** + tagline + the payoff + the lineage note,
+  and `docs/BRAND.md` lists the colour and type tokens.
 
 ### Requirement: Branded docs site
 The repository SHALL include a buildable static documentation site (mdBook) under
@@ -110,7 +116,7 @@ elsewhere, and the mdBook site SHALL still build with the includes in place.
 
 #### Scenario: a shared topic is not copied
 - WHEN the repository's Markdown is inspected for a designated canonical block
-  (e.g. the AWS `tn apply/state/destroy --attr terraeNivis.aws` walkthrough)
+  (e.g. the AWS `tn apply/state/destroy --attr nivis.aws` walkthrough)
 - THEN that block appears in exactly one canonical file, and other documents
   include it or link to it rather than reproducing it.
 

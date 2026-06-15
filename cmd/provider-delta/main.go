@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Command provider-delta is a fake tfprotov6 provider whose resource uses
@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/terrae-nivis/internal/fakeproviderx"
+	"github.com/wearetechnative/nivis/internal/fakeproviderx"
 )
 
 // metaType is the nested-object output type: object({ region=string, count=number }).
@@ -68,7 +68,7 @@ func NewServer() *fakeproviderx.Server { return fakeproviderx.New(DeltaThing) }
 
 func main() {
 	err := tf6server.Serve(
-		"registry.terrae-nivis.test/fake/delta",
+		"registry.nivis.test/fake/delta",
 		func() tfprotov6.ProviderServer { return NewServer() },
 	)
 	if err != nil {

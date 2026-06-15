@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/assets/banner.png" alt="Terrae Nivis — Infrastructure as Nix Code" width="100%">
+  <img src="docs/assets/banner.png" alt="Nivis — Infrastructure as Nix Code" width="100%">
 </p>
 
-# Terrae Nivis
+# Nivis
 
-**Infrastructure as Nix Code.** *(Terrae Nivis — Latin, "lands of snow"; formerly
-`nixform`.)*
+**Infrastructure as Nix Code.** *All your base belongs to Nix.* *(Nivis — Latin,
+"of snow"; it belongs to Nix. Formerly `nixform`, then Terrae Nivis.)*
 
 A Nix-native infrastructure tool where Terraform/OpenTofu **provider resources
 are first-class Nix values**. A thin Go executor speaks the Terraform plugin
@@ -26,15 +26,15 @@ account. You need Go 1.22+ and Nix.
 ```sh
 go build -o bin/provider-alpha ./cmd/provider-alpha
 go build -o bin/provider-beta  ./cmd/provider-beta
-go build -o bin/tn ./cmd/tn
+go build -o bin/nivis ./cmd/nivis
 
-./bin/tn plan      # plan the headline topology
-./bin/tn apply     # resolves across 3 phases to a fixpoint
-./bin/tn state show alpha.alpha_token.C   # a value Nix derived from BOTH providers
-./bin/tn destroy
+./bin/nivis plan      # plan the headline topology
+./bin/nivis apply     # resolves across 3 phases to a fixpoint
+./bin/nivis state show alpha.alpha_token.C   # a value Nix derived from BOTH providers
+./bin/nivis destroy
 ```
 
-Prefer Nix? `nix run .#tn -- plan` / `apply` (and `nix build .#tn`) build the CLI
+Prefer Nix? `nix run .#nivis -- plan` / `apply` (and `nix build .#nivis`) build the CLI
 from source — the library outputs stay pure-builtins.
 
 That's the round trip in miniature. For the full story:
@@ -43,11 +43,11 @@ That's the round trip in miniature. For the full story:
   ledger, phased re-evaluation to a fixpoint).
 - **[`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md)** — the guided
   walkthrough: the example topology, plan/apply/inspect/destroy, schema codegen
-  with `tn-gen`, **and driving a real provider (AWS)**.
-- **[Docs site](https://wearetechnative.github.io/terrae-nivis/)** — the same
+  with `nivis gen`, **and driving a real provider (AWS)**.
+- **[Docs site](https://wearetechnative.github.io/nivis/)** — the same
   docs, browsable.
 
-> Terrae Nivis also drives **real** providers (registry fetch, checksum
+> Nivis also drives **real** providers (registry fetch, checksum
 > verification, plugin protocol v5/v6, plan/apply/destroy) — see the AWS
 > walkthrough in `docs/GETTING-STARTED.md`. ⚠️ that creates a real cloud resource.
 
@@ -56,11 +56,11 @@ That's the round trip in miniature. For the full story:
 - `nix/lib/` — the Nix library: `mkResource`, `mkProvider`, references
   (`__ref`/`__derived`), `toIR`, `count`/`for_each` expansion, and a module
   system (`evalModules`).
-- `flake.nix` — exposes `terraeNivis.plan` (a function of the outputs ledger → IR).
+- `flake.nix` — exposes `nivis.plan` (a function of the outputs ledger → IR).
 - `internal/` — the Go executor: `ir` (ingest/validate), `graph` (DAG, TF→TF
   resolution), `state`, `plugin` (spawn + go-plugin v6 handshake), `plan`/`apply`,
   `phase` (the fixpoint loop), `destroy`/`refresh`, `gen` (schema codegen).
-- `cmd/` — `tn` (the CLI), `tn-gen` (codegen), and the fake providers.
+- `cmd/` — `nivis` (the CLI), `nivis gen` (codegen), and the fake providers.
 - `tests/`, `nix/tests/` — Go unit/e2e tests, the IR conformance checker, and Nix
   property tests.
 
@@ -72,7 +72,7 @@ These are versioned interfaces — change the spec before the shape:
   normative JSON Schema). Both the Nix `toIR` producer and the Go `IngestIR`
   consumer validate against it; `tests/ir-conformance/check.py` is the executable
   conformance suite.
-- **The flake interface**: `terraeNivis.plan = ledger → IR`, evaluated each phase
+- **The flake interface**: `nivis.plan = ledger → IR`, evaluated each phase
   with the outputs ledger injected.
 
 ## Docs site
@@ -80,7 +80,7 @@ These are versioned interfaces — change the spec before the shape:
 A branded [mdBook](https://rust-lang.github.io/mdBook/) site lives in
 `docs-site/`; it reuses these Markdown docs (one source of truth) and applies the
 brand theme (`docs/BRAND.md`). It is published to GitHub Pages at
-**<https://wearetechnative.github.io/terrae-nivis/>** (deployed by
+**<https://wearetechnative.github.io/nivis/>** (deployed by
 `.github/workflows/docs.yml` on every push to `main`). Build it locally with:
 
 ```sh
@@ -104,7 +104,7 @@ unknowns on both sides, ≥3 phases to fixpoint, a Nix consumer reading both.
 
 ## License
 
-terrae nivis's own code is **Apache-2.0** (`LICENSE`). It is free to use commercially.
+Nivis's own code is **Apache-2.0** (`LICENSE`). It is free to use commercially.
 The vendored Terraform-protocol files (`proto/tfplugin{5,6}.proto` and the
 generated `internal/tfplugin{5,6}` stubs) and some HashiCorp/IBM dependencies are
 **MPL-2.0**, which also permits commercial use. There is **no BUSL** (the

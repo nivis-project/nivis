@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package registry
@@ -19,14 +19,14 @@ type Client struct {
 	cacheDir string
 }
 
-// New returns a Client. cacheDir defaults to <user cache>/terrae-nivis/providers when
+// New returns a Client. cacheDir defaults to <user cache>/nivis/providers when
 // empty.
 func New(cacheDir string) *Client {
 	if cacheDir == "" {
 		if base, err := os.UserCacheDir(); err == nil {
-			cacheDir = filepath.Join(base, "terrae-nivis", "providers")
+			cacheDir = filepath.Join(base, "nivis", "providers")
 		} else {
-			cacheDir = filepath.Join(os.TempDir(), "terrae-nivis-providers")
+			cacheDir = filepath.Join(os.TempDir(), "nivis-providers")
 		}
 	}
 	return &Client{

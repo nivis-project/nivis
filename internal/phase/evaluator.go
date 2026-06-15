@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package phase
@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/wearetechnative/terrae-nivis/internal/ledger"
+	"github.com/wearetechnative/nivis/internal/ledger"
 )
 
 // NixEvaluator produces the IR JSON for a given outputs ledger. The real impl
@@ -33,7 +33,7 @@ type NixEvaluator interface {
 // it never goes on the command line or into the store).
 type NixEval struct {
 	FlakeRef string // e.g. "." or "/path/to/repo"
-	Attr     string // e.g. "terraeNivis.plan"
+	Attr     string // e.g. "nivis.plan"
 	WorkDir  string // dir to run nix in (so a relative flake ref resolves)
 }
 
@@ -42,7 +42,7 @@ func (n NixEval) Eval(ctx context.Context, l *ledger.Ledger) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("nixeval: marshal ledger: %w", err)
 	}
-	f, err := os.CreateTemp("", "terrae-nivis-ledger-*.json")
+	f, err := os.CreateTemp("", "nivis-ledger-*.json")
 	if err != nil {
 		return nil, fmt.Errorf("nixeval: temp ledger: %w", err)
 	}

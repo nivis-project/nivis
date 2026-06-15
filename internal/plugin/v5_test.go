@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/provider"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/provider"
 )
 
 // TestV5NegotiationAndRoundTrip spawns the REAL fake v5 provider (provider-gamma)

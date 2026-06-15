@@ -5,7 +5,7 @@
 # `goreleaser release --snapshot --clean`.
 version: 2
 
-project_name: terrae-nivis
+project_name: nivis
 
 before:
   hooks:
@@ -55,7 +55,7 @@ changelog:
 release:
   github:
     owner: wearetechnative
-    name: terrae-nivis
-  name_template: "terrae nivis {{ .Tag }}"
+    name: nivis
+  name_template: "Nivis {{ .Tag }}"
   draft: false
   prerelease: auto # v0.x and -rc tags are marked pre-release

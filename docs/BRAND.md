@@ -1,15 +1,15 @@
-# Terrae Nivis — brand reference
+# Nivis — brand reference
 
-**Terrae Nivis** (Latin, *"lands of snow"*) · tagline **"Infrastructure as Nix
+**Nivis** (Latin, *"lands of snow"*) · tagline **"Infrastructure as Nix
 Code."** Formerly `nixform`. This file records the brand tokens so future work
 (docs site, UI, slides) has the palette and type in-repo. Source of truth: the
 design handoff `design_handoff_terrae_nivis_brand/` (logo geometry, treatments).
 
 ## Logo
 
-- `assets/terrae-nivis-emblem.svg` — full emblem (snow-capped twin summit on a
+- `assets/nivis-emblem.svg` — full emblem (snow-capped twin summit on a
   navy disc with silver ring + ember star). Use at **≥40px**.
-- `assets/terrae-nivis-glyph.svg` — simplified single-peak mark for **16–64px**
+- `assets/nivis-glyph.svg` — simplified single-peak mark for **16–64px**
   (favicons, tabs, avatars).
 - Never recolour (beyond the ember star), stretch, skew, rotate, or shadow the
   emblem. Clear space ≥ the ring thickness. Below 40px use the glyph.
@@ -37,7 +37,7 @@ design handoff `design_handoff_terrae_nivis_brand/` (logo geometry, treatments).
 - **Schibsted Grotesk** (400/500/600) — UI, body, tagline.
 - **IBM Plex Mono** (400/500) — code, CLI, labels.
 
-## CLI colours (`tn`)
+## CLI colours (`nivis`)
 
 Truecolor ANSI, applied only on a TTY (honours `NO_COLOR`): ember
 `\e[38;2;242;99;46m` for the `❯` prompt and "fixpoint reached"; ice blue
@@ -51,8 +51,8 @@ Mono fonts available to fontconfig.
 
 ```sh
 # favicon (32px) + apple-touch-icon (180px glyph on a #0E3157 tile, ~14% padding)
-cp assets/terrae-nivis-glyph.svg assets/favicon.svg
-rsvg-convert -w 32 -h 32 assets/terrae-nivis-glyph.svg -o /tmp/f32.png
+cp assets/nivis-glyph.svg assets/favicon.svg
+rsvg-convert -w 32 -h 32 assets/nivis-glyph.svg -o /tmp/f32.png
 magick /tmp/f32.png assets/favicon.ico
 rsvg-convert -w 180 -h 180 docs/assets/apple-touch-icon.svg -o assets/apple-touch-icon.png
 

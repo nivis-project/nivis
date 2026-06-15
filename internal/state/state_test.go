@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package state_test
@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/state"
 )
 
 func TestRoundTrip(t *testing.T) {

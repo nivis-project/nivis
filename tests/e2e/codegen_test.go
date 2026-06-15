@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/gen"
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/gen"
+	"github.com/wearetechnative/nivis/internal/plugin"
 )
 
 // TestCodegenAgainstFake runs the codegen end-to-end against the real
@@ -47,7 +47,7 @@ func TestCodegenAgainstFake(t *testing.T) {
 	expr := `
 	  let
 	    nf = import ` + root + `/nix/lib { };
-	    ctor = import ` + genFile + ` { terraeNivis = nf; };
+	    ctor = import ` + genFile + ` { nivis = nf; };
 	    r = ctor { name = "A"; label = "hi"; };
 	  in builtins.toJSON { id = r.id; config = r.config; }
 	`

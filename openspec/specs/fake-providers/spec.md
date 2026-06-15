@@ -2,7 +2,7 @@
 
 ## Purpose
 The in-repo fake providers are the hermetic, offline test substrate for every
-integration and e2e test in terrae nivis (DESIGN D6). Two are required so the
+integration and e2e test in Nivis (DESIGN D6). Two are required so the
 milestone exit criterion can have unknown values originating on both provider
 sides. They speak `tfprotov6` over go-plugin exactly as a real provider does,
 producing computed-unknown-at-plan outputs that become known, deterministic

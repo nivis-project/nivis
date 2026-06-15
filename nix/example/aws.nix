@@ -2,9 +2,9 @@
 # provider (resolved + verified + cached from the OpenTofu registry by the
 # executor). Drive it with the tn CLI:
 #
-#   AWS_PROFILE=<profile> tn apply   --attr terraeNivis.aws
-#   tn state show aws.aws_s3_bucket.demo
-#   AWS_PROFILE=<profile> tn destroy --attr terraeNivis.aws
+#   AWS_PROFILE=<profile> nivis apply   --attr nivis.aws
+#   nivis state show aws.aws_s3_bucket.demo
+#   AWS_PROFILE=<profile> nivis destroy --attr nivis.aws
 #
 # This CREATES a real (free-tier) S3 bucket plus one small text object, and then
 # destroys them.
@@ -21,11 +21,11 @@
 # provider's Configure call. Only credentials come from the environment (the AWS
 # SDK default chain — AWS_PROFILE or AWS_ACCESS_KEY_ID/…), since we never bake
 # secrets into Nix. `bucket` is omitted so AWS assigns a globally-unique name;
-# force_destroy lets `tn destroy` delete it unconditionally.
-{ terraeNivis }:
+# force_destroy lets `nivis destroy` delete it unconditionally.
+{ nivis }:
 ledger:
 let
-  inherit (terraeNivis)
+  inherit (nivis)
     mkResource
     mkProvider
     str
@@ -38,7 +38,7 @@ let
     name = "demo";
     config = {
       force_destroy = true;
-      tags = { nixform-test = "terrae-nivis-aws-example"; };
+      tags = { nixform-test = "nivis-aws-example"; };
     };
   };
 
@@ -73,7 +73,7 @@ toIR {
         region = "eu-central-1";
         # default_tags is a LIST-nested block in the AWS provider, so it takes a
         # list (of at most one) — a bare attrset is rejected at Configure time.
-        default_tags = [ { tags = { managed-by = "terrae-nivis"; }; } ];
+        default_tags = [ { tags = { managed-by = "nivis"; }; } ];
       };
     };
   };

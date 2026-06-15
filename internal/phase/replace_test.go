@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package phase
@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/ir"
-	"github.com/wearetechnative/terrae-nivis/internal/ledger"
-	"github.com/wearetechnative/terrae-nivis/internal/provider"
-	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/wearetechnative/nivis/internal/ledger"
+	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/wearetechnative/nivis/internal/state"
 )
 
 // recordClient records the create/update/replace mechanics: which prior state

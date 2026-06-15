@@ -1,4 +1,4 @@
-# CLAUDE.md — terrae nivis
+# CLAUDE.md — Nivis
 
 > You (Claude Code, "cc") are the autonomous builder **and** the project manager
 > for this repository. You administer **beans** (the issue tracker) at the
@@ -17,7 +17,7 @@
 
 ## 1. What we are building
 
-`terrae nivis`: a Nix-native infrastructure tool where Terraform/OpenTofu **provider
+`Nivis`: a Nix-native infrastructure tool where Terraform/OpenTofu **provider
 resources are first-class Nix values**, driven by a thin Go executor that speaks
 the Terraform plugin protocol (`tfprotov6`) directly to **unmodified provider
 binaries**. Nix is the configuration frontend; Go is pure orchestration.

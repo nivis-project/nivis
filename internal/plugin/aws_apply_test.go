@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package plugin_test
@@ -8,9 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/plugin"
-	"github.com/wearetechnative/terrae-nivis/internal/provider"
-	"github.com/wearetechnative/terrae-nivis/internal/registry"
+	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/wearetechnative/nivis/internal/registry"
 )
 
 // TestAWSApplyDestroyS3Bucket is gated by TERRAE_NIVIS_NET_TESTS=1 and AWS creds. It
@@ -45,7 +45,7 @@ func TestAWSApplyDestroyS3Bucket(t *testing.T) {
 
 	cfg := map[string]interface{}{
 		"force_destroy": true,
-		"tags":          map[string]interface{}{"terrae-nivis-test": "apply-destroy"},
+		"tags":          map[string]interface{}{"nivis-test": "apply-destroy"},
 	}
 
 	pr, err := client.Plan(ctx, provider.PlanRequest{Schema: rs, TypeName: "aws_s3_bucket", ResolvedCfg: cfg})

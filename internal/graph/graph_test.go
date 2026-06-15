@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 package graph_test
@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/terrae-nivis/internal/graph"
-	"github.com/wearetechnative/terrae-nivis/internal/ir"
+	"github.com/wearetechnative/nivis/internal/graph"
+	"github.com/wearetechnative/nivis/internal/ir"
 )
 
 func mustIngest(t *testing.T, s string) *ir.Graph {

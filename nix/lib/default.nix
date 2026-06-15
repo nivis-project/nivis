@@ -1,9 +1,9 @@
-# The public terrae-nivis Nix library. Pure: depends on builtins + a self-contained
+# The public nivis Nix library. Pure: depends on builtins + a self-contained
 # minilib (no <nixpkgs>, so it evaluates without the binary cache).
 #
 # Usage:
-#   let terraeNivis = import ./nix/lib { };
-#   in terraeNivis.toIR { providers = {...}; resources = [ (terraeNivis.mkResource {...}) ]; }
+#   let nivis = import ./nix/lib { };
+#   in nivis.toIR { providers = {...}; resources = [ (nivis.mkResource {...}) ]; }
 {
   lib ? import ./minilib.nix,
 }:

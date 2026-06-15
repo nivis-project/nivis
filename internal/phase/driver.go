@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package phase drives resolution to a fixpoint across N phases (DESIGN D3, the
@@ -18,13 +18,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wearetechnative/terrae-nivis/internal/apply"
-	"github.com/wearetechnative/terrae-nivis/internal/graph"
-	"github.com/wearetechnative/terrae-nivis/internal/ir"
-	"github.com/wearetechnative/terrae-nivis/internal/ledger"
-	"github.com/wearetechnative/terrae-nivis/internal/plan"
-	"github.com/wearetechnative/terrae-nivis/internal/provider"
-	"github.com/wearetechnative/terrae-nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/apply"
+	"github.com/wearetechnative/nivis/internal/graph"
+	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/wearetechnative/nivis/internal/ledger"
+	"github.com/wearetechnative/nivis/internal/plan"
+	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/wearetechnative/nivis/internal/state"
 )
 
 // ProviderManager spawns/pools provider clients by identity. internal/plugin's
@@ -125,7 +125,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 	return nil, fmt.Errorf("phase loop exceeded %d phases without reaching fixpoint", maxPhases)
 }
 
-// PlanItem is one resource's planned operation, for `tn plan`.
+// PlanItem is one resource's planned operation, for `nivis plan`.
 type PlanItem struct {
 	ID   string
 	Type string

@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Package fakeproviderx is a richer-typed tfprotov6 fake provider than the
@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/terrae-nivis/internal/tfcodec"
+	"github.com/wearetechnative/nivis/internal/tfcodec"
 )
 
 // Attr is a rich-typed resource attribute.

@@ -45,9 +45,9 @@ actionable error naming them, when the dependency graph is cyclic through Nix
 - THEN it returns an error identifying A and C as unresolvable (cycle / missing producer).
 
 ### Requirement: A real-provider (AWS) example is runnable via the CLI
-The flake SHALL expose an attribute (`terraeNivis.aws`) that declares a real
+The flake SHALL expose an attribute (`nivis.aws`) that declares a real
 provider (`hashicorp/aws`) and a resource, such that `tn apply`/`state`/`destroy`
-`--attr terraeNivis.aws` drives the real provider end to end (registry fetch,
+`--attr nivis.aws` drives the real provider end to end (registry fetch,
 configure, plan, apply, destroy). The provider's **region** (and other non-secret
 settings) SHALL be expressed in the Nix config (via `mkProvider`) and flow into
 `Configure`; only credentials are taken from the environment (the AWS SDK default
@@ -55,7 +55,7 @@ chain).
 
 #### Scenario: real AWS apply/destroy via tn
 - GIVEN valid AWS credentials in the environment (e.g. AWS_PROFILE) and a region declared in the Nix provider config
-- WHEN the user runs `tn apply --attr terraeNivis.aws` then `tn destroy --attr terraeNivis.aws`
+- WHEN the user runs `tn apply --attr nivis.aws` then `tn destroy --attr nivis.aws`
 - THEN a real S3 bucket is created (AWS-generated name, force_destroy) and then
   destroyed, with no resource left behind.
 
@@ -68,17 +68,17 @@ expressed in the Nix config, and that credentials come from the environment.
 #### Scenario: docs show the real-AWS flow
 - WHEN a user reads the docs
 - THEN they find a "Real providers (AWS)" section with the `tn apply/state/destroy
-  --attr terraeNivis.aws` commands, the real-resource warning, the Nix-side
+  --attr nivis.aws` commands, the real-resource warning, the Nix-side
   provider config (region), and the environment-credentials note — and no stale
   "out of scope" disclaimer.
 
 ### Requirement: A from-scratch AWS S3 tutorial exists and is verified
 The docs SHALL include a genuinely from-scratch tutorial
 (`docs/TUTORIAL-AWS-S3.md`) that starts from an **empty directory on the user's
-own machine** — not the terrae-nivis repo. It SHALL: (1) install `tn` (linking
+own machine** — not the nivis repo. It SHALL: (1) install `tn` (linking
 `docs/INSTALL.md`); (2) scaffold a fresh infra flake (`nix flake init`) whose
-`flake.nix` takes `terrae-nivis` as a flake input, uses its `lib`
-(`mkResource`/`mkProvider`/`toIR`), and exposes `terraeNivis.plan`; (3) add the
+`flake.nix` takes `nivis` as a flake input, uses its `lib`
+(`mkResource`/`mkProvider`/`toIR`), and exposes `nivis.plan`; (3) add the
 AWS S3 resource (explained); then run `plan`/`apply`/state inspection/`destroy`
 from the user's own flake directory, with troubleshooting. The tutorial's commands
 and outputs SHALL reflect runs actually performed (the fresh-flake `plan` and the
@@ -92,7 +92,7 @@ docs-SSOT check SHALL guard against duplication.
   `docs/TUTORIAL-AWS-S3.md`) and is reachable from the nav.
 
 #### Scenario: a fresh consuming flake works
-- GIVEN an empty directory with a `flake.nix` that inputs terrae-nivis and exposes `terraeNivis.plan`
+- GIVEN an empty directory with a `flake.nix` that inputs nivis and exposes `nivis.plan`
 - WHEN `tn plan` is run in that directory
 - THEN it evaluates the flake and reports the planned resource (no repo checkout required).
 
@@ -105,7 +105,7 @@ docs-SSOT check SHALL guard against duplication.
 ### Requirement: Installing the tn CLI is documented
 The docs SHALL include a standalone install guide (`docs/INSTALL.md`) covering how
 to obtain the `tn` CLI without a repo checkout — at minimum `nix run
-github:wearetechnative/terrae-nivis#tn`, an ad-hoc `nix shell`, a persistent
+github:wearetechnative/nivis#tn`, an ad-hoc `nix shell`, a persistent
 install (`nix profile install`), and building from a clone (`go`/`nix build`). It
 SHALL note `tn`'s runtime needs (Nix available; network for the first provider
 fetch). Tutorials SHALL link to it rather than repeating install steps, and the

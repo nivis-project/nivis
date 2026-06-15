@@ -1,4 +1,4 @@
-// Copyright 2026 WeareTechnative B.V. and the terrae-nivis authors
+// Copyright 2026 WeareTechnative B.V. and the nivis authors
 // SPDX-License-Identifier: Apache-2.0
 
 // Command provider-gamma is a fake tfprotov5 provider exposing the gamma_widget
@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/terrae-nivis/internal/fakeproviderv5"
+	"github.com/wearetechnative/nivis/internal/fakeproviderv5"
 )
 
 // GammaWidget is the gamma_widget resource definition, exported so the
@@ -41,7 +41,7 @@ func NewServer() *fakeproviderv5.Server { return fakeproviderv5.New(GammaWidget)
 
 func main() {
 	err := tf5server.Serve(
-		"registry.terrae-nivis.test/fake/gamma",
+		"registry.nivis.test/fake/gamma",
 		func() tfprotov5.ProviderServer { return NewServer() },
 	)
 	if err != nil {
