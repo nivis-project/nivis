@@ -1,1 +1,1 @@
-{{#include ../../DESIGN.md}}
+{{#include ../../docs/DESIGN.md}}

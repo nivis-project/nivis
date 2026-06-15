@@ -7,7 +7,7 @@ follow the "Critical path" section.
 
 ## Milestone exit criterion (definition of done)
 
-The headline e2e in `docs/TESTING.md` passes: two providers, unknown values
+The headline e2e in `TESTING.md` passes: two providers, unknown values
 originating on **both** sides, resolved across **≥3 phases**, with a Nix-side
 consumer reading outputs from **both** providers. Everything else is in service
 of making that test pass and trustworthy.
@@ -17,7 +17,7 @@ of making that test pass and trustworthy.
 ```
 E1 (Nix lib core: mkResource + refs + IR serializer)
         │
-E1.5 ── IR CONTRACT  ← linchpin; write & freeze first   (docs/IR-CONTRACT.md)
+E1.5 ── IR CONTRACT  ← linchpin; write & freeze first   (IR-CONTRACT.md)
         │
 E4a ── fake tfprotov6 providers (alpha, beta)  ← build early; test substrate
         │
@@ -55,12 +55,12 @@ Pure deterministic config layer. Emits the IR. No Go.
   into one flat graph. This is where a NixOS/HM option can read a `tf.<res>.attr`.
 - **1.5 IR serializer** — `toIR :: ResourceGraph -> JSON` emitting the canonical
   IR (types, provider, config with refs encoded, meta-args, edge list, the
-  outputs-injection slot). Conforms to `docs/IR-CONTRACT.md`.
+  outputs-injection slot). Conforms to `IR-CONTRACT.md`.
 - **1.6 Flake interface** — `terraeNivis.plan`, `terraeNivis.state`, `terraeNivis.providers`
   outputs; `plan` accepts an injected-outputs argument (the phased-eval input).
 
 ## Epic 1.5 — IR contract (linchpin) ⟵ write first
-- **1.5a Author `docs/IR-CONTRACT.md`** — the frozen JSON schema. Must pin:
+- **1.5a Author `IR-CONTRACT.md`** — the frozen JSON schema. Must pin:
   ref encoding (nested attrs, list/set indices, refs inside expansions);
   `for_each`/`count` expansion timing; unknown-value representation toward the
   provider; sensitive-value handling across the JSON/store boundary; the
@@ -124,9 +124,9 @@ roadmap was missing.
 ## Epic 4 — Integration, e2e, DX
 - **4a Fake providers** (build early): two in-repo `tfprotov6` providers,
   `provider-alpha` and `provider-beta`, with computed (unknown-at-plan) outputs.
-  Spec in `docs/TESTING.md`.
+  Spec in `TESTING.md`.
 - **4b Headline e2e** (milestone exit): two providers, unknowns on both sides,
-  ≥3 phases, Nix-side consumer reading from both. Full spec in `docs/TESTING.md`.
+  ≥3 phases, Nix-side consumer reading from both. Full spec in `TESTING.md`.
 - **4c Error UX** — Nix eval, schema validation, gRPC, and state-lock errors all
   produce actionable messages with resource identity, never raw stack traces.
 - **4d Docs** — README, getting-started on the fake providers, IR contract and

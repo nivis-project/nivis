@@ -114,7 +114,7 @@ project. See `LICENSING.md` for the full breakdown and `NOTICE` for attributions
 ---
 
 This repository was built autonomously following a spec-driven process: see
-`DESIGN.md` (architecture decisions), `ROADMAP.md` (epics), `CLAUDE.md` (the
+`docs/DESIGN.md` (architecture decisions), `docs/ROADMAP.md` (epics), `CLAUDE.md` (the
 builder's instructions), and `openspec/` (the per-change specs). The core test
 suite is hermetic (fakes, no network); real-provider support (registry download +
 checksum verification, tfprotov5/6) is proven against AWS — see the AWS

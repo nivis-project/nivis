@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bootstrap the beans tracker for terrae nivis: one milestone + the epics under it,
-# wired with the real critical-path dependency edges (see ROADMAP.md).
+# wired with the real critical-path dependency edges (see docs/ROADMAP.md).
 #
 # Verified against beans 1.4.x CLI (2026-06): create uses --parent for hierarchy
 # and --blocked-by/--blocking for dependencies; there is NO --add-child. Valid
@@ -31,19 +31,19 @@ echo "Seeding terrae nivis milestone + epics..."
 MILESTONE=$(mk "terrae nivis PoC / alpha base" \
   --type milestone --priority high --status todo --tag poc \
   --body "Exit criterion: headline two-provider e2e passes (unknowns on both \
-sides, >=3 phases, Nix-side consumer reads both providers). See ROADMAP.md and \
+sides, >=3 phases, Nix-side consumer reads both providers). See docs/ROADMAP.md and \
 docs/TESTING.md. cc administers this milestone and its epics.")
 echo "  milestone: $MILESTONE"
 
 # --- Epics (children of the milestone via --parent) ------------------------
-# The critical path (ROADMAP.md) is NOT numeric order. We encode the real
+# The critical path (docs/ROADMAP.md) is NOT numeric order. We encode the real
 # ordering as --blocked-by edges so `beans list --no-blocked` surfaces the next
-# unblocked epic. cc should still consult ROADMAP.md for rationale.
+# unblocked epic. cc should still consult docs/ROADMAP.md for rationale.
 
 E1=$(mk "E1 Nix library core (terrae-nivis-lib)" \
   --type epic --priority high --status todo --parent "$MILESTONE" --tag critical-path \
   --body "mkResource, reference system, meta-args, module system, IR serializer, \
-flake interface. Tasks tracked as OpenSpec changes. See ROADMAP.md Epic 1. \
+flake interface. Tasks tracked as OpenSpec changes. See docs/ROADMAP.md Epic 1. \
 OpenSpec changes: (record change-ids here as created).")
 echo "  E1:   $E1"
 
@@ -95,7 +95,7 @@ fake providers, IR contract & flake interface as documented contracts. \
 OpenSpec changes: (record here).")
 echo "  E4cd: $E4cd"
 
-# --- Critical-path dependency edges (ROADMAP.md) ---------------------------
+# --- Critical-path dependency edges (docs/ROADMAP.md) ---------------------------
 #   E1  ─┐
 #        ├─> E1.5 ─> E4a ─> E3 ─> E3.5 ─> E4b
 #   (E1 and E1.5 both feed the executor work; E4a is the test substrate.)

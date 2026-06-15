@@ -82,7 +82,7 @@ re-eval cost becomes a *measured* problem.
 
 ## D4. The IR is the single frozen contract
 
-**Decision.** `docs/IR-CONTRACT.md` defines the JSON IR. It is the API between
+**Decision.** `IR-CONTRACT.md` defines the JSON IR. It is the API between
 the Nix library (Epic 1), the codegen (Epic 2), and the executor (Epic 3/3.5).
 Breaking changes require an OpenSpec change to the contract *first*.
 

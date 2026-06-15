@@ -26,7 +26,7 @@ The built site is written to `docs-site/book/` (git-ignored).
 
 - `book.toml` — site config (title, theme dir, custom CSS, git/edit links).
 - `src/SUMMARY.md` — the nav; `src/*.md` — thin pages that `{{#include}}` the
-  canonical docs (`../docs/*.md`, `../DESIGN.md`, `../ROADMAP.md`).
+  canonical docs (`../docs/*.md`, including `DESIGN.md` and `ROADMAP.md`).
 - `theme/custom.css` — the brand palette + Cinzel/Schibsted Grotesk/IBM Plex Mono
   type stack (Google Fonts with a system fallback).
 - `theme/head.hbs` — `og:image`/`twitter:image` (the 1280×640 banner) + favicon.
@@ -35,7 +35,7 @@ The built site is written to `docs-site/book/` (git-ignored).
 
 ## Editing content
 
-Edit the canonical docs (`docs/*.md`, `DESIGN.md`, `ROADMAP.md`) — the site picks
+Edit the canonical docs (`docs/*.md`) — the site picks
 up the change. The site pages in `src/` are thin: they `{{#include}}` a canonical
 file (whole, or an anchored range) and add only nav/framing.
 
@@ -50,7 +50,7 @@ links to it — neither copies it. New duplication is caught by
 | Pitch + "how it works" | `docs/OVERVIEW.md` (anchors `pitch`, `how-it-works`) | site `index.md` (include), README (link) |
 | Fake-provider walkthrough + build/run | `docs/GETTING-STARTED.md` | site `getting-started.md` (include), README (link) |
 | Real provider (AWS) | `docs/GETTING-STARTED.md` §7 (anchor `aws`) | site `real-providers.md` (include), README (link) |
-| IR contract / testing / design / roadmap / brand | `docs/*.md`, `DESIGN.md`, `ROADMAP.md` | site pages (include) |
+| IR contract / testing / design / roadmap / brand | `docs/*.md` (incl. `DESIGN.md`, `ROADMAP.md`) | site pages (include) |
 
 When a section must render in more than one place, give it an mdBook anchor
 (`<!-- ANCHOR: name -->` … `<!-- ANCHOR_END: name -->`) and `{{#include

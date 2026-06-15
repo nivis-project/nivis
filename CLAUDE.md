@@ -10,8 +10,8 @@
 1. Run `beans prime` and heed its output. (Beans is the source of truth for what
    to work on next.)
 2. Run `openspec list` to see active/proposed/archived changes.
-3. Read `DESIGN.md` (the *why* — architecture decisions you must not regress)
-   and `ROADMAP.md` (the *what* — epics mapped to beans).
+3. Read `docs/DESIGN.md` (the *why* — architecture decisions you must not regress)
+   and `docs/ROADMAP.md` (the *what* — epics mapped to beans).
 4. Read `docs/IR-CONTRACT.md`. The IR is the frozen contract between all epics.
    Treat it as an API: a breaking change requires an OpenSpec change first.
 
@@ -30,7 +30,7 @@ definition of done.
 
 ## 2. Non-negotiable architecture invariants
 
-These were decided deliberately (see `DESIGN.md` for the reasoning). Do **not**
+These were decided deliberately (see `docs/DESIGN.md` for the reasoning). Do **not**
 "helpfully" refactor away from them:
 
 - **Do not fork OpenTofu.** Drive providers via `tfprotov6` over go-plugin/gRPC.
@@ -81,7 +81,7 @@ See `openspec/changes/define-ir-contract/` for a fully worked example to mirror.
 
 ## 4. Order of work
 
-Follow `ROADMAP.md`. The critical-path ordering is **not** strict 1→2→3→4.
+Follow `docs/ROADMAP.md`. The critical-path ordering is **not** strict 1→2→3→4.
 Specifically: prove a single-provider round trip and the phased-eval loop
 **before** building general schema codegen. Codegen is how we scale to "all
 providers" later; it is not on the path to validating the thesis. The roadmap
