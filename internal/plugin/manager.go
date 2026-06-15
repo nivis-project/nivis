@@ -13,6 +13,8 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
+	"github.com/wearetechnative/nixform/internal/provider"
+	v6 "github.com/wearetechnative/nixform/internal/provider/v6"
 	"github.com/wearetechnative/nixform/internal/tfplugin6"
 )
 
@@ -49,16 +51,17 @@ type Manager struct {
 
 type entry struct {
 	client   *goplugin.Client
-	provider tfplugin6.ProviderClient
+	provider provider.Client
 }
 
 // NewManager returns an empty manager.
 func NewManager() *Manager { return &Manager{clients: map[string]*entry{}} }
 
 // Client spawns (or reuses) the provider binary at path under the given identity
-// and returns a connected tfprotov6 provider client. Reusing by identity means
-// two resources of the same provider share one process.
-func (m *Manager) Client(identity, path string) (tfplugin6.ProviderClient, error) {
+// and returns a version-neutral provider.Client. Reusing by identity means two
+// resources of the same provider share one process. For now only the tfprotov6
+// backend is wired; a tfprotov5 backend plugs in here behind the same interface.
+func (m *Manager) Client(identity, path string) (provider.Client, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -84,14 +87,15 @@ func (m *Manager) Client(identity, path string) (tfplugin6.ProviderClient, error
 		c.Kill()
 		return nil, fmt.Errorf("plugin %q: dispense: %w", identity, err)
 	}
-	prov, ok := raw.(tfplugin6.ProviderClient)
+	rawClient, ok := raw.(tfplugin6.ProviderClient)
 	if !ok {
 		c.Kill()
 		return nil, fmt.Errorf("plugin %q: unexpected client type %T", identity, raw)
 	}
 
-	m.clients[identity] = &entry{client: c, provider: prov}
-	return prov, nil
+	cl := v6.New(rawClient)
+	m.clients[identity] = &entry{client: c, provider: cl}
+	return cl, nil
 }
 
 // Close kills all spawned provider processes.

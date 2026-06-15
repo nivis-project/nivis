@@ -34,7 +34,11 @@ func main() {
 			mgr := plugin.NewManager()
 			defer mgr.Close()
 
-			resources, err := gen.Fetch(context.Background(), mgr, identity, providerPath)
+			client, err := mgr.Client(identity, providerPath)
+			if err != nil {
+				return err
+			}
+			resources, err := gen.Fetch(context.Background(), client)
 			if err != nil {
 				return err
 			}

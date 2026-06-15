@@ -21,13 +21,13 @@ import (
 	"github.com/wearetechnative/nixform/internal/ledger"
 	"github.com/wearetechnative/nixform/internal/plan"
 	"github.com/wearetechnative/nixform/internal/state"
-	"github.com/wearetechnative/nixform/internal/tfplugin6"
+	"github.com/wearetechnative/nixform/internal/provider"
 )
 
 // ProviderManager spawns/pools provider clients by identity. internal/plugin's
 // Manager satisfies this; the interface keeps phase testable.
 type ProviderManager interface {
-	Client(identity, path string) (tfplugin6.ProviderClient, error)
+	Client(identity, path string) (provider.Client, error)
 }
 
 // Driver runs the phased-eval loop.

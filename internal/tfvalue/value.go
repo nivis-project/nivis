@@ -5,6 +5,7 @@
 package tfvalue
 
 import (
+	"sort"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -132,6 +133,30 @@ func NullState(objType tftypes.Object) (*tfplugin6.DynamicValue, error) {
 		return nil, fmt.Errorf("marshal null msgpack: %w", err)
 	}
 	return &tfplugin6.DynamicValue{Msgpack: mp}, nil
+}
+
+// UnknownAttrs decodes a DynamicValue (a planned state) and lists the attribute
+// names whose value is unknown (known only after apply).
+func UnknownAttrs(objType tftypes.Object, dv *tfplugin6.DynamicValue) ([]string, error) {
+	if dv == nil || len(dv.GetMsgpack()) == 0 {
+		return nil, nil
+	}
+	v, err := tftypes.ValueFromMsgPack(dv.GetMsgpack(), objType)
+	if err != nil {
+		return nil, fmt.Errorf("decode planned state: %w", err)
+	}
+	m := map[string]tftypes.Value{}
+	if err := v.As(&m); err != nil {
+		return nil, err
+	}
+	var out []string
+	for name, av := range m {
+		if !av.IsKnown() {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }
 
 // DecodeState reads a DynamicValue (the provider's NewState) into a flat Go attr

@@ -1,24 +1,22 @@
-// Package destroy tears down applied resources in reverse dependency order by
-// calling ApplyResourceChange with a null planned state (DESIGN: the provider
-// deletes the resource), then removing them from the state store.
+// Package destroy tears down applied resources in reverse dependency order via
+// the provider's destroy operation, then removes them from the state store.
+// Version-neutral (provider.Client).
 package destroy
 
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/wearetechnative/nixform/internal/graph"
 	"github.com/wearetechnative/nixform/internal/ir"
 	"github.com/wearetechnative/nixform/internal/plan"
+	"github.com/wearetechnative/nixform/internal/provider"
 	"github.com/wearetechnative/nixform/internal/state"
-	"github.com/wearetechnative/nixform/internal/tfplugin6"
-	"github.com/wearetechnative/nixform/internal/tfvalue"
 )
 
 // Manager is the provider-client seam (internal/plugin.Manager satisfies it).
 type Manager interface {
-	Client(identity, path string) (tfplugin6.ProviderClient, error)
+	Client(identity, path string) (provider.Client, error)
 }
 
 // Options tune a destroy run.
@@ -50,7 +48,6 @@ func Run(ctx context.Context, g *ir.Graph, mgr Manager, store state.Store, opts 
 		if !ok {
 			continue
 		}
-		// Only destroy what we actually have state for.
 		stored, found, err := store.Get(id)
 		if err != nil {
 			return res, err
@@ -86,35 +83,10 @@ func destroyOne(ctx context.Context, g *ir.Graph, mgr Manager, node *ir.Resource
 	if err != nil {
 		return err
 	}
-	prior, err := tfvalue.EncodeState(rs.ObjType, stored.Attrs)
-	if err != nil {
-		return fmt.Errorf("encode prior state: %w", err)
-	}
-	nullPlanned, err := tfvalue.NullState(rs.ObjType)
-	if err != nil {
-		return err
-	}
-	resp, err := client.ApplyResourceChange(ctx, &tfplugin6.ApplyResourceChange_Request{
-		TypeName:     node.Resource.Type,
-		PriorState:   prior,
-		PlannedState: nullPlanned,
-		Config:       nullPlanned,
+	_, err = client.Destroy(ctx, provider.DestroyRequest{
+		Schema:   rs,
+		TypeName: node.Resource.Type,
+		Stored:   stored.Attrs,
 	})
-	if err != nil {
-		return fmt.Errorf("ApplyResourceChange(delete): %w", err)
-	}
-	return diagErr(resp.GetDiagnostics())
-}
-
-func diagErr(diags []*tfplugin6.Diagnostic) error {
-	var msgs []string
-	for _, d := range diags {
-		if d.GetSeverity() == tfplugin6.Diagnostic_ERROR {
-			msgs = append(msgs, strings.TrimSpace(d.GetSummary()+": "+d.GetDetail()))
-		}
-	}
-	if len(msgs) > 0 {
-		return fmt.Errorf("provider diagnostics: %s", strings.Join(msgs, "; "))
-	}
-	return nil
+	return err
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/wearetechnative/nixform/internal/phase"
 	"github.com/wearetechnative/nixform/internal/plugin"
 	"github.com/wearetechnative/nixform/internal/state"
-	"github.com/wearetechnative/nixform/internal/tfplugin6"
+	"github.com/wearetechnative/nixform/internal/provider"
 )
 
 // TestRealNixRoundTrip is the headline mechanism end-to-end: the REAL Nix flake
@@ -113,7 +113,7 @@ type relativeManager struct {
 	root string
 }
 
-func (m relativeManager) Client(identity, path string) (tfplugin6.ProviderClient, error) {
+func (m relativeManager) Client(identity, path string) (provider.Client, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(m.root, path)
 	}

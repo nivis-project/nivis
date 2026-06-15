@@ -1,23 +1,20 @@
-// Package refresh reconciles stored state with the provider's view by calling
-// ReadResource for each resource in state and writing back the result. It does
-// not plan or apply changes.
+// Package refresh reconciles stored state with the provider's view via the
+// provider's read operation. It does not plan or apply. Version-neutral.
 package refresh
 
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/wearetechnative/nixform/internal/ir"
 	"github.com/wearetechnative/nixform/internal/plan"
+	"github.com/wearetechnative/nixform/internal/provider"
 	"github.com/wearetechnative/nixform/internal/state"
-	"github.com/wearetechnative/nixform/internal/tfplugin6"
-	"github.com/wearetechnative/nixform/internal/tfvalue"
 )
 
 // Manager is the provider-client seam (internal/plugin.Manager satisfies it).
 type Manager interface {
-	Client(identity, path string) (tfplugin6.ProviderClient, error)
+	Client(identity, path string) (provider.Client, error)
 }
 
 // Result reports which resources were reconciled.
@@ -35,8 +32,7 @@ func Run(ctx context.Context, g *ir.Graph, mgr Manager, store state.Store) (*Res
 	for _, rs := range stored {
 		node, ok := g.Nodes[rs.ID]
 		if !ok {
-			// state for a resource no longer in the config; leave it as-is.
-			continue
+			continue // state for a resource no longer in the config; leave as-is.
 		}
 		newAttrs, err := refreshOne(ctx, g, mgr, node, rs)
 		if err != nil {
@@ -60,32 +56,13 @@ func refreshOne(ctx context.Context, g *ir.Graph, mgr Manager, node *ir.Resource
 	if err != nil {
 		return nil, err
 	}
-	current, err := tfvalue.EncodeState(rs.ObjType, stored.Attrs)
-	if err != nil {
-		return nil, fmt.Errorf("encode current state: %w", err)
-	}
-	resp, err := client.ReadResource(ctx, &tfplugin6.ReadResource_Request{
-		TypeName:     node.Resource.Type,
-		CurrentState: current,
+	out, err := client.Read(ctx, provider.ReadRequest{
+		Schema:   rs,
+		TypeName: node.Resource.Type,
+		Stored:   stored.Attrs,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("ReadResource: %w", err)
-	}
-	if err := diagErr(resp.GetDiagnostics()); err != nil {
 		return nil, err
 	}
-	return tfvalue.DecodeState(rs.ObjType, resp.GetNewState())
-}
-
-func diagErr(diags []*tfplugin6.Diagnostic) error {
-	var msgs []string
-	for _, d := range diags {
-		if d.GetSeverity() == tfplugin6.Diagnostic_ERROR {
-			msgs = append(msgs, strings.TrimSpace(d.GetSummary()+": "+d.GetDetail()))
-		}
-	}
-	if len(msgs) > 0 {
-		return fmt.Errorf("provider diagnostics: %s", strings.Join(msgs, "; "))
-	}
-	return nil
+	return out.Attrs, nil
 }

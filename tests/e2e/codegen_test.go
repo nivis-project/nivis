@@ -23,7 +23,11 @@ func TestCodegenAgainstFake(t *testing.T) {
 	mgr := plugin.NewManager()
 	defer mgr.Close()
 
-	resources, err := gen.Fetch(context.Background(), mgr, "alpha", bin)
+	client, err := mgr.Client("alpha", bin)
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	resources, err := gen.Fetch(context.Background(), client)
 	if err != nil {
 		t.Fatalf("fetch schema: %v", err)
 	}
