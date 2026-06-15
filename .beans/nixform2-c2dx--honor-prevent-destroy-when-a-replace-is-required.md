@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-06-15T17:50:08Z
-updated_at: 2026-06-15T17:59:50Z
+updated_at: 2026-06-15T20:17:24Z
 parent: nixform2-ft9v
 ---
 
@@ -16,3 +16,7 @@ Once resource-update-replace lands, a force-new change triggers destroy+create. 
 
 ---
 Partially done by resource-update-replace: applyOne already refuses a replace with a clear error when lifecycle.preventDestroy is set, with a unit test (TestApplyOneReplaceRefusedByPreventDestroy). Remaining scope for this bean: confirm parity across the destroy command path (destroy.Run already errors on preventDestroy) and add an e2e/integration assertion if wanted; otherwise this can be closed as covered.
+
+
+---
+Status (2026-06-15): the MUST is DONE and unit-tested — applyOne refuses a replace when lifecycle.preventDestroy is set, returning a named error before any Destroy (internal/phase/driver.go:244-245; TestApplyOneReplaceRefusedByPreventDestroy asserts destroyCalls==0); the destroy command path refuses too (internal/destroy/destroy.go:61-62). REMAINING (why this stays open): add a gated AWS e2e — apply a resource with lifecycle.preventDestroy, change a force-new attribute, assert `nivis apply` refuses with the named error and the real resource is NOT destroyed. Optional-but-wanted; that's the only gap.
