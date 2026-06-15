@@ -7,7 +7,7 @@ priority: high
 tags:
     - milestone-2
 created_at: 2026-06-15T12:49:06Z
-updated_at: 2026-06-15T14:46:14Z
+updated_at: 2026-06-15T14:56:49Z
 parent: nixform2-hj4w
 ---
 
@@ -34,3 +34,14 @@ types, PriorState null-encoding fix. Real test PASSES: registry-fetch
 hashicorp/aws -> v5 negotiate -> Configure -> Plan aws_s3_bucket (26
 known-after-apply attrs), no resource created. The full real-provider stack works
 end to end for plan.
+
+
+
+## Real AWS APPLY + DESTROY achieved (2026-06-15)
+internal/plugin/aws_apply_test.go (gated): nixform creates a real S3 bucket
+(bucket name AWS-generated, force_destroy=true, tagged) and destroys it — full
+plan->apply->destroy round trip against real AWS, PASS, no orphans left.
+Found+fixed a test-teardown ordering bug (mgr.Close ran before t.Cleanup destroy,
+orphaning the first bucket — cleaned up manually via aws cli; fixed with LIFO
+cleanup ordering + inline destroy). The real-provider stack now does the complete
+lifecycle against a real cloud.
