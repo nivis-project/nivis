@@ -24,7 +24,7 @@ func TestDeltaCollectionsRoundTrip(t *testing.T) {
 	mgr := plugin.NewManager()
 	defer mgr.Close()
 
-	client, err := mgr.Client("delta", bin)
+	client, err := mgr.Client("delta", bin, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("spawn: %v", err)
 	}

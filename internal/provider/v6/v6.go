@@ -58,6 +58,35 @@ func (b *Backend) schema(ctx context.Context) (*tfplugin6.GetProviderSchema_Resp
 	return b.schemaResp, b.schemaErr
 }
 
+// Configure builds the provider config object from the (cached) provider schema
+// block, encodes the given config (absent attrs -> null), and calls
+// ConfigureProvider. An empty config against a provider with no required config
+// is a valid no-op.
+func (b *Backend) Configure(ctx context.Context, config map[string]interface{}) error {
+	resp, err := b.schema(ctx)
+	if err != nil {
+		return err
+	}
+	block := resp.GetProvider().GetBlock()
+	objType, err := tfvalue.ObjectType(block)
+	if err != nil {
+		return fmt.Errorf("provider config schema: %w", err)
+	}
+	// No computed provider-config attrs at configure time; all attrs are inputs.
+	cfgDV, err := tfvalue.EncodeConfig(objType, map[string]bool{}, config)
+	if err != nil {
+		return fmt.Errorf("encode provider config: %w", err)
+	}
+	confResp, err := b.client.ConfigureProvider(ctx, &tfplugin6.ConfigureProvider_Request{
+		TerraformVersion: "1.0.0",
+		Config:           cfgDV,
+	})
+	if err != nil {
+		return fmt.Errorf("ConfigureProvider: %w", err)
+	}
+	return provider.DiagError(normDiags(confResp.GetDiagnostics()))
+}
+
 func (b *Backend) ListResourceTypes(ctx context.Context) ([]string, error) {
 	resp, err := b.schema(ctx)
 	if err != nil {
@@ -112,11 +141,18 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("encode config: %w", err)
 	}
+	// PriorState for a create must be a properly-encoded NULL value of the
+	// resource object type, not an empty DynamicValue — real (SDKv2) providers
+	// panic trying to decode empty msgpack.
+	priorNull, err := tfvalue.NullState(raw.objType)
+	if err != nil {
+		return provider.PlanResult{}, err
+	}
 	resp, err := b.client.PlanResourceChange(ctx, &tfplugin6.PlanResourceChange_Request{
 		TypeName:         req.TypeName,
 		Config:           cfgDV,
 		ProposedNewState: cfgDV,
-		PriorState:       &tfplugin6.DynamicValue{},
+		PriorState:       priorNull,
 	})
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("PlanResourceChange: %w", err)
@@ -143,11 +179,15 @@ func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provide
 		return provider.ApplyResult{}, fmt.Errorf("encode config: %w", err)
 	}
 	planned, _ := req.PlannedState.(*tfplugin6.DynamicValue)
+	priorNull, err := tfvalue.NullState(raw.objType)
+	if err != nil {
+		return provider.ApplyResult{}, err
+	}
 	resp, err := b.client.ApplyResourceChange(ctx, &tfplugin6.ApplyResourceChange_Request{
 		TypeName:     req.TypeName,
 		Config:       cfgDV,
 		PlannedState: planned,
-		PriorState:   &tfplugin6.DynamicValue{},
+		PriorState:   priorNull,
 	})
 	if err != nil {
 		return provider.ApplyResult{}, fmt.Errorf("ApplyResourceChange: %w", err)

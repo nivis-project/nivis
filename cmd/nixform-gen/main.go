@@ -37,7 +37,10 @@ func main() {
 			mgr := plugin.NewManager()
 			defer mgr.Close()
 
-			client, err := mgr.Client(identity, providerPath)
+			// Codegen only fetches the schema; configure with an empty config
+			// (real providers accept an all-null configure and the schema RPC
+			// works regardless).
+			client, err := mgr.Client(identity, providerPath, map[string]interface{}{})
 			if err != nil {
 				return err
 			}

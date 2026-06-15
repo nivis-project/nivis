@@ -7,7 +7,7 @@ priority: high
 tags:
     - milestone-2
 created_at: 2026-06-15T12:49:06Z
-updated_at: 2026-06-15T13:15:18Z
+updated_at: 2026-06-15T14:46:14Z
 parent: nixform2-hj4w
 ---
 
@@ -25,3 +25,12 @@ provider-registry. The executor speaks v5 and v6 (negotiated), and fetches real
 providers from the registry with checksum verification. Proven: real Hetzner
 hcloud fetched, verified, spawned, schema read (29 types). Out of scope by
 design: live cloud apply with credentials.
+
+
+
+## Real AWS plan achieved (read-only)
+provider-configure change: Configure wired (v5/v6), nested blocks in object
+types, PriorState null-encoding fix. Real test PASSES: registry-fetch
+hashicorp/aws -> v5 negotiate -> Configure -> Plan aws_s3_bucket (26
+known-after-apply attrs), no resource created. The full real-provider stack works
+end to end for plan.

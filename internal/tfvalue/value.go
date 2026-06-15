@@ -17,19 +17,78 @@ import (
 	"github.com/wearetechnative/nixform/internal/tfplugin6"
 )
 
-// ObjectType builds the tftypes.Object for a resource from its schema block: one
-// attribute per schema attribute, with the attribute's tftypes.Type parsed from
-// the schema's JSON-encoded type.
+// ObjectType builds the tftypes.Object for a schema block: one attribute per
+// flat attribute (or its NestedType), plus one per nested block, typed by the
+// block's nesting mode (SINGLE/GROUP -> object, LIST -> list, SET -> set,
+// MAP -> map of the nested object). The full set is required for the value to
+// conform — providers like AWS expect every config attribute, blocks included.
 func ObjectType(block *tfplugin6.Schema_Block) (tftypes.Object, error) {
 	attrs := map[string]tftypes.Type{}
 	for _, a := range block.GetAttributes() {
+		if nt := a.GetNestedType(); nt != nil {
+			ot, err := nestedObjectType(nt)
+			if err != nil {
+				return tftypes.Object{}, fmt.Errorf("attr %q: %w", a.GetName(), err)
+			}
+			attrs[a.GetName()] = ot
+			continue
+		}
 		t, err := tftypes.ParseJSONType(a.GetType())
 		if err != nil {
 			return tftypes.Object{}, fmt.Errorf("attr %q: parse type: %w", a.GetName(), err)
 		}
 		attrs[a.GetName()] = t
 	}
+	for _, b := range block.GetBlockTypes() {
+		bt, err := blockType(b)
+		if err != nil {
+			return tftypes.Object{}, fmt.Errorf("block %q: %w", b.GetTypeName(), err)
+		}
+		attrs[b.GetTypeName()] = bt
+	}
 	return tftypes.Object{AttributeTypes: attrs}, nil
+}
+
+// nestedObjectType builds an object type from a Schema_Object (NestedType attr).
+func nestedObjectType(o *tfplugin6.Schema_Object) (tftypes.Type, error) {
+	attrs := map[string]tftypes.Type{}
+	for _, a := range o.GetAttributes() {
+		if nt := a.GetNestedType(); nt != nil {
+			ot, err := nestedObjectType(nt)
+			if err != nil {
+				return nil, err
+			}
+			attrs[a.GetName()] = ot
+			continue
+		}
+		t, err := tftypes.ParseJSONType(a.GetType())
+		if err != nil {
+			return nil, fmt.Errorf("attr %q: %w", a.GetName(), err)
+		}
+		attrs[a.GetName()] = t
+	}
+	return tftypes.Object{AttributeTypes: attrs}, nil
+}
+
+// blockType maps a nested block to its tftypes type per nesting mode.
+func blockType(b *tfplugin6.Schema_NestedBlock) (tftypes.Type, error) {
+	inner, err := ObjectType(b.GetBlock())
+	if err != nil {
+		return nil, err
+	}
+	switch b.GetNesting() {
+	case tfplugin6.Schema_NestedBlock_LIST, tfplugin6.Schema_NestedBlock_GROUP:
+		return tftypes.List{ElementType: inner}, nil
+	case tfplugin6.Schema_NestedBlock_SET:
+		return tftypes.Set{ElementType: inner}, nil
+	case tfplugin6.Schema_NestedBlock_MAP:
+		return tftypes.Map{ElementType: inner}, nil
+	case tfplugin6.Schema_NestedBlock_SINGLE:
+		return inner, nil
+	default:
+		// INVALID or unknown: treat as a single object (best effort).
+		return inner, nil
+	}
 }
 
 // isUnresolved reports whether a config leaf is an unresolved marker (a __ref or

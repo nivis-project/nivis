@@ -63,7 +63,7 @@ func TestAlphaEndToEnd(t *testing.T) {
 	defer mgr.Close()
 	ctx := context.Background()
 
-	client, err := mgr.Client("alpha", bin)
+	client, err := mgr.Client("alpha", bin, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("spawn/handshake: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestBetaEndToEnd(t *testing.T) {
 	defer mgr.Close()
 	ctx := context.Background()
 
-	client, err := mgr.Client("beta", bin)
+	client, err := mgr.Client("beta", bin, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("spawn/handshake: %v", err)
 	}
@@ -144,11 +144,11 @@ func TestPooledByIdentity(t *testing.T) {
 	bin := buildProvider(t, "provider-alpha")
 	mgr := plugin.NewManager()
 	defer mgr.Close()
-	c1, err := mgr.Client("alpha", bin)
+	c1, err := mgr.Client("alpha", bin, map[string]interface{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	c2, err := mgr.Client("alpha", bin)
+	c2, err := mgr.Client("alpha", bin, map[string]interface{}{})
 	if err != nil {
 		t.Fatal(err)
 	}

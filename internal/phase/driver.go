@@ -30,7 +30,7 @@ import (
 // ProviderManager spawns/pools provider clients by identity. internal/plugin's
 // Manager satisfies this; the interface keeps phase testable.
 type ProviderManager interface {
-	Client(identity, path string) (provider.Client, error)
+	Client(identity, path string, config map[string]interface{}) (provider.Client, error)
 }
 
 // Driver runs the phased-eval loop.
@@ -132,7 +132,7 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	if !ok {
 		return nil, fmt.Errorf("provider %q not declared", node.Resource.Provider)
 	}
-	client, err := d.Manager.Client(node.Resource.Provider, prov.Source)
+	client, err := d.Manager.Client(node.Resource.Provider, prov.Source, prov.Config)
 	if err != nil {
 		return nil, fmt.Errorf("provider client: %w", err)
 	}

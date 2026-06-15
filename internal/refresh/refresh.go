@@ -17,7 +17,7 @@ import (
 
 // Manager is the provider-client seam (internal/plugin.Manager satisfies it).
 type Manager interface {
-	Client(identity, path string) (provider.Client, error)
+	Client(identity, path string, config map[string]interface{}) (provider.Client, error)
 }
 
 // Result reports which resources were reconciled.
@@ -51,7 +51,7 @@ func Run(ctx context.Context, g *ir.Graph, mgr Manager, store state.Store) (*Res
 
 func refreshOne(ctx context.Context, g *ir.Graph, mgr Manager, node *ir.ResourceNode, stored state.ResourceState) (map[string]interface{}, error) {
 	prov := g.Providers[node.Resource.Provider]
-	client, err := mgr.Client(node.Resource.Provider, prov.Source)
+	client, err := mgr.Client(node.Resource.Provider, prov.Source, prov.Config)
 	if err != nil {
 		return nil, err
 	}

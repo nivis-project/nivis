@@ -17,6 +17,10 @@ import (
 // against the tfplugin5 DynamicValue/Schema types. The wire format (msgpack over
 // tftypes) is identical between v5 and v6; only the protobuf message types differ.
 
+// objectType builds the tftypes.Object for a v5 schema block: flat attributes
+// plus nested blocks typed by nesting mode (SINGLE/GROUP -> object, LIST ->
+// list, SET -> set, MAP -> map of the nested object). v5 attributes have no
+// NestedType (v5 uses blocks for nesting), so only block_types are recursed.
 func objectType(block *tfplugin5.Schema_Block) (tftypes.Object, error) {
 	attrs := map[string]tftypes.Type{}
 	for _, a := range block.GetAttributes() {
@@ -26,7 +30,34 @@ func objectType(block *tfplugin5.Schema_Block) (tftypes.Object, error) {
 		}
 		attrs[a.GetName()] = t
 	}
+	for _, b := range block.GetBlockTypes() {
+		bt, err := blockType(b)
+		if err != nil {
+			return tftypes.Object{}, fmt.Errorf("block %q: %w", b.GetTypeName(), err)
+		}
+		attrs[b.GetTypeName()] = bt
+	}
 	return tftypes.Object{AttributeTypes: attrs}, nil
+}
+
+// blockType maps a v5 nested block to its tftypes type per nesting mode.
+func blockType(b *tfplugin5.Schema_NestedBlock) (tftypes.Type, error) {
+	inner, err := objectType(b.GetBlock())
+	if err != nil {
+		return nil, err
+	}
+	switch b.GetNesting() {
+	case tfplugin5.Schema_NestedBlock_LIST, tfplugin5.Schema_NestedBlock_GROUP:
+		return tftypes.List{ElementType: inner}, nil
+	case tfplugin5.Schema_NestedBlock_SET:
+		return tftypes.Set{ElementType: inner}, nil
+	case tfplugin5.Schema_NestedBlock_MAP:
+		return tftypes.Map{ElementType: inner}, nil
+	case tfplugin5.Schema_NestedBlock_SINGLE:
+		return inner, nil
+	default:
+		return inner, nil
+	}
 }
 
 func isUnresolved(v interface{}) bool {

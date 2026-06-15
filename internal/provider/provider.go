@@ -101,6 +101,14 @@ type DestroyResult struct {
 
 // Client is the version-neutral provider interface the executor uses.
 type Client interface {
+	// Configure passes provider-level configuration to the provider, which most
+	// real providers require before any plan/apply. config is keyed by the
+	// provider config schema's attribute names; attributes absent from the map
+	// are sent as null so the provider applies its own defaults (e.g. the AWS
+	// SDK credential/region chain from the environment). Must be called once,
+	// before Plan/Apply/Read/Destroy. An all-empty config is a valid no-op for
+	// providers that need no configuration (the fakes).
+	Configure(ctx context.Context, config map[string]interface{}) error
 	// ListResourceTypes returns the provider's resource type names (sorted).
 	ListResourceTypes(ctx context.Context) ([]string, error)
 	// GetSchema returns the schema for one resource type.

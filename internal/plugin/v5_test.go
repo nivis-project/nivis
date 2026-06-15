@@ -24,7 +24,7 @@ func TestV5NegotiationAndRoundTrip(t *testing.T) {
 	mgr := plugin.NewManager()
 	defer mgr.Close()
 
-	client, err := mgr.Client("gamma", bin)
+	client, err := mgr.Client("gamma", bin, map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("spawn/handshake (v5): %v", err)
 	}

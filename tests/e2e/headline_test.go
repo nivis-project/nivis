@@ -58,11 +58,11 @@ type relMgr struct {
 	root string
 }
 
-func (m relMgr) Client(identity, path string) (provider.Client, error) {
+func (m relMgr) Client(identity, path string, config map[string]interface{}) (provider.Client, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(m.root, path)
 	}
-	return m.mgr.Client(identity, path)
+	return m.mgr.Client(identity, path, config)
 }
 
 func newDriver(t *testing.T, root, attr string, maxPhases int) (*phase.Driver, func()) {

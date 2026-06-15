@@ -91,10 +91,11 @@ func NewManager() *Manager { return &Manager{clients: map[string]*entry{}} }
 func (m *Manager) WithResolver(r Resolver) *Manager { m.resolver = r; return m }
 
 // Client spawns (or reuses) the provider binary at path under the given identity
-// and returns a version-neutral provider.Client. Reusing by identity means two
-// resources of the same provider share one process. For now only the tfprotov6
-// backend is wired; a tfprotov5 backend plugs in here behind the same interface.
-func (m *Manager) Client(identity, path string) (provider.Client, error) {
+// and returns a version-neutral provider.Client, configured with the given
+// provider config. Reusing by identity means two resources of the same provider
+// share one process; configuration happens once, on first spawn. go-plugin
+// negotiates the protocol (v5 or v6) and the matching backend is built.
+func (m *Manager) Client(identity, path string, config map[string]interface{}) (provider.Client, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -155,6 +156,13 @@ func (m *Manager) Client(identity, path string) (provider.Client, error) {
 	default:
 		c.Kill()
 		return nil, fmt.Errorf("plugin %q: unsupported negotiated protocol version %d", identity, c.NegotiatedVersion())
+	}
+
+	// Configure the provider once, before it is used for plan/apply. An empty
+	// config is a valid no-op for config-free providers (the fakes).
+	if err := cl.Configure(context.Background(), config); err != nil {
+		c.Kill()
+		return nil, fmt.Errorf("plugin %q: configure: %w", identity, err)
 	}
 
 	m.clients[identity] = &entry{client: c, provider: cl}

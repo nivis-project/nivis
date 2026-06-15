@@ -19,7 +19,7 @@ import (
 
 // Manager is the provider-client seam (internal/plugin.Manager satisfies it).
 type Manager interface {
-	Client(identity, path string) (provider.Client, error)
+	Client(identity, path string, config map[string]interface{}) (provider.Client, error)
 }
 
 // Options tune a destroy run.
@@ -78,7 +78,7 @@ func destroyOne(ctx context.Context, g *ir.Graph, mgr Manager, node *ir.Resource
 	if !ok {
 		return fmt.Errorf("provider %q not declared", node.Resource.Provider)
 	}
-	client, err := mgr.Client(node.Resource.Provider, prov.Source)
+	client, err := mgr.Client(node.Resource.Provider, prov.Source, prov.Config)
 	if err != nil {
 		return err
 	}

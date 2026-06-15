@@ -117,11 +117,11 @@ type relativeManager struct {
 	root string
 }
 
-func (m relativeManager) Client(identity, path string) (provider.Client, error) {
+func (m relativeManager) Client(identity, path string, config map[string]interface{}) (provider.Client, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(m.root, path)
 	}
-	return m.mgr.Client(identity, path)
+	return m.mgr.Client(identity, path, config)
 }
 
 func keys(m map[string]string) []string {
