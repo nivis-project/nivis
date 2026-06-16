@@ -76,6 +76,9 @@ verifies real providers from the OpenTofu registry on first use.)
   round trip), from an empty directory.
 - **Installing `nivis`** (`nix shell`, `nix profile`): see
   **[docs/INSTALL.md](docs/INSTALL.md)**.
+- **How does it compare?** An honest **[comparison](docs/COMPARISON.md)** with
+  Terranix, OpenTofu/Terraform, Pulumi, NixOps, CDK and CloudFormation, including
+  where Nivis is still young.
 - Browse it all on the **[docs site](https://wearetechnative.github.io/nivis/)**.
 
 ## How it works (one paragraph)

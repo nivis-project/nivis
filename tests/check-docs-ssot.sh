@@ -84,6 +84,12 @@ else
   echo "   ^ fix by replacing the copy with a link (README) or an {{#include}} (site)."
 fi
 
+# The comparison page rots against EXTERNAL facts, not this repo — check its
+# freshness marker here so the docs gate catches a stale comparison.
+if ! bash tests/check-comparison-fresh.sh; then
+  fail=1
+fi
+
 # 5. The site must still build with the includes in place.
 echo "== site builds with includes =="
 if command -v mdbook >/dev/null 2>&1; then
