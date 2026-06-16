@@ -1,133 +1,204 @@
-# ROADMAP.md: Nivis PoC
+# ROADMAP.md: Nivis
 
-One **milestone** (the PoC / alpha base). Each epic below becomes a beans epic
-under it (see `scripts/bootstrap-beans.sh`). Inside each epic, every task is an
-OpenSpec change. The epic numbers are labels, **not** strict execution order;
-follow the "Critical path" section.
+Nivis cleared its **proof-of-concept milestone**. The thesis is proven: real
+Terraform/OpenTofu provider resources are first-class Nix values, driven by a
+thin Go executor that spawns unmodified provider binaries, and provider outputs
+round-trip back into Nix across phases to a fixpoint. On top of that we have real
+AWS apply/update/replace/destroy, schema codegen, and an end-to-end "build a
+NixOS AMI and launch it" example.
 
-## Milestone exit criterion (definition of done)
+That makes Nivis **experimental / alpha** (`0.3.x`): real, but small. This
+roadmap is about the next thing, taking Nivis from "the demo works" to "I can run
+my real infrastructure on this," and eventually to something an enterprise can
+adopt. The PoC roadmap that got us here is preserved at the bottom as history.
 
-The headline e2e in `TESTING.md` passes: two providers, unknown values
-originating on **both** sides, resolved across **≥3 phases**, with a Nix-side
-consumer reading outputs from **both** providers. Everything else is in service
-of making that test pass and trustworthy.
+> **How this maps to beans.** Each phase below is a beans **milestone**; each
+> theme under it is a beans **epic**; each task inside an epic is an OpenSpec
+> change (spec before code). See `CLAUDE.md` §3. The doc is the *why and what*;
+> beans is the audit trail.
 
-## Critical path (the order that actually matters)
+## Where we are honestly weak
+
+`docs/COMPARISON.md` states this plainly. Versus Terraform/OpenTofu, Pulumi and
+CDK, the gaps that actually block adoption today are:
+
+- **State is local-only.** There is a `Store` interface seam, but no shared
+  backend and no locking. Two people (or CI) cannot safely touch the same infra.
+- **No variables / overrides.** Config is whatever the flake hard-codes plus an
+  ad-hoc `ledger.vars`. There is no first-class way to parameterise per
+  environment or pass values at the CLI.
+- **No datasources.** The provider protocol's `ReadDataSource` is unused; you
+  cannot look up an existing AMI, VPC, or zone the way every other tool can.
+- **Thin DX.** Plan/apply/destroy output is not colorised by change type, there
+  is no shell completion, and there is no per-provider reference documentation.
+- **No enterprise controls.** No policy-as-code, no RBAC/audit, no hosted control
+  plane, and provider download from the registry is network-gated and not the
+  default path.
+
+The phases close these in the order that unlocks the widest audience soonest.
+
+## Architecture invariants (do not regress)
+
+Every phase below is bound by `docs/DESIGN.md`. In particular: **spawn unmodified
+providers, do not link** them; Nix is a **batch evaluator** resolved by phased
+re-evaluation to a fixpoint, not a live `Output<T>` runtime; **the IR is the
+frozen contract** (`docs/IR-CONTRACT.md`), so any feature that changes the IR
+shape needs an OpenSpec change to the contract first; and tests run against
+**in-repo fake providers** (hermetic, no network, no credentials).
+
+---
+
+## Phase A: a daily-driver for Nix developers  ⟵ the next milestone
+
+> Beans milestone: `nixform2-zdj0` ("Road to v1"). Epics: A1 `nixform2-kym5`,
+> A2 `nixform2-6e6i`, A3 `nixform2-yqd3`, A4 `nixform2-oycy`, A5 `nixform2-n2rg`,
+> A6 `nixform2-z8e1`.
+
+**Definition of done:** a Nix developer can manage a real, multi-resource project
+end to end, day to day, without dropping back to Terraform, with shared state,
+parameterised config, datasource lookups, and a plan they can actually read. This
+is the headline goal for the next milestone, the same role the round-trip e2e
+played for the PoC.
+
+- **A1. Variables and overrides.** First-class inputs to a plan: typed variables
+  with defaults, a CLI way to set them (`--var`, `--var-file`), and a clear
+  precedence (defaults < file < flag < environment). Must thread cleanly through
+  the phased-eval loop (the ledger already carries `vars`; formalise it) and stay
+  pure: no impurity sneaks into the Nix evaluation. Probably an IR-contract touch
+  for how vars enter the `plan` function.
+- **A2. Datasources.** Drive the provider protocol's `ReadDataSource` so a config
+  can read existing infrastructure (an AMI by filter, a VPC, an availability
+  zone) and feed it into resources. Needs a Nix-lib constructor (`mkData` or
+  similar), executor support, and an IR-contract addition for the datasource node
+  and its outputs. Datasource reads happen per phase like any other node.
+- **A3. Legible plan/apply/destroy output.** Colorise by change type
+  (`+ create`, `~ update`, `-/+ replace`, `- destroy`, `= no-op`), summarise
+  counts, and make the phased nature visible (which resources resolved in which
+  phase). Respect `NO_COLOR` and non-TTY output. No behaviour change, pure DX.
+- **A4. Shell completion.** Cobra can generate bash/zsh/fish completion; wire it
+  up (`nivis completion <shell>`) and complete resource ids for
+  `state show` / `--target` from the state file.
+- **A5. Per-provider reference docs.** Today a user reads the provider's Terraform
+  registry docs and mentally translates HCL to Nivis. Generate or curate a
+  "Terraform docs to Nivis" mapping so `aws_instance`'s arguments are discoverable
+  in Nivis terms. Couples naturally to schema codegen (Epic 2, already built).
+- **A6. State ergonomics.** Configurable state path is done; add the small
+  things a real project needs: `state list/show/rm` polish, a `state pull/push`
+  shape that the remote backend (Phase B) will reuse, and clear errors on a
+  stale or locked state file.
+
+## Phase B: team-ready  ⟵ after Phase A
+
+> Beans milestone: `nixform2-kovh`. Epics: B1 `nixform2-izhk`,
+> B2 `nixform2-0oqk`, B3 `nixform2-tyzs`, B4 `nixform2-cdfj`.
+
+**Definition of done:** multiple people and CI can safely operate the same
+infrastructure concurrently.
+
+- **B1. Remote state backend (S3 first).** Implement the `Store` seam against S3
+  (object per state, server-side encryption, the credential chain Nivis already
+  uses). Keep the format Nivis's own; **no tfstate compatibility guarantee**
+  (DESIGN). Configured in the flake, not via env soup.
+- **B2. State locking.** A lock so two concurrent applies cannot corrupt state
+  (DynamoDB-style advisory lock for the S3 backend, with a `force-unlock` escape
+  hatch and clear "who holds the lock" errors).
+- **B3. Drift detection.** `refresh` exists; build a real "plan shows drift"
+  experience that reconciles remote reality against stored state and surfaces
+  out-of-band changes.
+- **B4. Multiple environments.** A clean pattern for dev/staging/prod from one
+  config: workspaces or per-environment var-files + state keys, decided in a
+  spec, not improvised.
+
+## Phase C: enterprise-credible  ⟵ the longer horizon
+
+> Beans milestone: `nixform2-1okn`. Epics: C1 `nixform2-alr9`,
+> C2 `nixform2-84fs`, C3 `nixform2-m83a`, C4 `nixform2-q7fx`, C5 `nixform2-7evo`.
+
+NixOS is gaining enterprise traction; this is where Nivis earns a seat there.
+These are deliberately later, after the basics are solid, and several are large
+enough to be their own milestones.
+
+- **C1. Policy as code / guardrails.** A pre-apply policy hook (deny by rule,
+  required tags, allowed regions). Evaluate doing this *in Nix* (assertions in
+  the module system) versus an external engine; Nix-native is the differentiator.
+- **C2. RBAC, teams, audit.** The story for who can apply what, and an audit
+  trail. Likely pairs with a remote backend and possibly a hosted control plane;
+  scope carefully, this is where tools grow a SaaS.
+- **C3. Provider registry integration.** Real provider download/verify/cache from
+  the OpenTofu registry. **Network-gated** (CLAUDE.md §6); today providers are
+  fetched on first use but this needs hardening, offline/air-gapped mirrors, and
+  supply-chain verification for enterprise.
+- **C4. Secrets at scale.** The IR already keeps sensitive values out of the
+  world-readable store; extend to integration with real secret stores (Vault,
+  SSM, sops-nix) so secrets never transit the Nix store at all.
+- **C5. Scale and performance.** Phased re-eval cost on large graphs is currently
+  unmeasured. Measure it; optimise only if it is a *measured* problem (DESIGN
+  rejects premature cleverness like a live evaluator).
+
+## Cross-cutting, every phase
+
+- **Stay hermetic.** Every feature lands with tests against the in-repo fakes; the
+  fakes grow new capabilities (a datasource-serving fake, a drift-injecting fake)
+  as the features that need them arrive.
+- **Keep the lib pure.** `nivis.lib` stays builtins-only (no nixpkgs); only
+  packages/apps may force nixpkgs.
+- **Spec before code.** IR-affecting work (vars entry, datasource node) updates
+  `IR-CONTRACT.md` via an OpenSpec change first.
+
+---
+
+## History: the PoC milestone (delivered)
+
+Kept for the record. This is the roadmap that proved the thesis; every epic below
+is complete (see the beans milestone `nixform PoC / alpha base` and its epics).
+
+**Milestone exit criterion (met):** the headline e2e in `TESTING.md`: two
+providers, unknown values originating on **both** sides, resolved across **≥3
+phases**, with a Nix-side consumer reading outputs from **both** providers.
+
+**Critical path that was followed:**
 
 ```
 E1 (Nix lib core: mkResource + refs + IR serializer)
         │
-E1.5 ── IR CONTRACT  ← linchpin; write & freeze first   (IR-CONTRACT.md)
+E1.5 ── IR CONTRACT  (linchpin; written & frozen first)
         │
-E4a ── fake tfprotov6 providers (alpha, beta)  ← build early; test substrate
+E4a ── fake tfprotov6 providers (alpha, beta)  (test substrate)
         │
 E3a ── executor: ingest IR, spawn ONE fake provider, plan+apply, write state
         │
-E3.5 ── PHASED EVALUATION TO FIXPOINT  ← the thesis
+E3.5 ── PHASED EVALUATION TO FIXPOINT  (the thesis)
         │
-E4b ── headline two-provider / unknowns-both-sides e2e  ← milestone exit
+E4b ── headline two-provider / unknowns-both-sides e2e  (milestone exit)
         │
-(then breadth, off the critical path:)
-E2 ── schema codegen   ·   E3b ── refresh/destroy/CLI polish   ·   E4c ── docs
+(then breadth:) E2 schema codegen · E3b refresh/destroy/CLI · E4c/4d error UX & docs
 ```
 
-Rationale in `DESIGN.md` D5. Do not build E2 (general codegen) before E3.5/E4b.
+**Epics delivered (PoC and the alpha follow-ons):**
 
----
-
-## Epic 1: Nix library core (`nivis-lib`)
-Pure deterministic config layer. Emits the IR. No Go.
-
-- **1.1 Resource constructor**: `mkResource { provider, type, name, config }`
-  returning an attrset with stable identity, config, and a thunk exposing
-  computed output attributes as referenceable Nix values (so dependency edges
-  are implicit).
-- **1.2 Reference system**: `resource.attr` access at eval time yields a typed
-  placeholder the serializer recognizes as a cross-resource/cross-domain ref.
-  Must survive a phase unresolved and be fillable on the next phase. See IR
-  contract for encoding and the TF→TF vs \*→Nix distinction (DESIGN D3).
-- **1.3 Meta-arguments**: `depends_on`, `lifecycle` (prevent_destroy,
-  ignore_changes), `count`, `for_each`. `for_each` ↔ `builtins.mapAttrs`.
-  **Expansion happens in Nix**: the IR carries concrete, already-expanded
-  resources (decided in IR contract).
-- **1.4 Module system**: NixOS-style `{ config, tf, pkgs, lib, ... }` via
-  `lib.evalModules`, so user infra composes and resources across modules merge
-  into one flat graph. This is where a NixOS/HM option can read a `tf.<res>.attr`.
-- **1.5 IR serializer**: `toIR :: ResourceGraph -> JSON` emitting the canonical
-  IR (types, provider, config with refs encoded, meta-args, edge list, the
-  outputs-injection slot). Conforms to `IR-CONTRACT.md`.
-- **1.6 Flake interface**: `nivis.plan`, `nivis.state`, `nivis.providers`
-  outputs; `plan` accepts an injected-outputs argument (the phased-eval input).
-
-## Epic 1.5: IR contract (linchpin) ⟵ write first
-- **1.5a Author `IR-CONTRACT.md`**: the frozen JSON schema. Must pin:
-  ref encoding (nested attrs, list/set indices, refs inside expansions);
-  `for_each`/`count` expansion timing; unknown-value representation toward the
-  provider; sensitive-value handling across the JSON/store boundary; the
-  outputs-injection format consumed on re-eval. A fully-worked OpenSpec change
-  for this already exists at `openspec/changes/define-ir-contract/`: implement
-  it first; everything keys off it.
-
-## Epic 2: Provider schema codegen (`nivis gen`)  ⟵ OFF critical path
-Generates typed Nix constructors from live provider schemas. Build *after* E4b.
-- **2.1** Go tool: spawn provider, handshake, `GetProviderSchema` → `schema.json`.
-- **2.2** Schema → Nix type model (string/number/bool/list/set/map/object,
-  computed/optional/required/sensitive). Mine Pulumi's type mapping (DESIGN D2).
-- **2.3** Codegen: emit `<provider>/<type>.nix` constructors with required-field
-  throws and optional passthrough. Plan an **override seam** (Pulumi overlay
-  lesson): generated code is usable, not idiomatic.
-- **2.4** Provider registry resolve/download/verify/cache. **Network-gated; not
-  in PoC scope**, see CLAUDE.md §6. Track as its own bean; use fakes meanwhile.
-- **2.5** Package codegen as a flake app (`nix run Nivis#gen -- --provider …`).
-
-## Epic 3: Go executor (`Nivis`)
-Pure orchestration. No HCL, no policy.
-- **3a.1 IR ingestion**: read+validate IR → `ResourceNode`, `RefEdge`,
-  `ProviderConfig`, `MetaArgs`.
-- **3a.2 State backend**: trivial lockable local JSON state for the PoC. **No
-  tfstate-format compatibility guarantee** (DESIGN: keep state trivial until the
-  round trip works). Design the interface so remote backends can come later.
-- **3a.3 Provider plugin manager**: spawn provider from a path, plain
-  go-plugin/gRPC v6 handshake, pooled connections keyed by provider identity.
-  (No muxer for the PoC.)
-- **3a.4 DAG builder**: graph from `RefEdge`; parallel where possible; honor
-  `depends_on`. Resolve **TF→TF** refs in-executor as outputs arrive.
-- **3a.5 Plan engine**: per resource: `GetProviderSchema`, validate,
-  `PlanResourceChange`, diff vs state, emit human-readable plan. No side effects.
-  Unknown inputs presented to the provider per the IR contract's unknown repr.
-- **3a.6 Apply engine**: `ApplyResourceChange`; write partial state after each
-  success so a failed apply is recoverable.
-- **3b.1 Refresh/destroy**: `ReadResource` reconcile; destroy ordering.
-- **3b.2 CLI**: `plan/apply/destroy/refresh/state {list,show,rm}`, `--target`.
-
-## Epic 3.5: Phased evaluation to fixpoint (the thesis)  ⟵ critical
-Generalizes two-phase Option A to N phases. This is the epic the original
-roadmap was missing.
-- **3.5.1 Outputs ledger**: a JSON file accumulating resolved outputs across
-  phases, in the injection format from the IR contract. World-readable-safe
-  handling of sensitive outputs.
-- **3.5.2 Phase driver**, loop:
-  1. `nix eval .#nivis.plan` with the current outputs ledger injected
-     (empty on phase 0).
-  2. Ingest IR; via the DAG, find resources whose inputs are now fully known;
-     plan+apply them; collect new computed outputs.
-  3. Append new outputs to the ledger.
-  4. If the phase resolved ≥1 new output **and** unresolved refs/resources
-     remain → repeat. Else stop.
-- **3.5.3 Fixpoint & error detection**: halt when a phase yields no new
-  resolved value. If unresolved refs remain at halt → actionable error
-  (unresolvable value or dependency cycle), naming the resources/attrs.
-- **3.5.4 \*→Nix feedback**: verify a re-evaluated Nix expression (e.g. a NixOS
-  option / a string built from a computed value) produces a concrete value in a
-  later phase's IR and is consumable downstream. This is the round trip.
-
-## Epic 4: Integration, e2e, DX
-- **4a Fake providers** (build early): two in-repo `tfprotov6` providers,
-  `provider-alpha` and `provider-beta`, with computed (unknown-at-plan) outputs.
-  Spec in `TESTING.md`.
-- **4b Headline e2e** (milestone exit): two providers, unknowns on both sides,
-  ≥3 phases, Nix-side consumer reading from both. Full spec in `TESTING.md`.
-- **4c Error UX**: Nix eval, schema validation, gRPC, and state-lock errors all
-  produce actionable messages with resource identity, never raw stack traces.
-- **4d Docs**: README, getting-started on the fake providers, IR contract and
-  flake interface documented as stable contracts.
+- **E1** Nix library core: `mkResource`, `mkProvider`, the reference system,
+  meta-arguments (`depends_on`, `lifecycle`, `count`/`for_each` expanded in Nix),
+  the module system, `toIR`, and the flake interface (`nivis.plan`).
+- **E1.5** The IR contract: `IR-CONTRACT.md` + `ir-schema.json`, the frozen JSON
+  contract pinning ref encoding, expansion timing, unknown representation, and
+  sensitive-value handling.
+- **E2** Provider schema codegen (`nivis gen`): typed Nix constructors from a
+  provider's `GetProviderSchema`.
+- **E3** Go executor: IR ingestion, the lockable local `Store`, the plugin
+  manager (spawn + gRPC handshake, v5 and v6), the DAG, plan and apply engines.
+- **E3.5** Phased evaluation to fixpoint: the outputs ledger, the phase driver,
+  fixpoint and cycle detection, and verified `*→Nix` feedback (the round trip).
+- **E3b** Refresh and destroy engines and CLI (`plan/apply/destroy/refresh/state`,
+  `--target`, `--refresh`, `--build`).
+- **E4a** Fake `tfprotov6`/`tfprotov5` providers (the hermetic test substrate).
+- **E4b** The headline two-provider, unknowns-both-sides, ≥3-phase e2e.
+- **E4c/4d** Error UX and docs (actionable errors; README, getting-started, the
+  stable-contract docs).
+- **Real-provider support** (M2): real `tfprotov5` + on-first-use registry fetch,
+  proven against AWS.
+- **Resource lifecycle:** update and replace beyond create-only, with
+  `prevent_destroy`.
+- **EC2 + NixOS:** build a NixOS AMI in Nix and launch it through Nivis, with
+  `nivis apply` realising the image itself (`__build` / `nivis.drv`).
+- **Branding, rename to Nivis, release management** (versioning, changelog,
+  releases, the docs site).
