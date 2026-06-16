@@ -1,22 +1,22 @@
-# docs/TESTING.md — testing strategy & the headline e2e
+# docs/TESTING.md: testing strategy & the headline e2e
 
 Testing is part of "done." No OpenSpec change is complete without its tests.
 
 ## Layers
 
-1. **Pure Nix functions — property tests.** `mkResource`, the reference system,
+1. **Pure Nix functions, property tests.** `mkResource`, the reference system,
    `for_each`/`count` expansion, and `toIR` conformance to `docs/IR-CONTRACT.md`.
    Property: for arbitrary valid resource graphs, every IR leaf is a value, a
    well-formed `__ref`, or a `__derived`; ids are unique; every edge endpoint
    exists.
-2. **Go — table-driven unit tests.** IR ingestion/validation, DAG construction,
+2. **Go, table-driven unit tests.** IR ingestion/validation, DAG construction,
    ref classification (TF→TF vs \*→Nix), TF→TF in-executor resolution, the
    `__ref`→tfprotov6-unknown mapping, state read/write/lock, fixpoint detection.
-3. **Integration — against fake providers, no network.** Executor spawns a fake
+3. **Integration, against fake providers, no network.** Executor spawns a fake
    `tfprotov6` provider, completes the go-plugin handshake, drives
    `GetProviderSchema`/`PlanResourceChange`/`ApplyResourceChange`, and persists
    state. Proves the protocol client end-to-end offline.
-4. **E2E — the full pipeline.** `.nix` → IR → phased plan/apply → state →
+4. **E2E, the full pipeline.** `.nix` → IR → phased plan/apply → state →
    refresh → destroy, culminating in the headline test below.
 
 All provider-touching tests use **in-repo fake providers** so the suite is
@@ -27,12 +27,12 @@ hermetic and runs in CI without credentials or registry/network access.
 Two minimal Go binaries that speak `tfprotov6`. Each returns a static schema and
 produces **computed (unknown-at-plan)** outputs at apply.
 
-**`provider-alpha`** — resource `alpha_token`:
+**`provider-alpha`**, resource `alpha_token`:
 - inputs: `label` (string, optional)
 - computed outputs (known only after apply): `id` (string), `value` (string,
   derived deterministically from `label` + a counter so tests are reproducible)
 
-**`provider-beta`** — resource `beta_record`:
+**`provider-beta`**, resource `beta_record`:
 - inputs: `from` (string, required)
 - computed output (known only after apply): `endpoint` (string, derived from
   `from`)
@@ -41,7 +41,7 @@ Determinism: outputs are a pure function of inputs (+ a per-process counter that
 the test harness seeds), so assertions are exact. No clocks, no randomness, no
 external calls.
 
-## Headline e2e — milestone exit criterion (Epic 4b)
+## Headline e2e: milestone exit criterion (Epic 4b)
 
 **What it must prove, in one test:** two providers, unknown values originating on
 **both** sides, resolution requiring **≥3 phases**, and a Nix-side consumer
@@ -52,7 +52,7 @@ is acyclic; the phase count comes from each hop being **Nix-mediated**
 ### Topology (`tests/e2e/two-providers.nix`)
 
 ```
-alpha_token.A           (alpha)  — no inputs
+alpha_token.A           (alpha)  : no inputs
    └─ A.value  ─┐
                 ▼  Nix: name = "rec-" + A.value          (__derived on A.value)
 beta_record.B  (beta)   from = name
@@ -96,7 +96,7 @@ systemConfig = {
   not incidental).
 - Final outputs ledger contains `A.id`,`A.value`,`B.endpoint`,`C.*`.
 - `systemConfig` evaluates to concrete values for `recordEndpoint`, `tokenValue`,
-  and `combined`, each matching the deterministic provider outputs — proving
+  and `combined`, each matching the deterministic provider outputs, proving
   **TF→Nix feedback from both providers**.
 - A cycle variant (make `A.label` depend on `C.*`) is rejected at fixpoint with
   an actionable "unresolvable / cycle" error naming A and C (Epic 3.5.3).
@@ -108,5 +108,5 @@ systemConfig = {
 It exercises every load-bearing decision at once: the protocol client (real
 `tfprotov6` handshake to two providers), TF→TF and \*→Nix ref handling, the
 `__derived` mechanism, N-phase fixpoint resolution with N>2, and the round trip
-that is the project's entire reason for existing — with unknowns genuinely
+that is the project's entire reason for existing, with unknowns genuinely
 originating on both provider sides.

@@ -4,8 +4,6 @@
 
 # Nivis
 
-Nivis is **Infrastructure as Nix Code**.
-
 Nivis lets you manage real infrastructure from Nix: Terraform/OpenTofu **provider
 resources are first-class Nix values**. You write your infra in a flake; a thin
 Go executor speaks the provider plugin protocol directly to **unmodified provider
@@ -103,6 +101,9 @@ binary cache):
 - `mkProvider { source; config; }`: a provider, config (incl. nested blocks) in
   Nix; flows into the provider's `Configure`.
 - `str`/`derived`: build values from provider outputs (the round trip).
+- `drv`/`drvFile`: mark a Nix build output (a derivation) so `nivis apply`
+  realises it before use; `drv d` uses `d.passthru.filePath` when present,
+  `drvFile d "sub/path"` names a file explicitly. (See the EC2 tutorial.)
 - `toIR`: serialize to the IR; `mkResources` (`count`/`for_each`) and
   `evalModules` (module composition).
 

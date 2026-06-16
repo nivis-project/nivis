@@ -4,7 +4,7 @@
 
 # Nivis
 
-**Infrastructure as Nix Code.** *All your base belongs to Nix.* *(Nivis — Latin,
+**Infrastructure as Nix Code.** *All your base belongs to Nix.* *(Nivis, Latin,
 "of snow"; it belongs to Nix. Formerly `nixform`, then Terrae Nivis.)*
 
 {{#include ../../docs/OVERVIEW.md:pitch}}
@@ -15,11 +15,11 @@
 
 ## Where to start
 
-- **[Getting started](./getting-started.md)** — a hands-on walkthrough against
+- **[Getting started](./getting-started.md)**: a hands-on walkthrough against
   the in-repo fake providers (offline, no credentials).
-- **[Real providers (AWS)](./real-providers.md)** — drive a real provider end to
+- **[Real providers (AWS)](./real-providers.md)**: drive a real provider end to
   end.
-- **[Architecture & decisions](./design.md)** — why it is the way it is
+- **[Architecture & decisions](./design.md)**: why it is the way it is
   (spawn-not-link, batch-not-live, phased re-eval to a fixpoint).
-- **[The IR contract](./ir-contract.md)** — the stable interface between the Nix
+- **[The IR contract](./ir-contract.md)**: the stable interface between the Nix
   frontend and the Go executor.

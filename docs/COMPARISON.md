@@ -119,17 +119,17 @@ This is where Nivis is youngest. Honest status:
 ## When to pick what
 
 - **You live in Nix and want real, multi-cloud infra with provider outputs feeding
-  back into your Nix config** — Nivis is the only tool aimed squarely at that, but
+  back into your Nix config**: Nivis is the only tool aimed squarely at that, but
   accept the alpha maturity.
-- **You want Nix to author config but run it through battle-tested tooling** —
+- **You want Nix to author config but run it through battle-tested tooling**:
   Terranix (Nix generates HCL, OpenTofu/Terraform runs it). No round trip, but
   mature and boring in the good way.
-- **You want a mature engine and the biggest provider ecosystem, HCL is fine** —
+- **You want a mature engine and the biggest provider ecosystem, HCL is fine**:
   OpenTofu (open) or Terraform (BUSL).
-- **You want general-purpose languages and a hosted control plane** — Pulumi.
-- **You are AWS-only and want native, deeply-integrated IaC** — CloudFormation, or
+- **You want general-purpose languages and a hosted control plane**: Pulumi.
+- **You are AWS-only and want native, deeply-integrated IaC**: CloudFormation, or
   CDK if you want a real language synthesizing it.
-- **You deploy NixOS machines and want a Nix-native orchestrator** — NixOps 4.
+- **You deploy NixOS machines and want a Nix-native orchestrator**: NixOps 4.
 
 ## Sources (re-verify against these)
 
@@ -137,13 +137,13 @@ External facts above (versions, licenses, features of *other* tools) drift. When
 re-checking, confirm against the upstream docs and update the `last-verified`
 date at the top of this file:
 
-- OpenTofu — <https://opentofu.org> · license & registry
-- Terraform — <https://developer.hashicorp.com/terraform> · BUSL relicense notes
-- Terranix — <https://terranix.org>
-- NixOps — <https://github.com/NixOS/nixops>
-- Pulumi & the Terraform bridge — <https://www.pulumi.com/docs/> · <https://github.com/pulumi/pulumi-terraform-bridge>
-- AWS CDK / CDKTF — <https://docs.aws.amazon.com/cdk/> · <https://developer.hashicorp.com/terraform/cdktf>
-- AWS CloudFormation — <https://docs.aws.amazon.com/cloudformation/>
+- OpenTofu: <https://opentofu.org> · license & registry
+- Terraform: <https://developer.hashicorp.com/terraform> · BUSL relicense notes
+- Terranix: <https://terranix.org>
+- NixOps: <https://github.com/NixOS/nixops>
+- Pulumi & the Terraform bridge: <https://www.pulumi.com/docs/> · <https://github.com/pulumi/pulumi-terraform-bridge>
+- AWS CDK / CDKTF: <https://docs.aws.amazon.com/cdk/> · <https://developer.hashicorp.com/terraform/cdktf>
+- AWS CloudFormation: <https://docs.aws.amazon.com/cloudformation/>
 
 Nivis's own claims are grounded in this repo: `docs/DESIGN.md` (the spawn-not-link
 and phased-eval decisions) and `docs/OVERVIEW.md` (the round trip).

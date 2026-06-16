@@ -1,6 +1,6 @@
 [book]
 title = "Nivis"
-description = "Infrastructure as Nix Code — Terraform/OpenTofu provider resources as first-class Nix values."
+description = "Infrastructure as Nix Code: Terraform/OpenTofu provider resources as first-class Nix values."
 authors = ["Pim Snel"]
 language = "en"
 src = "src"

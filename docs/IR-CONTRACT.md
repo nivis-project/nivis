@@ -1,4 +1,4 @@
-# docs/IR-CONTRACT.md — the frozen IR
+# docs/IR-CONTRACT.md: the frozen IR
 
 This is the contract between the Nix library (Epic 1), codegen (Epic 2), and the
 executor (Epic 3 / 3.5). **It is an API.** Changing its shape requires an
@@ -64,12 +64,12 @@ A not-yet-known cross-resource or cross-domain value is a **typed ref leaf**:
 - A ref whose target resource does not yet exist in state is **unresolved**, not
   an error, until fixpoint (Epic 3.5.3).
 
-### Ref classification (drives phase behavior — DESIGN D3)
+### Ref classification (drives phase behavior, DESIGN D3)
 The executor classifies each ref:
 - **TF→TF**: the ref appears in a `resources[].config`. Resolved in-executor when
   the target's output is known; does **not** require Nix re-eval.
 - **\*→Nix**: the ref appears in a `nixConsumers[].value`, or a `resources[].config`
-  leaf that Nix itself derived from another resource's output (Nix marks these —
+  leaf that Nix itself derived from another resource's output (Nix marks these,
   see "derived" below). Resolving these requires re-eval with the outputs ledger
   injected.
 
@@ -112,13 +112,13 @@ that is a built disk image) is a `__build` leaf carrying its store path:
 { "__build": { "path": "/nix/store/<hash>-<name>/<file>" } }   // a Nix build output
 ```
 
-Unlike `__ref`/`__derived`, a `__build` leaf is a **known** value — its path is
+Unlike `__ref`/`__derived`, a `__build` leaf is a **known** value: its path is
 fixed at evaluation. But `nivis` *evaluates* (it does not build), so before a
 resource is applied the executor **realises** each `__build` path it references
 (building the derivation if the store path is not yet valid) and substitutes the
 concrete path into the provider config. This is done per resource as it becomes
 ready, so a build whose derivation depends on an earlier resource's apply-time
-output is realised in a later phase — the build participates in the phased
+output is realised in a later phase: the build participates in the phased
 fixpoint. A `__build` leaf is not an edge and not unknown-pending; authors emit it
 with the `drv` helper (`source = drv image`).
 
@@ -157,14 +157,14 @@ restricted-mode channel rather than embedding the secret.
 
 The contract is **machine-checkable**, not just prose. Two artifacts make it so:
 
-- **`docs/ir-schema.json`** — the normative JSON Schema (Draft 2020-12) encoding
+- **`docs/ir-schema.json`**: the normative JSON Schema (Draft 2020-12) encoding
   the structural rules of everything above: top-level shape, the
   `__ref`/`__derived`/`__sensitiveRef` leaf encodings, and the *no `count`/
   `for_each` in the IR* rule. A leaf-marker object (`__ref` etc.) is dispatched
   to its exact subschema, so a malformed marker reports a precise, addressed
   error (e.g. `at resources/1/config/label/__ref: 'path' is a required
   property`) rather than a generic failure.
-- **`tests/ir-conformance/`** — the executable conformance suite. `check.py`
+- **`tests/ir-conformance/`**: the executable conformance suite. `check.py`
   layers (1) JSON-Schema structural validation over (2) the *referential* rules
   JSON Schema cannot express: unique ids, every `provider` declared, every edge
   endpoint present, every `__ref`/`__sensitiveRef` target existing. Fixtures
@@ -173,7 +173,7 @@ The contract is **machine-checkable**, not just prose. Two artifacts make it so:
 
 Both producer/consumer sides MUST conform to these artifacts:
 - **Nix** (Epic 1.5 `toIR`): a property test that, for arbitrary valid resource
-  graphs, `toIR` output passes `check.py validate` — every leaf is a value, a
+  graphs, `toIR` output passes `check.py validate`: every leaf is a value, a
   well-formed `__ref`, a `__derived`, or a `__sensitiveRef`; ids unique; every
   edge endpoint exists.
 - **Go** (Epic 3a.1 `IngestIR`): rejects malformed IR with an actionable error

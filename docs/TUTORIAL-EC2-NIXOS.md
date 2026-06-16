@@ -1,13 +1,13 @@
 # Tutorial: a NixOS machine on EC2
 
 This goes further than the [S3 tutorial](TUTORIAL-AWS-S3.md): you **build a NixOS
-image in Nix**, register it as an AMI, and launch it as an EC2 instance — and the
+image in Nix**, register it as an AMI, and launch it as an EC2 instance, and the
 *entire* AWS pipeline (upload, import, register, launch) is driven by Nivis. The
 machine runs a tiny web server, and you verify the running instance answers
 **HTTP 200 on port 80**, then tear it all down.
 
-> ⚠️ **This creates real, billable AWS resources** — an EBS snapshot, an AMI, and
-> a `t3.micro` instance — and uploads a ~2 GB image to S3. The walkthrough
+> ⚠️ **This creates real, billable AWS resources** (an EBS snapshot, an AMI, and
+> a `t3.micro` instance) and uploads a ~2 GB image to S3. The walkthrough
 > destroys everything at the end. Credentials come from the environment
 > (`AWS_PROFILE`); the region is in the Nix config.
 
@@ -28,18 +28,18 @@ nix build  ──►  NixOS amazon image (a .vhd, nginx baked in)
 
 This mirrors [elastinix](https://github.com/wearetechnative/elastinix) (the
 wearetechnative NixOS-on-AWS flake) and its
-[Terraform module](https://github.com/wearetechnative/terraform-aws-module-elastinix) —
+[Terraform module](https://github.com/wearetechnative/terraform-aws-module-elastinix),
 but driven by Nivis instead of a Terraform module.
 
-## Part 1 — The OS and the infra in one file
+## Part 1: The OS and the infra in one file
 
 The key idea: **the image and the infrastructure live in the same Nix file.** A
-NixOS "amazon image" is itself a Nix derivation — `config.system.build.images.amazon`,
-a `.vhd` disk image of a machine configuration — so you reference its *build
+NixOS "amazon image" is itself a Nix derivation, `config.system.build.images.amazon`,
+a `.vhd` disk image of a machine configuration, so you reference its *build
 output* directly as `aws_s3_object.source`. When `nivis apply` evaluates the
 flake, Nix realises the image as part of evaluation and its store path flows
 straight into the upload. One expression defines the OS **and** the cloud
-resources that ship it — that two-domain mix is the whole point of this tutorial.
+resources that ship it: that two-domain mix is the whole point of this tutorial.
 
 ```nix
 {
@@ -72,14 +72,14 @@ resources that ship it — that two-domain mix is the whole point of this tutori
 }
 ```
 
-`nivis apply` builds `image` first (the heavy step — the one that uses the Nix
+`nivis apply` builds `image` first (the heavy step, the one that uses the Nix
 binary cache, ≈2 GB), then drives the AWS pipeline; everything after the build is
 pure AWS. (This repo's `nix/example/ec2.nix` + the `nivis.ec2` flake attr are
 exactly this, ready to run.)
 
-## Part 2 — The Nivis pipeline
+## Part 2: The Nivis pipeline
 
-Here is the whole AWS side — a function of the built image and the outputs
+Here is the whole AWS side: a function of the built image and the outputs
 ledger, returning the IR. It's the contents of this repo's `nix/example/ec2.nix`
 (exposed as the flake attr `nivis.ec2`); drop it in your own repo and import it as
 shown in Part 1, or inline it.
@@ -96,7 +96,7 @@ let
   suffix = (ledger.vars or { }).suffix or "demo";
   bucketName = "nivis-ec2nix-${suffix}";
 
-  # The OS crossing into the infra: `drv` marks the image as a build output —
+  # The OS crossing into the infra: `drv` marks the image as a build output,
   # a __build leaf that `nivis apply` realises (builds) before uploading, then
   # substitutes the concrete .vhd path. No manual store-path interpolation; no
   # separate `nix build`. (drv uses the image's passthru.filePath, the .vhd.)
@@ -215,7 +215,7 @@ toIR {
 }
 ```
 
-Reading the chain: `image`'s `source` is the built `.vhd` path (Part 1) — the OS
+Reading the chain: `image`'s `source` is the built `.vhd` path (Part 1): the OS
 crossing into the infra. Every later resource references the previous one's output
 with `refAttr` (a `__ref`), so Nivis resolves the chain across phases: the
 snapshot import waits on the upload, the AMI on the snapshot, the instance on the
@@ -223,7 +223,7 @@ AMI. The IAM role + policy create the `vmimport` service role AWS requires for
 disk-image import. The only per-deployment knob is `suffix` (unique resource
 names).
 
-## Part 3 — Apply
+## Part 3: Apply
 
 ```sh
 export AWS_PROFILE=your-profile
@@ -232,11 +232,11 @@ nivis apply     # build the image, upload (~2 GB), import, register, launch
 ```
 
 Because `source` is a `drv` (`__build`) leaf, **`nivis apply` builds the image
-itself** before uploading it — no separate `nix build` step. The image build is
+itself** before uploading it: no separate `nix build` step. The image build is
 the heavy part (it uses the Nix binary cache, ≈2 GB); everything after is pure
-AWS. (`--no-build` skips realising if you've pre-built.)
+AWS. (Pass `--build=false` to skip realising if you've pre-built.)
 
-A real run of this pipeline (verified against AWS) resolves across four phases —
+A real run of this pipeline (verified against AWS) resolves across four phases:
 the AWS chain can't all happen at once:
 
 ```
@@ -260,16 +260,16 @@ curl -sS -o /dev/null -w '%{http_code}\n' "http://<public_ip>/"
 # 200
 ```
 
-The instance boots, `nginx` comes up on port 80, and returns **200** — a machine
+The instance boots, `nginx` comes up on port 80, and returns **200**: a machine
 whose OS you built in Nix, registered as an AMI through Nivis, and launched, all
 from one flake. (Give it a minute after `apply`: the instance has to boot before
 nginx answers.)
 
-That `public_ip` did not exist until AWS launched the instance — it was read back
+That `public_ip` did not exist until AWS launched the instance; it was read back
 into state (and is available to Nix for dependent config). The instance is
 running an OS **you built in Nix**, from an image **you registered through Nivis**.
 
-Tear it all down (reverse dependency order — instance, AMI, snapshot, bucket,
+Tear it all down (reverse dependency order: instance, AMI, snapshot, bucket,
 role):
 
 ```sh
@@ -280,11 +280,11 @@ nivis destroy
 
 - **Cost & safety:** a `t3.micro` is cheap, but don't leave it running; `nivis
   destroy` removes everything this created. The EBS snapshot import takes a few
-  minutes — that's AWS, not Nivis.
+  minutes; that's AWS, not Nivis.
 - **The `vmimport` role:** AWS requires this specific service role for disk-image
   import; the example creates it (and a least-privilege policy) so the pipeline is
   self-contained. If your account already has a `vmimport` role, point
   `aws_ebs_snapshot_import.role_name` at it instead.
-- **Production:** for a real fleet, use elastinix — it owns the image-build +
+- **Production:** for a real fleet, use elastinix: it owns the image-build +
   upload pipeline and a maintained module. This tutorial shows the mechanism, end
   to end, driven entirely by Nivis.

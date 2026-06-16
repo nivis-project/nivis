@@ -1,4 +1,4 @@
-# DESIGN.md — Nivis architecture & decisions
+# DESIGN.md: Nivis architecture & decisions
 
 This is the decision ledger. It exists so that a future session does not
 re-derive (or undo) conclusions that were expensive to reach. Each decision
@@ -14,7 +14,7 @@ as the reference for *how* to use it.
 **Why.** Forking to "strip what we don't need" inverts the cost. The parser and
 HCL loader are the small, easily-replaced parts (Nix replaces them). The
 provider plugin client, state engine, dependency graph, and DAG scheduler are
-the large parts — and we need those, so we'd inherit exactly the maintenance
+the large parts, and we need those, so we'd inherit exactly the maintenance
 burden we wanted to avoid. The protocol is stable; the config frontend is the
 part we're actually changing.
 
@@ -26,7 +26,7 @@ part we're actually changing.
 `tfprotov6` to it.
 
 **Why / prior art.** The Pulumi Terraform Bridge is the closest prior art and is
-worth mining — but it makes the **opposite** choice here, and the contrast is
+worth mining, but it makes the **opposite** choice here, and the contrast is
 instructive. Pulumi does *not* use provider binaries; it compiles the
 provider's Go modules (against a forked plugin SDK) into its own provider
 binary, per-provider, with a shim. That buys Pulumi tighter integration at the
@@ -37,7 +37,7 @@ here. Do not refactor toward the link model.
 
 **Mine from Pulumi instead:** its schema type-mapping (required/optional/
 computed/sensitive, sets vs lists, nested blocks), its `ProviderInfo`/overlay
-pattern (raw schema→code is usable but not idiomatic — plan an override seam),
+pattern (raw schema→code is usable but not idiomatic, so plan an override seam),
 and how it encodes *unknown* values to the provider during plan/diff (relevant
 to D4 below).
 
@@ -51,7 +51,7 @@ The Go executor applies what it can, collects real outputs, and the system
 Nix-mediated dependency chains need more. We explicitly support **N phases**.
 
 **Why.** This is the central constraint of the whole project. Nix evaluation is
-a single forward batch pass that completes or errors — there is eval-time, then
+a single forward batch pass that completes or errors: there is eval-time, then
 build/apply-time, and they are separate. A value a provider computes at apply
 (an IP, an ID, a generated secret) does not exist at eval time. Anything Nix
 must *compute from* that value (a hostname string, a NixOS option, another
@@ -88,11 +88,11 @@ Breaking changes require an OpenSpec change to the contract *first*.
 
 **Why.** Three workstreams depend on it; once stable they can progress in
 parallel. An underspecified linchpin is how this kind of project fragments.
-The hard parts the contract must pin down — reference encoding (nested attrs,
+The hard parts the contract must pin down: reference encoding (nested attrs,
 list/set indices, refs inside `for_each`/`count`), `for_each`/`count` expansion
 timing (Nix expands, executor receives concrete resources), unknown-value
 representation toward the provider, and **how sensitive values cross the JSON
-boundary without landing in world-readable `nix eval` output / the Nix store** —
+boundary without landing in world-readable `nix eval` output / the Nix store**,
 are decided in the contract, not improvised per-epic.
 
 ## D5. Prove the round trip before building breadth
@@ -115,7 +115,7 @@ canned/computed values (no real APIs, no credentials, no network). The executor
 drives them exactly as it would a real provider.
 
 **Why.** Proves the protocol client and the whole pipeline deterministically and
-offline — essential given the restricted network, and the right substrate for
+offline, essential given the restricted network, and the right substrate for
 the headline e2e. Real-provider runs are low conceptual risk and network-gated;
 they are out of scope for the PoC and tracked as a separate bean.
 
@@ -125,17 +125,17 @@ they are out of scope for the PoC and tracked as a separate bean.
 built with nixpkgs `buildGoModule` (Go toolchain from a pinned `nixpkgs` input,
 module deps pinned by a committed `vendorHash`). The library outputs (`lib`,
 `nivis.*`) remain **pure builtins** and do **not** depend on the nixpkgs
-input — evaluating them imports nothing from nixpkgs.
+input: evaluating them imports nothing from nixpkgs.
 
 **Why.** Originally the flake took no inputs at all, so the library evaluated
 without the binary cache (the configuration frontend must be cheap to evaluate
 every phase, and the cache was unreachable). A *runnable* CLI needs a real Go
 toolchain, which means nixpkgs. The refinement keeps the property that actually
-matters — **the configuration-frontend outputs never force nixpkgs** — while
+matters (**the configuration-frontend outputs never force nixpkgs**) while
 letting `nix run .#nivis` build the executor from source. The two concerns are kept
 separate in `flake.nix`: only `packages`/`apps` touch nixpkgs.
 
 **Rejected.** flake-utils (replaced by a few lines of Nix that enumerate
 systems); a committed `vendor/` directory (a one-line `vendorHash` keeps the repo
 lean). Keeping the CLIs go-build-only was the prior state; `nix run` is strictly
-additive — `go build`/`go run` still work unchanged.
+additive: `go build`/`go run` still work unchanged.

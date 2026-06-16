@@ -1,6 +1,6 @@
 # Releasing Nivis
 
-The version is a single source of truth — the top-level **`VERSION`** file. Both
+The version is a single source of truth: the top-level **`VERSION`** file. Both
 the Nix flake and the Go binary derive from it (the flake injects it via
 `-ldflags -X main.version`; a plain `go build` with no ldflags reports `dev`).
 

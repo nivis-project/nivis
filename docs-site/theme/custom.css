@@ -1,4 +1,4 @@
-/* Terrae Nivis brand theme for mdBook (docs/BRAND.md).
+/* Nivis brand theme for mdBook (docs/BRAND.md).
  * Navy surfaces, ice/silver text, glacier-blue links, the single Volcanic Ember
  * accent; Cinzel display, Schibsted Grotesk body, IBM Plex Mono code. Fonts come
  * from Google Fonts (OFL) with a system-font fallback so the site renders offline.
@@ -131,7 +131,7 @@ html, body, .content { font-family: var(--tn-body-font); }
   word-break: normal;
   hyphens: auto;
 }
-/* The first column holds the row label (feature / tool name) — give it room and
+/* The first column holds the row label (feature / tool name): give it room and
  * keep the per-tool result columns narrow and centered. */
 .tn-compact-table thead th:first-child,
 .tn-compact-table tbody td:first-child {

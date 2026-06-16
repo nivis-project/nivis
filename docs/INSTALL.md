@@ -12,7 +12,7 @@ whichever fits how you work.
 
 ## Run it ad hoc (no install)
 
-The quickest way — run straight from the flake; Nix builds it on first use and
+The quickest way: run straight from the flake; Nix builds it on first use and
 caches the result:
 
 ```sh
@@ -24,7 +24,7 @@ Everything after `--` is passed to `nivis`; codegen is `nivis -- gen …`.
 
 ## A throwaway shell
 
-Drop into a shell with `nivis` on `PATH` for the session — handy while iterating:
+Drop into a shell with `nivis` on `PATH` for the session, handy while iterating:
 
 ```sh
 nix shell github:wearetechnative/nivis#nivis
@@ -57,5 +57,5 @@ nix build .#nivis                     # -> ./result/bin/nivis
 
 The `github:` reference floats on the default branch. For reproducible infra, pin
 it in your own flake's `flake.lock` (the [AWS S3 tutorial](TUTORIAL-AWS-S3.md)
-does this — Nivis becomes an input, and `nix flake lock` records the exact
+does this: Nivis becomes an input, and `nix flake lock` records the exact
 revision). Re-pin deliberately with `nix flake update nivis`.

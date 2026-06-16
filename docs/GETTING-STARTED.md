@@ -1,7 +1,7 @@
 # Getting started with Nivis
 
 A hands-on walkthrough using the in-repo **fake providers**. Everything here runs
-**offline** — no provider registry, no cloud account, no credentials. You need
+**offline**: no provider registry, no cloud account, no credentials. You need
 **Go 1.22+** and **Nix**.
 
 ## 1. Build the binaries
@@ -41,7 +41,7 @@ systemConfig (a Nix consumer) reads:
 ```
 
 Because `name` and `final` are values Nix *computes from* provider outputs, they
-can't be known until those outputs exist and Nix is re-evaluated — which is what
+can't be known until those outputs exist and Nix is re-evaluated, which is what
 forces multiple phases.
 
 ## 3. Plan and apply
@@ -87,7 +87,7 @@ alpha.alpha_token.C (alpha_token)
   value = alpha:beta://rec-alpha::0::alpha::0:1
 ```
 
-`C.label` is `final` — a string Nix built from **both** `B.endpoint` (beta) and
+`C.label` is `final`: a string Nix built from **both** `B.endpoint` (beta) and
 `A.value` (alpha). That value only became concrete after both providers applied
 and Nix re-evaluated. That is the round trip.
 
@@ -123,29 +123,29 @@ adjust the generated output.
 
 <!-- ANCHOR: aws -->
 Everything above is offline against the fakes. The same `nivis` commands drive
-**real** providers — `nivis` resolves a provider by address from the OpenTofu
+**real** providers: `nivis` resolves a provider by address from the OpenTofu
 registry, downloads and checksum-verifies the binary, negotiates the plugin
 protocol (AWS speaks v5), configures it, and runs plan/apply/destroy. The example
 `nix/example/aws.nix` (flake attr `nivis.aws`) declares the `hashicorp/aws`
 provider with `mkProvider` and one `aws_s3_bucket`.
 
-> ⚠️ **This creates a real resource in your AWS account** — one (free-tier) S3
+> ⚠️ **This creates a real resource in your AWS account**: one (free-tier) S3
 > bucket, then destroys it. The provider's `region` lives in the Nix config; only
 > credentials come from the environment (the AWS SDK default chain), so set
 > `AWS_PROFILE` (or `AWS_ACCESS_KEY_ID`/…). The first run downloads the
 > ~900&nbsp;MB AWS provider (cached afterwards).
 
-For the full, hand-held walkthrough — prerequisites, writing the config line by
-line, `plan`/`apply`/inspecting state/`destroy`, and troubleshooting — follow the
+For the full, hand-held walkthrough (prerequisites, writing the config line by
+line, `plan`/`apply`/inspecting state/`destroy`, and troubleshooting) follow the
 **[AWS S3 tutorial](TUTORIAL-AWS-S3.md)**.
 <!-- ANCHOR_END: aws -->
 
 ## Where to go next
 
-- `IR-CONTRACT.md` + `ir-schema.json` — the IR, the stable contract
+- `IR-CONTRACT.md` + `ir-schema.json`: the IR, the stable contract
   between the Nix frontend and the Go executor.
-- `TESTING.md` — the test layers and the headline two-provider e2e.
-- `DESIGN.md` — why the architecture is the way it is (spawn-not-link,
+- `TESTING.md`: the test layers and the headline two-provider e2e.
+- `DESIGN.md`: why the architecture is the way it is (spawn-not-link,
   batch-not-live, phased re-eval to a fixpoint).
 
 The core test suite is hermetic (fakes, no network/credentials); real-provider
