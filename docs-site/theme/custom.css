@@ -108,3 +108,36 @@ html, body, .content { font-family: var(--tn-body-font); }
   border-radius: 3px;
   padding: 0.1em 0.35em;
 }
+
+/* Compact tables: wide comparison grids (many provider columns) wrapped in
+ * <div class="tn-compact-table"> shrink to fit the page instead of forcing a
+ * horizontal scrollbar. Smaller font, tighter cells, fixed layout so columns
+ * share the width and long words wrap. On very narrow viewports it still falls
+ * back to scrolling (the wrapper keeps overflow-x:auto) so nothing is clipped. */
+.tn-compact-table .table-wrapper,
+.tn-compact-table table {
+  width: 100%;
+  margin-inline: 0;
+}
+.tn-compact-table table {
+  table-layout: fixed;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+.tn-compact-table th,
+.tn-compact-table td {
+  padding: 0.28em 0.4em;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+}
+/* The first column holds the row label (feature / tool name) — give it room and
+ * keep the per-tool result columns narrow and centered. */
+.tn-compact-table thead th:first-child,
+.tn-compact-table tbody td:first-child {
+  width: 22%;
+  overflow-wrap: break-word;
+}
+.tn-compact-table thead th:not(:first-child) {
+  font-size: 0.72rem;
+}

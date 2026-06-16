@@ -68,6 +68,8 @@ Legend: ✅ yes · ⚠️ partial / with caveats · ❌ no · n/a not applicable
 
 ### Essential features
 
+<div class="tn-compact-table" markdown="1">
+
 | Feature | Nivis | OpenTofu/TF | Terranix | NixOps 4 | Pulumi | CDK | CloudFormation |
 | --- | :--: | :--: | :--: | :--: | :--: | :--: | :--: |
 | Config language | Nix | HCL | Nix → HCL | Nix | TS/Py/Go/… | TS/Py/… | YAML/JSON |
@@ -81,9 +83,13 @@ Legend: ✅ yes · ⚠️ partial / with caveats · ❌ no · n/a not applicable
 | Modules / composition | ✅ (Nix modules) | ✅ | ✅ (Nix) | ✅ | ✅ | ✅ | ⚠️ (nested stacks) |
 | Mix OS build + cloud in one expr | ✅ (NixOS image → AMI) | ❌ | ❌ | ⚠️ | ❌ | ❌ | ❌ |
 
+</div>
+
 ### Enterprise / operational features
 
 This is where Nivis is youngest. Honest status:
+
+<div class="tn-compact-table" markdown="1">
 
 | Feature | Nivis | OpenTofu/TF | Pulumi | CloudFormation |
 | --- | :--: | :--: | :--: | :--: |
@@ -96,6 +102,8 @@ This is where Nivis is youngest. Honest status:
 | Provider registry / auto-download | ⚠️ (planned; offline by default) | ✅ | ✅ | n/a |
 | Production track record / scale | ❌ (alpha) | ✅ | ✅ | ✅ |
 | Commercial support | ❌ | ✅ (vendors) | ✅ | ✅ (AWS) |
+
+</div>
 
 ### Licensing (a real differentiator)
 
