@@ -98,6 +98,12 @@ func GoToValue(t tftypes.Type, raw interface{}) (tftypes.Value, error) {
 func sliceToValue(t, elemType tftypes.Type, elemTypes []tftypes.Type, raw interface{}) (tftypes.Value, error) {
 	items, ok := raw.([]interface{})
 	if !ok {
+		if _, isMap := raw.(map[string]interface{}); isMap {
+			// The common nested-block mistake: a list-nested block (e.g.
+			// default_tags, disk_container) written as a bare attrset instead of
+			// a one-element list. Say what to do, not just the wire-type jargon.
+			return tftypes.Value{}, fmt.Errorf("this is a list-nested block; wrap the value in a one-element list: [ { ... } ] (got an attrset)")
+		}
 		return tftypes.Value{}, fmt.Errorf("expected array for %s, got %T", t, raw)
 	}
 	out := make([]tftypes.Value, len(items))
@@ -118,6 +124,9 @@ func sliceToValue(t, elemType tftypes.Type, elemTypes []tftypes.Type, raw interf
 func tupleToValue(t tftypes.Type, elemTypes []tftypes.Type, raw interface{}) (tftypes.Value, error) {
 	items, ok := raw.([]interface{})
 	if !ok {
+		if _, isMap := raw.(map[string]interface{}); isMap {
+			return tftypes.Value{}, fmt.Errorf("this is a list-nested block; wrap the value in a one-element list: [ { ... } ] (got an attrset)")
+		}
 		return tftypes.Value{}, fmt.Errorf("expected array for %s, got %T", t, raw)
 	}
 	if len(items) != len(elemTypes) {
@@ -131,6 +140,10 @@ func tupleToValue(t tftypes.Type, elemTypes []tftypes.Type, raw interface{}) (tf
 func mapToValue(t tftypes.Type, typeOf func(string) tftypes.Type, raw interface{}) (tftypes.Value, error) {
 	m, ok := raw.(map[string]interface{})
 	if !ok {
+		if _, isList := raw.([]interface{}); isList {
+			// The symmetric mistake: a single-nested block written as a list.
+			return tftypes.Value{}, fmt.Errorf("this is a single-nested block; pass one attrset { ... }, not a list")
+		}
 		return tftypes.Value{}, fmt.Errorf("expected object for %s, got %T", t, raw)
 	}
 	out := make(map[string]tftypes.Value, len(m))

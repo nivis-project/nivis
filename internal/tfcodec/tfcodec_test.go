@@ -5,6 +5,7 @@ package tfcodec
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -122,6 +123,93 @@ func TestObjectFillsMissingAttrsWithNull(t *testing.T) {
 func TestUnsupportedTypeErrors(t *testing.T) {
 	if _, err := GoToValue(tftypes.DynamicPseudoType, "x"); err == nil {
 		t.Error("GoToValue must error on an unsupported type")
+	}
+}
+
+// objType is a small list-nested-block element used by the nested-block tests.
+func objType() tftypes.Object {
+	return tftypes.Object{AttributeTypes: map[string]tftypes.Type{"k": tftypes.String}}
+}
+
+// TestListNestedBlockGivenAttrsetErrors: a list/set/tuple fed a bare attrset (the
+// common mistake, e.g. default_tags = { ... } instead of [ { ... } ]) returns an
+// actionable error telling the user to wrap it in a one-element list, not the
+// raw "expected array ... got map" jargon.
+func TestListNestedBlockGivenAttrsetErrors(t *testing.T) {
+	attrset := map[string]interface{}{"k": "v"}
+	cases := map[string]tftypes.Type{
+		"list":  tftypes.List{ElementType: objType()},
+		"set":   tftypes.Set{ElementType: objType()},
+		"tuple": tftypes.Tuple{ElementTypes: []tftypes.Type{objType()}},
+	}
+	for name, typ := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := GoToValue(typ, attrset)
+			if err == nil {
+				t.Fatal("expected an error for an attrset given to a list-nested block")
+			}
+			if !strings.Contains(err.Error(), "one-element list") {
+				t.Errorf("error should tell the user to wrap in a one-element list; got %q", err)
+			}
+			if strings.Contains(err.Error(), "expected array for") {
+				t.Errorf("error should not be the raw jargon; got %q", err)
+			}
+		})
+	}
+}
+
+// TestSingleNestedBlockGivenListErrors: the symmetric mistake. An object/map fed a
+// list returns an actionable "pass one attrset" error.
+func TestSingleNestedBlockGivenListErrors(t *testing.T) {
+	list := []interface{}{map[string]interface{}{"k": "v"}}
+	cases := map[string]tftypes.Type{
+		"object": objType(),
+		"map":    tftypes.Map{ElementType: tftypes.String},
+	}
+	for name, typ := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := GoToValue(typ, list)
+			if err == nil {
+				t.Fatal("expected an error for a list given to a single-nested block")
+			}
+			if !strings.Contains(err.Error(), "single-nested block") {
+				t.Errorf("error should tell the user to pass a single attrset; got %q", err)
+			}
+		})
+	}
+}
+
+// TestNestedBlockNameInError: the offending attribute name is still prefixed by
+// the per-key wrap, so the message reads e.g. ["disk_container"]: this is a
+// list-nested block...
+func TestNestedBlockNameInError(t *testing.T) {
+	// an object with a list-nested-block attribute, written (wrongly) as an attrset
+	typ := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"disk_container": tftypes.List{ElementType: objType()},
+	}}
+	in := map[string]interface{}{"disk_container": map[string]interface{}{"k": "v"}}
+	_, err := GoToValue(typ, in)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "disk_container") || !strings.Contains(err.Error(), "one-element list") {
+		t.Errorf("error should name the attribute and the fix; got %q", err)
+	}
+}
+
+// TestValidNestedBlocksStillCode: the regression guard. Correct shapes (a
+// one-element list for a list-nested block, a single attrset for a single-nested
+// block) still convert successfully and round-trip unchanged.
+func TestValidNestedBlocksStillCode(t *testing.T) {
+	listTyp := tftypes.List{ElementType: objType()}
+	got := roundTrip(t, listTyp, []interface{}{map[string]interface{}{"k": "v"}})
+	if !reflect.DeepEqual(got, []interface{}{map[string]interface{}{"k": "v"}}) {
+		t.Errorf("valid list-nested block changed: %#v", got)
+	}
+	objTyp := objType()
+	gotObj := roundTrip(t, objTyp, map[string]interface{}{"k": "v"})
+	if !reflect.DeepEqual(gotObj, map[string]interface{}{"k": "v"}) {
+		t.Errorf("valid single-nested block changed: %#v", gotObj)
 	}
 }
 
