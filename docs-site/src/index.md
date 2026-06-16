@@ -1,5 +1,5 @@
 <div class="tn-hero">
-  <img src="./banner.png" alt="Nivis — Infrastructure as Nix Code" />
+  <img src="./banner.png" alt="Nivis: All your base belongs to Nix" />
 </div>
 
 # Nivis
