@@ -101,6 +101,9 @@ binary cache):
 - `mkProvider { source; config; }`: a provider, config (incl. nested blocks) in
   Nix; flows into the provider's `Configure`.
 - `str`/`derived`: build values from provider outputs (the round trip).
+- `mkVars`: declare typed config variables with defaults (required when no
+  default), resolved from `--var` / `--var-file` / `NIVIS_VAR_*` (an explicit
+  `--var` wins). Read them as `vars.<name>` in the plan.
 - `drv`/`drvFile`: mark a Nix build output (a derivation) so `nivis apply`
   realises it before use; `drv d` uses `d.passthru.filePath` when present,
   `drvFile d "sub/path"` names a file explicitly. (See the EC2 tutorial.)

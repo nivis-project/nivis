@@ -166,6 +166,35 @@ let
     in
     onlyPath && goodPath && survives && noEdge && encoded;
 
+  # P9. mkVars resolves declared variables against injected ledger.vars: a set
+  # value wins, an unset one falls back to its default, a required (no-default)
+  # unset one throws, a wrong-typed value throws, and undeclared injected values
+  # are ignored (only declared vars are returned).
+  P9 =
+    let
+      decls = {
+        region = { type = "str"; default = "eu-central-1"; };
+        suffix = { type = "str"; }; # required, no default
+        count = { type = "int"; default = 1; };
+      };
+      setV = nivis.mkVars decls { region = "us-east-1"; suffix = "prod"; };
+      dflt = nivis.mkVars { region = decls.region; } { };
+      undecl = nivis.mkVars { region = decls.region; } { region = "y"; b = "z"; };
+      # throw cases must be FORCED (deepSeq) for tryEval to catch the lazy throw.
+      required = builtins.tryEval (
+        let r = nivis.mkVars { suffix = decls.suffix; } { }; in builtins.deepSeq r r
+      );
+      wrongType = builtins.tryEval (
+        let r = nivis.mkVars { count = decls.count; } { count = "three"; }; in builtins.deepSeq r r
+      );
+    in
+    (setV.region == "us-east-1")
+    && (setV.suffix == "prod")
+    && (dflt.region == "eu-central-1")
+    && (builtins.attrNames undecl == [ "region" ]) # undeclared "b" ignored
+    && (required.success == false)
+    && (wrongType.success == false);
+
   checks = [
     { name = "P1 leaves well-formed"; ok = P1; }
     { name = "P2 ids unique"; ok = P2; }
@@ -175,6 +204,7 @@ let
     { name = "P6 provider config resolves+encodes"; ok = P6; }
     { name = "P7 mkProvider validates source"; ok = P7; }
     { name = "P8 drv -> __build leaf, known + no-edge"; ok = P8; }
+    { name = "P9 mkVars resolves set/default/required/type"; ok = P9; }
   ];
   failures = builtins.filter (c: !c.ok) checks;
 in

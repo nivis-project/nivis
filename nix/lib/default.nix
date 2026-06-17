@@ -14,6 +14,7 @@ let
   toIR = import ./toIR.nix { inherit lib ref; };
   expand = import ./expand.nix { inherit lib mkResource; };
   modules = import ./modules.nix { inherit lib toIR; };
+  vars = import ./vars.nix { inherit lib; };
 in
 {
   inherit
@@ -23,6 +24,9 @@ in
     mkProvider
     toIR
     ;
+
+  # Configuration variables (typed, with defaults; resolved from ledger.vars).
+  inherit (vars) mkVars;
 
   # Expansion (count / for_each).
   inherit (expand) mkResources;

@@ -145,6 +145,9 @@ The file the executor accumulates and injects on each re-eval:
   "phase": 2,
   "outputs": {
     "<resource-id>": { "<attr>": <value-or-{__sensitiveRef}>, ... }
+  },
+  "vars": {
+    "<name>": <value>
   }
 }
 ```
@@ -152,6 +155,16 @@ The file the executor accumulates and injects on each re-eval:
 Nix reads this (path passed in via the flake `plan` argument) to resolve refs
 and compute `__derived` values on the next phase. `__sensitiveRef` points at the
 restricted-mode channel rather than embedding the secret.
+
+`outputs` accumulates across phases. `vars` is the resolved configuration
+variables (see `nivis.mkVars`): a map of declared-variable name to its known
+value, resolved once by the executor before phase 0 and re-injected **unchanged
+on every phase** (variables are constant inputs, not resolved-across-phases
+outputs, so a `vars` value is never a ref or unknown). `vars` is **optional**: a
+ledger with no variables may omit it, and a `plan` that declares none may ignore
+it. The executor resolves `vars` from `--var` / `--var-file` / `NIVIS_VAR_*` with
+Terraform precedence (an explicit `--var` flag wins); the values travel only in
+this 0600 file, never on the Nix command line.
 
 ## Validation
 

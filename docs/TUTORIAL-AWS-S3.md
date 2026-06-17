@@ -146,6 +146,42 @@ aws sts get-caller-identity   # sanity check
 
 Only credentials come from the environment; the **region** is in the flake above.
 
+### 2.4 Parameterise with a variable (optional)
+
+Hard-coding `eu-central-1` is fine for one environment. To set it per run,
+declare a variable with `nivis.mkVars` and read it in the plan. `mkVars` takes a
+declaration (type and optional default) and the values Nivis injects, and returns
+the resolved, typed result:
+
+```nix
+nivis.plan =
+  ledger:
+  let
+    vars = lib.mkVars {
+      region = { type = "str"; default = "eu-central-1"; };
+    } (ledger.vars or { });
+  in
+  lib.toIR {
+    providers.aws = lib.mkProvider {
+      source = "registry.opentofu.org/hashicorp/aws";
+      config.region = vars.region;   # was the hard-coded string
+    };
+    # ... resources ...
+    inherit ledger;
+  };
+```
+
+Then override it at the CLI:
+
+```sh
+nivis plan --var region=us-east-1
+```
+
+A variable with no `default` is **required**: leaving it unset is an error that
+names it. Values resolve with Terraform precedence (lowest to highest): a default
+in Nix, then `NIVIS_VAR_<name>` in the environment, then `--var-file <file.json>`,
+then `--var name=value`. So an explicit `--var` always wins.
+
 ## Part 3: Plan, apply, inspect, destroy
 
 Run these from your `my-infra` directory.

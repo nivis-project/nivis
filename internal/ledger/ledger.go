@@ -14,10 +14,13 @@ import (
 	"github.com/wearetechnative/nivis/internal/graph"
 )
 
-// Ledger is the contract's { phase, outputs } shape.
+// Ledger is the contract's { phase, outputs, vars } shape. `outputs` accumulates
+// across phases; `vars` is the resolved configuration variables, constant across
+// all phases of a run, omitted when empty (docs/IR-CONTRACT.md "Outputs ledger").
 type Ledger struct {
 	Phase   int                               `json:"phase"`
 	Outputs map[string]map[string]interface{} `json:"outputs"`
+	Vars    map[string]interface{}            `json:"vars,omitempty"`
 }
 
 // New returns an empty phase-0 ledger.

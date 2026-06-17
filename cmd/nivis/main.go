@@ -22,6 +22,7 @@ import (
 	"github.com/wearetechnative/nivis/internal/refresh"
 	"github.com/wearetechnative/nivis/internal/registry"
 	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/wearetechnative/nivis/internal/vars"
 )
 
 var (
@@ -31,6 +32,8 @@ var (
 	attr      string
 	doRefresh bool
 	doBuild   bool
+	varFlags  []string
+	varFiles  []string
 )
 
 func main() {
@@ -65,6 +68,8 @@ func main() {
 	root.PersistentFlags().StringVar(&target, "target", "", "restrict the operation to a single resource id")
 	root.PersistentFlags().BoolVar(&doRefresh, "refresh", true, "read real provider state before planning (false = plan against stored state)")
 	root.PersistentFlags().BoolVar(&doBuild, "build", true, "realise Nix build outputs (drv leaves) referenced by resources (false = assume already built)")
+	root.PersistentFlags().StringArrayVar(&varFlags, "var", nil, "set a config variable: --var name=value (repeatable; highest precedence)")
+	root.PersistentFlags().StringArrayVar(&varFiles, "var-file", nil, "read config variables from a JSON file (repeatable; later files win)")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
 	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), genCmd())
@@ -80,6 +85,19 @@ func evaluator() phase.NixEval {
 	return phase.NixEval{FlakeRef: flakeRef, Attr: attr, WorkDir: ""}
 }
 
+// newLedger builds a phase-0 ledger with the resolved configuration variables
+// attached (constant across phases). Returns an error for a malformed --var or
+// an unreadable/non-object --var-file.
+func newLedger() (*ledger.Ledger, error) {
+	resolved, err := vars.Resolve(os.Environ(), varFiles, varFlags)
+	if err != nil {
+		return nil, err
+	}
+	l := ledger.New()
+	l.Vars = resolved
+	return l, nil
+}
+
 // newManager builds a plugin manager with the registry resolver attached, so a
 // provider `source` that is a registry address (e.g. "hashicorp/aws") is
 // fetched, verified, and cached before spawn; a filesystem path is used directly.
@@ -90,7 +108,11 @@ func newManager() *plugin.Manager {
 // phase0Graph evaluates the plan once (empty ledger) and ingests it, for the
 // destroy/refresh engines which need the resource set + providers.
 func phase0Graph(ctx context.Context) (*ir.Graph, error) {
-	irJSON, err := evaluator().Eval(ctx, ledger.New())
+	l, err := newLedger()
+	if err != nil {
+		return nil, err
+	}
+	irJSON, err := evaluator().Eval(ctx, l)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +134,11 @@ func planCmd() *cobra.Command {
 			}
 			mgr := newManager()
 			defer mgr.Close()
-			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: ledger.New(), NoRefresh: !doRefresh, NoBuild: !doBuild}
+			l, err := newLedger()
+			if err != nil {
+				return err
+			}
+			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: l, NoRefresh: !doRefresh, NoBuild: !doBuild}
 
 			items, err := d.PlanReport(cmd.Context())
 			if err != nil {
@@ -155,11 +181,15 @@ func applyCmd() *cobra.Command {
 			}
 			mgr := newManager()
 			defer mgr.Close()
+			l, err := newLedger()
+			if err != nil {
+				return err
+			}
 			d := &phase.Driver{
 				Eval:       evaluator(),
 				Manager:    mgr,
 				Store:      store,
-				Ledger:     ledger.New(),
+				Ledger:     l,
 				LedgerPath: statePath + ".ledger",
 				NoRefresh:  !doRefresh,
 				NoBuild:    !doBuild,
