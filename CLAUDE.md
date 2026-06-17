@@ -99,6 +99,21 @@ No change is complete without tests. See `docs/TESTING.md`.
   providers, unknown values originating on both sides, resolved across ≥3
   phases, with a Nix-side consumer reading outputs from both providers.**
 
+## 5.5 Documentation is part of "done" (the docs-coverage gate)
+
+Just as no change is complete without tests, no change is complete without
+asking whether the **docs kept up**. Before you `openspec archive` a change, run
+the rubric in `docs/DOCS-GATE.md` and decide one of: **new document**, **new
+paragraph/section**, **modifications only**, or **none**. A new user-facing
+*concept or capability a user searches for by name* (variables, datasources,
+remote state) usually wants its **own document** in `docs/`, surfaced on the site
+(`docs-site/src/<topic>.md` `{{#include}}`-ing it + a `SUMMARY.md` entry).
+
+Record the decision as a `Docs impact:` line in the change's `proposal.md`.
+`tests/check-docs-gate.sh` (run inside `tests/check-docs-ssot.sh`) fails if any
+in-scope change lacks that line. The script does not judge the content; it
+forces the call to be made and written down. This is the docs analogue of §5.
+
 ## 6. Environment constraints (read before you hit a wall)
 
 - Network egress is **restricted to an allowlist** (GitHub, the Go module proxy

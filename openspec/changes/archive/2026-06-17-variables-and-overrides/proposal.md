@@ -67,3 +67,10 @@ First-class variables, declared in Nix and resolved by the executor.
   resolved config.
 - Docs: the AWS S3 tutorial gains a short "parameterise with a variable" note;
   README's Nix-library list gains `mkVars`.
+
+Docs impact: new document, docs/VARIABLES.md (the canonical reference for
+declaring variables with mkVars and setting them via --var / --var-file /
+NIVIS_VAR_*), surfaced on the docs site (docs-site/src/variables.md + SUMMARY
+entry). Plus the paragraph in the AWS S3 tutorial and the README library line.
+(The standalone document was added when the docs-coverage gate was introduced;
+variables are a noun users search for by name, so they warrant their own page.)

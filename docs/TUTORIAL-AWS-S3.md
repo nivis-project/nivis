@@ -177,10 +177,9 @@ Then override it at the CLI:
 nivis plan --var region=us-east-1
 ```
 
-A variable with no `default` is **required**: leaving it unset is an error that
-names it. Values resolve with Terraform precedence (lowest to highest): a default
-in Nix, then `NIVIS_VAR_<name>` in the environment, then `--var-file <file.json>`,
-then `--var name=value`. So an explicit `--var` always wins.
+A variable with no `default` is **required**. For the full story (types,
+defaults, `--var-file`, `NIVIS_VAR_*`, and precedence) see
+**[Variables](VARIABLES.md)**.
 
 ## Part 3: Plan, apply, inspect, destroy
 

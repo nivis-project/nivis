@@ -90,6 +90,13 @@ if ! bash tests/check-comparison-fresh.sh; then
   fail=1
 fi
 
+# Documentation-coverage gate: every OpenSpec change must record a `Docs impact:`
+# decision (new doc / paragraph / edits / none). SSOT guards that docs aren't
+# duplicated; this guards that docs that SHOULD exist do. See docs/DOCS-GATE.md.
+if ! bash tests/check-docs-gate.sh; then
+  fail=1
+fi
+
 # 5. The site must still build with the includes in place.
 echo "== site builds with includes =="
 if command -v mdbook >/dev/null 2>&1; then

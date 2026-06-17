@@ -7,6 +7,7 @@
 - [Real providers (AWS)](./real-providers.md)
   - [Tutorial: an S3 bucket](./TUTORIAL-AWS-S3.md)
   - [Tutorial: NixOS on EC2](./TUTORIAL-EC2-NIXOS.md)
+- [Variables](./variables.md)
 - [Architecture & decisions](./design.md)
 - [Compare to other tools](./comparison.md)
 - [The IR contract](./ir-contract.md)

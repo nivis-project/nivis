@@ -62,3 +62,8 @@ innermost message is jargon instead of guidance.
   a map -> guidance error naming the wrap fix; single-nested given a list ->
   guidance error; valid inputs still succeed unchanged).
 - Beans: krwc (the error half).
+
+Docs impact: modifications only; corrected the AWS S3 tutorial's troubleshooting
+entry to quote the new actionable error instead of the old codec jargon. No new
+document or section: the behaviour was already documented, only the symptom text
+changed.
