@@ -272,9 +272,11 @@ aws s3api list-buckets --query 'Buckets[?contains(Name, `terraform-`)].Name'
 - **`NoCredentialProviders` / `could not find credentials`**: the SDK chain found
   nothing. Set `AWS_PROFILE` (or the access-key vars) and confirm with `aws sts
   get-caller-identity`.
-- **`expected array … got map[string]interface {}` for a provider block**: that
-  block is *list-nested*; wrap it in a list, e.g.
-  `default_tags = [ { tags = { … }; } ]`.
+- **`this is a list-nested block; wrap the value in a one-element list`**: you
+  wrote a provider block as a bare attrset `{ … }`, but it is *list-nested*, so it
+  takes a one-element list, e.g. `default_tags = [ { tags = { … }; } ]`. The error
+  names the attribute (e.g. `["default_tags"]: …`). The symmetric case, a
+  single-nested block given a list, says to pass one attrset instead.
 - **First run is slow / seems to hang**: it's resolving the flake input and
   downloading the ~900&nbsp;MB AWS provider once; later runs use the cache.
 - **`BucketAlreadyExists`**: you set an explicit `bucket` name someone already

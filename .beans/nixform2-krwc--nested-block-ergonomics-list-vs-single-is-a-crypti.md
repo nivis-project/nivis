@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-06-15T21:22:35Z
-updated_at: 2026-06-17T23:33:58Z
+updated_at: 2026-06-17T23:35:57Z
 parent: nixform2-zdj0
 ---
 
@@ -19,3 +19,7 @@ AWS list-nested blocks must be written as a one-element list in Nix config ([ {.
 PARTIALLY done, split. The ERROR half is done via OpenSpec change nested-block-errors (archived 2026-06-17-nested-block-errors): the executor now emits an actionable message instead of the cryptic codec jargon. A list/set/tuple given a bare attrset says "this is a list-nested block; wrap the value in a one-element list: [ { ... } ]"; the symmetric object/map-given-a-list case says "pass one attrset { ... }, not a list". The offending attribute name is still prefixed (e.g. ["disk_container"]: ...). Tested in internal/tfcodec/tfcodec_test.go (list/set/tuple attrset cases, object/map list case, attribute-name-in-error, and a valid-shapes regression guard); full Go suite green.
 
 The PREVENTION half (codegen emits nested-block structure with correct nesting; Nix-side schema validation at eval time) is larger and overlaps codegen/A5, so it is split out to nixform2-p4uz. Closing krwc; the remaining work is tracked there.
+
+
+---
+Doc follow-on (2026-06-18): the AWS S3 tutorial's Troubleshooting entry documented the OLD cryptic symptom ("expected array ... got map[string]interface {}"); updated it to the NEW actionable message ("this is a list-nested block; wrap the value in a one-element list"). The tutorials' CODE was already correct ([ { ... } ] everywhere), so no example needed changing; only the troubleshooting text was stale.
