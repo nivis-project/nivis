@@ -230,6 +230,31 @@ let
     in
     goodId && isDataLeaf && inDataSources && edgeOk;
 
+  # P11. The `outputs` arg to toIR emits one reserved `output.<name>` consumer per
+  # named output (value wrapped as { value }); it resolves against a ledger.
+  P11 =
+    let
+      ir0o = toIR {
+        inherit providers;
+        resources = [ A ];
+        outputs = { tok = A.refAttr "value"; };
+      };
+      irRo = toIR {
+        inherit providers;
+        resources = [ A ];
+        outputs = { tok = A.refAttr "value"; };
+        ledger = {
+          phase = 1;
+          outputs = { "alpha.alpha_token.A" = { value = "V"; }; };
+        };
+      };
+      find = ir: builtins.head (builtins.filter (c: c.id == "output.tok") ir.nixConsumers);
+      hasOutput = builtins.any (c: c.id == "output.tok") ir0o.nixConsumers;
+      unresolvedIsRef = (find ir0o).value.value ? __ref; # wrapped { value = <ref> }
+      resolved = (find irRo).value.value == "V"; # resolves against the ledger
+    in
+    hasOutput && unresolvedIsRef && resolved;
+
   checks = [
     { name = "P1 leaves well-formed"; ok = P1; }
     { name = "P2 ids unique"; ok = P2; }
@@ -241,6 +266,7 @@ let
     { name = "P8 drv -> __build leaf, known + no-edge"; ok = P8; }
     { name = "P9 mkVars resolves set/default/required/type"; ok = P9; }
     { name = "P10 mkData -> datasource node, refAttr + edge, in dataSources"; ok = P10; }
+    { name = "P11 outputs -> output.<name> consumer, resolves"; ok = P11; }
   ];
   failures = builtins.filter (c: !c.ok) checks;
 in

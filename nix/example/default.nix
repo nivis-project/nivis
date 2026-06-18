@@ -68,5 +68,11 @@ toIR {
       };
     }
   ];
+  # Declared stack outputs (read with `nivis output`): one from a single resource,
+  # one composed across BOTH providers (resolves across phases like the round trip).
+  outputs = {
+    token = A.refAttr "value"; # from alpha
+    combined = final; # B.endpoint :: A.value, from both providers
+  };
   inherit ledger;
 }

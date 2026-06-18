@@ -49,6 +49,10 @@ OpenSpec change to this document first, then downstream updates. Version it.
     // On a given phase these may still be unknown; they become concrete once
     // their inputs are resolved and Nix is re-evaluated.
     { "id": "<consumer-id>", "value": { /* tree; leaves may be values/refs/unknowns */ } }
+    // A consumer whose id is "output.<name>" is a declared STACK OUTPUT (the
+    // `outputs` arg to toIR), with value { "value": <expr> }. It is an ordinary
+    // consumer (same resolution); the "output." prefix is a reserved convention
+    // the executor reads for `nivis output`. No separate node type.
   ]
 }
 ```

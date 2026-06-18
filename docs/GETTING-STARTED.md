@@ -91,6 +91,39 @@ alpha.alpha_token.C (alpha_token)
 `A.value` (alpha). That value only became concrete after both providers applied
 and Nix re-evaluated. That is the round trip.
 
+## Stack outputs
+
+To surface named values out of a run (the Terraform `output "x" {}` equivalent),
+declare them with the `outputs` argument to `toIR`:
+
+```nix
+toIR {
+  providers = { ... };
+  resources = [ A B C ];
+  outputs = {
+    token = A.refAttr "value";          # from one resource
+    combined = final;                   # composed across both providers
+  };
+  inherit ledger;
+}
+```
+
+Read them after apply with `nivis output` (resolved from current state):
+
+```sh
+./bin/nivis output
+```
+
+```
+combined = beta://rec-alpha::0::alpha::0
+token = alpha::0
+```
+
+`nivis output <name>` prints a single value, and `nivis output --json` prints a
+JSON object (`{ "<name>": <value> }`) for a CI step or another stack to consume.
+Outputs reuse the round trip's resolution, so a value composed across providers
+and phases comes back concrete.
+
 ## 5. Refresh and destroy
 
 ```sh

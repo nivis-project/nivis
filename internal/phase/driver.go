@@ -285,6 +285,48 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 	return items, nil
 }
 
+// outputPrefix marks a nixConsumer as a declared stack output: id "output.<name>".
+const outputPrefix = "output."
+
+// ResolveOutputs resolves the run's declared stack outputs to concrete values. It
+// seeds the ledger from current state and re-evaluates read-only (like
+// PlanReport), so a fully-applied stack's outputs come back concrete from the Nix
+// eval (a consumer's value is resolved by the eval itself, with the ledger
+// injected). It returns name->value for every `output.<name>` consumer, unwrapped
+// from its { value } shape.
+func (d *Driver) ResolveOutputs(ctx context.Context) (map[string]interface{}, error) {
+	if d.Ledger == nil {
+		d.Ledger = ledger.New()
+	}
+	if stored, err := d.Store.List(); err == nil {
+		for _, rs := range stored {
+			d.Ledger.Append(rs.ID, rs.Attrs)
+		}
+	}
+	irJSON, err := d.Eval.Eval(ctx, d.Ledger)
+	if err != nil {
+		return nil, err
+	}
+	g, err := ir.IngestIR(irJSON)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]interface{}{}
+	for _, c := range g.Consumers {
+		name, ok := strings.CutPrefix(c.ID, outputPrefix)
+		if !ok {
+			continue
+		}
+		// the declared output's value is wrapped as { value = <expr> }.
+		if v, has := c.Value["value"]; has {
+			out[name] = v
+		} else {
+			out[name] = c.Value
+		}
+	}
+	return out, nil
+}
+
 // readOne reads a datasource: it fetches the datasource schema, calls the
 // provider's ReadDataSource with the (fully-known) resolved config, and returns
 // the read attributes. A datasource is never planned, applied, written to state,

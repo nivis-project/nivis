@@ -75,7 +75,7 @@ func main() {
 	// --target completes to the resource ids in state.
 	_ = root.RegisterFlagCompletionFunc("target", stateIDs)
 
-	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), genCmd())
+	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), outputCmd(), genCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

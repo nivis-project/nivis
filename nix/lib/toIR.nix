@@ -63,19 +63,31 @@ let
     else
       [ ];
 in
-# toIR :: { providers, resources, dataSources ? [], nixConsumers ? [], ledger ? {} } -> IR attrset
+# toIR :: { providers, resources, dataSources ? [], nixConsumers ? [], outputs ? {}, ledger ? {} } -> IR attrset
 {
   providers,
   resources,
   dataSources ? [ ],
   nixConsumers ? [ ],
+  # Declared stack outputs: name -> value expression. Each becomes a reserved
+  # nixConsumer `output.<name>` with value { value = <expr>; }, so it rides the
+  # existing consumer resolution and is read out by `nivis output`.
+  outputs ? { },
   ledger ? { outputs = { }; },
 }:
 let
+  # Stack outputs are reserved consumers (id "output.<name>"), merged with any
+  # explicit nixConsumers before resolution.
+  outputConsumers = lib.mapAttrsToList (name: expr: {
+    id = "output.${name}";
+    value = { value = expr; };
+  }) outputs;
+  allConsumers = nixConsumers ++ outputConsumers;
+
   # resolve every resource/datasource config and consumer value against the ledger first.
   resolvedResources = map (r: r // { config = resolve ledger r.config; }) resources;
   resolvedDataSources = map (d: d // { config = resolve ledger d.config; }) dataSources;
-  resolvedConsumers = map (c: c // { value = resolve ledger c.value; }) nixConsumers;
+  resolvedConsumers = map (c: c // { value = resolve ledger c.value; }) allConsumers;
 
   # Provider config gets the SAME two passes as resource config: resolve against
   # the ledger (so a __ref/__derived in provider config resolves each phase) then
