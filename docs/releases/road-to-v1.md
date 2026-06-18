@@ -31,7 +31,7 @@ Phase 3
   + beta.beta_record.app
 ```
 
-_From [TUTORIAL-FEATURES.md](../../docs/TUTORIAL-FEATURES.md)._
+_From `TUTORIAL-FEATURES.md`._
 
 ### Read named outputs out of a run
 
@@ -49,7 +49,7 @@ lookupResult = found:prod
 replicas = 2
 ```
 
-_From [TUTORIAL-FEATURES.md](../../docs/TUTORIAL-FEATURES.md)._
+_From `TUTORIAL-FEATURES.md`._
 
 ## What shipped
 

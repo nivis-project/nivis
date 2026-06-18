@@ -4,7 +4,6 @@
 
 - [Install](./INSTALL.md)
 - [Getting started](./getting-started.md)
-- [Tutorial: the features (no cloud)](./TUTORIAL-FEATURES.md)
 - [Real providers (AWS)](./real-providers.md)
   - [Tutorial: an S3 bucket](./TUTORIAL-AWS-S3.md)
   - [Tutorial: NixOS on EC2](./TUTORIAL-EC2-NIXOS.md)
@@ -16,3 +15,6 @@
 - [Testing](./testing.md)
 - [Roadmap](./roadmap.md)
 - [Brand](./brand.md)
+- [Releases](./releases.md)
+  - [Road to v1](./release-road-to-v1.md)
+  - [Tutorial: the features (no cloud)](./TUTORIAL-FEATURES.md)

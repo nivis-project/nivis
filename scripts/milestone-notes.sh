@@ -104,7 +104,9 @@ if highlights:
         L.append("")
         L.append(b)
         L.append("")
-        L.append("_From [%s](../../%s)._" % (os.path.basename(src), src))
+        # name the source tutorial without a path: this doc is read both in the
+        # repo and included on the docs site, so any relative path is wrong in one.
+        L.append("_From `%s`._" % os.path.basename(src))
         L.append("")
 else:
     L.append("_(No tutorial blocks are marked with `release-note` yet.)_")
