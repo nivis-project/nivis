@@ -136,6 +136,65 @@ func (b *Backend) GetSchema(ctx context.Context, resourceType string) (provider.
 	}, nil
 }
 
+func (b *Backend) GetDataSourceSchema(ctx context.Context, dataSourceType string) (provider.ResourceSchema, error) {
+	resp, err := b.schema(ctx)
+	if err != nil {
+		return provider.ResourceSchema{}, err
+	}
+	sch, ok := resp.GetDataSourceSchemas()[dataSourceType]
+	if !ok {
+		return provider.ResourceSchema{}, fmt.Errorf("provider has no datasource type %q", dataSourceType)
+	}
+	objType, err := tfvalue.ObjectType(sch.GetBlock())
+	if err != nil {
+		return provider.ResourceSchema{}, err
+	}
+	var attrs []provider.Attr
+	computed := map[string]bool{}
+	for _, a := range sch.GetBlock().GetAttributes() {
+		attrs = append(attrs, provider.Attr{
+			Name:      a.GetName(),
+			TypeKind:  typeKind(a),
+			Required:  a.GetRequired(),
+			Optional:  a.GetOptional(),
+			Computed:  a.GetComputed(),
+			Sensitive: a.GetSensitive(),
+		})
+		if a.GetComputed() {
+			computed[a.GetName()] = true
+		}
+	}
+	return provider.ResourceSchema{
+		TypeName: dataSourceType,
+		Attrs:    attrs,
+		Raw:      schemaRaw{objType: objType, computed: computed},
+	}, nil
+}
+
+func (b *Backend) ReadDataSource(ctx context.Context, req provider.ReadDataSourceRequest) (provider.ReadDataSourceResult, error) {
+	raw := req.Schema.Raw.(schemaRaw)
+	cfgDV, err := tfvalue.EncodeConfig(raw.objType, raw.computed, req.ResolvedCfg)
+	if err != nil {
+		return provider.ReadDataSourceResult{}, fmt.Errorf("encode config: %w", err)
+	}
+	resp, err := b.client.ReadDataSource(ctx, &tfplugin6.ReadDataSource_Request{
+		TypeName: req.TypeName,
+		Config:   cfgDV,
+	})
+	if err != nil {
+		return provider.ReadDataSourceResult{}, fmt.Errorf("ReadDataSource: %w", err)
+	}
+	diags := normDiags(resp.GetDiagnostics())
+	if err := provider.DiagError(diags); err != nil {
+		return provider.ReadDataSourceResult{}, err
+	}
+	attrs, err := tfvalue.DecodeState(raw.objType, resp.GetState())
+	if err != nil {
+		return provider.ReadDataSourceResult{}, fmt.Errorf("decode datasource state: %w", err)
+	}
+	return provider.ReadDataSourceResult{Attrs: attrs, Diagnostics: diags}, nil
+}
+
 func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.PlanResult, error) {
 	raw := req.Schema.Raw.(schemaRaw)
 	cfgDV, err := tfvalue.EncodeConfig(raw.objType, raw.computed, req.ResolvedCfg)

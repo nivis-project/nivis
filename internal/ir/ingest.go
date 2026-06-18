@@ -6,6 +6,7 @@ package ir
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // IngestIR unmarshals and validates an IR document against the contract, then
@@ -58,6 +59,34 @@ func IngestIR(data []byte) (*Graph, error) {
 		}
 		g.Nodes[r.ID] = &ResourceNode{Resource: r, Refs: refs}
 		g.Order = append(g.Order, r.ID)
+		g.AllRefs = append(g.AllRefs, refs...)
+	}
+
+	// Datasources: like resources but READ, not created. They live in the same
+	// Nodes/Order (so they share the readiness/fixpoint machinery), marked
+	// IsData; the driver dispatches read-vs-apply on the flag. Ids must be
+	// "data."-prefixed, unique, and must not collide with a resource id.
+	for i := range doc.DataSources {
+		d := doc.DataSources[i]
+		if d.ID == "" {
+			return nil, fmt.Errorf("ir: dataSource at index %d has empty id", i)
+		}
+		if !strings.HasPrefix(d.ID, "data.") {
+			return nil, fmt.Errorf("ir: dataSource id %q must begin with \"data.\"", d.ID)
+		}
+		if _, dup := g.Nodes[d.ID]; dup {
+			return nil, fmt.Errorf("ir: dataSource id %q collides with an existing node id", d.ID)
+		}
+		if _, ok := g.Providers[d.Provider]; !ok {
+			return nil, fmt.Errorf("ir: dataSource %q uses undeclared provider %q", d.ID, d.Provider)
+		}
+		refs, err := classifyConfig(d.ID, d.Config)
+		if err != nil {
+			return nil, fmt.Errorf("ir: dataSource %q: %w", d.ID, err)
+		}
+		r := Resource{ID: d.ID, Provider: d.Provider, Type: d.Type, Name: d.Name, Config: d.Config, IsData: true}
+		g.Nodes[d.ID] = &ResourceNode{Resource: r, Refs: refs}
+		g.Order = append(g.Order, d.ID)
 		g.AllRefs = append(g.AllRefs, refs...)
 	}
 

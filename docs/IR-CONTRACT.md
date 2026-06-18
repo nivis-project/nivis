@@ -31,6 +31,16 @@ OpenSpec change to this document first, then downstream updates. Version it.
       }
     }
   ],
+  "dataSources": [                              // OPTIONAL; read, not created (see below)
+    {
+      "id": "data.<provider>.<type>.<name>",   // stable identity, unique, "data." prefix
+      "provider": "<provider-id>",
+      "type": "<datasource-type>",             // e.g. "alpha_lookup"
+      "name": "<name>",
+      "config": { /* attribute tree; leaves may be values, refs, or unknowns */ }
+      // no meta/lifecycle: a datasource is read, never applied or destroyed
+    }
+  ],
   "edges": [
     { "from": "<id>", "to": "<id>", "via": "<config-path-in-to>" }  // dependency graph
   ],
@@ -87,6 +97,26 @@ not as the `__ref` JSON (providers don't understand our refs). The mapping
 resources with deterministic ids (`<base>__<key>`). The executor never sees
 `count`/`for_each`; it only sees resolved instances and edges between them. This
 keeps the Go `ResourceNode` simple and the graph explicit.
+
+## Datasources (`dataSources`)
+
+A **datasource** reads existing infrastructure (an AMI by filter, a VPC, an
+availability zone) rather than creating it. The optional top-level `dataSources`
+array carries them, distinct from `resources`. A datasource node is
+`{ id, provider, type, name, config }` with id `data.<provider>.<type>.<name>`
+(the `data.` prefix keeps it from colliding with a resource id). It has **no**
+`meta`/lifecycle: a datasource is read via the provider's `ReadDataSource`, never
+planned, applied, written to state, or destroyed.
+
+A datasource is a first-class node in the dependency graph: a `__ref`/`__derived`
+in a resource (or another datasource) config MAY target a datasource id, and a
+datasource config MAY reference a resource or datasource, producing edges like any
+other node. So datasources participate in the **phased fixpoint**: the executor
+reads a datasource when its config inputs are fully known. A datasource with a
+fully-known config reads in the first phase; one whose config depends on a
+resource's apply-time output reads in a later phase, after that output lands in
+the ledger. Its read attributes enter the outputs ledger keyed by its id, so
+downstream nodes resolve against them exactly as they resolve resource outputs.
 
 ## "Derived" Nix values
 

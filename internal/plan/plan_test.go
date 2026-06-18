@@ -38,6 +38,12 @@ func (s *stubClient) Read(context.Context, provider.ReadRequest) (provider.ReadR
 func (s *stubClient) Destroy(context.Context, provider.DestroyRequest) (provider.DestroyResult, error) {
 	return provider.DestroyResult{}, nil
 }
+func (s *stubClient) GetDataSourceSchema(context.Context, string) (provider.ResourceSchema, error) {
+	return provider.ResourceSchema{}, nil
+}
+func (s *stubClient) ReadDataSource(context.Context, provider.ReadDataSourceRequest) (provider.ReadDataSourceResult, error) {
+	return provider.ReadDataSourceResult{}, nil
+}
 
 func planNode() *ir.ResourceNode {
 	return &ir.ResourceNode{Resource: ir.Resource{ID: "p.t.n", Provider: "p", Type: "t", Name: "n"}}

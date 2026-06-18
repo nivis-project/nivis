@@ -17,6 +17,7 @@ type Document struct {
 	SchemaVersion int                       `json:"schemaVersion"`
 	Providers     map[string]ProviderConfig `json:"providers"`
 	Resources     []Resource                `json:"resources"`
+	DataSources   []DataSource              `json:"dataSources,omitempty"`
 	Edges         []Edge                    `json:"edges"`
 	NixConsumers  []NixConsumer             `json:"nixConsumers"`
 }
@@ -35,6 +36,22 @@ type Resource struct {
 	Name     string                 `json:"name"`
 	Config   map[string]interface{} `json:"config"`
 	Meta     *Meta                  `json:"meta,omitempty"`
+	// IsData marks a datasource node (from the IR's `dataSources` array): it is
+	// READ via the provider's ReadDataSource, never planned, applied, written to
+	// state, or destroyed. Datasource nodes live in the same Graph.Nodes/Order as
+	// resources so they share the readiness/fixpoint machinery; the driver
+	// dispatches read-vs-apply on this flag.
+	IsData bool `json:"-"`
+}
+
+// DataSource is one datasource node in the IR's `dataSources` array. It is read,
+// not created: no meta/lifecycle.
+type DataSource struct {
+	ID       string                 `json:"id"`
+	Provider string                 `json:"provider"`
+	Type     string                 `json:"type"`
+	Name     string                 `json:"name"`
+	Config   map[string]interface{} `json:"config"`
 }
 
 // Meta holds meta-arguments. count/for_each are intentionally absent: expansion

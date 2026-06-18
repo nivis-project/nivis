@@ -1,0 +1,20 @@
+{
+  "_comment": "A datasource id must match the schema pattern ^data\\.<p>.<t>.<n>. This one lacks the 'data.' prefix, so structural validation rejects it.",
+  "_expect_error_contains": "id",
+  "schemaVersion": 1,
+  "providers": {
+    "aws": { "source": "./bin/provider-aws", "config": {} }
+  },
+  "resources": [],
+  "dataSources": [
+    {
+      "id": "aws.aws_ami.ubuntu",
+      "provider": "aws",
+      "type": "aws_ami",
+      "name": "ubuntu",
+      "config": { "most_recent": true }
+    }
+  ],
+  "edges": [],
+  "nixConsumers": []
+}

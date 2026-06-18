@@ -12,11 +12,13 @@ import (
 )
 
 // Server is a tfprotov6.ProviderServer for a fake provider. It serves a fixed
-// set of Resources and returns unimplemented diagnostics for the RPCs a fake
-// does not need (data sources, functions, ephemeral resources, import, move).
+// set of Resources and (optionally) DataSources, returning unimplemented
+// diagnostics for the RPCs a fake does not need (functions, ephemeral resources,
+// import, move).
 type Server struct {
-	resources map[string]Resource
-	counter   *Counter
+	resources   map[string]Resource
+	dataSources map[string]Resource
+	counter     *Counter
 }
 
 // New builds a Server from a list of Resources, seeding the deterministic
@@ -26,7 +28,17 @@ func New(resources ...Resource) *Server {
 	for _, r := range resources {
 		m[r.TypeName] = r
 	}
-	return &Server{resources: m, counter: NewCounter()}
+	return &Server{resources: m, dataSources: map[string]Resource{}, counter: NewCounter()}
+}
+
+// WithDataSources adds datasource types. A datasource is modeled as a Resource
+// whose Apply computes the read result from the (known) config; it is served via
+// ReadDataSource, never planned or applied.
+func (s *Server) WithDataSources(ds ...Resource) *Server {
+	for _, d := range ds {
+		s.dataSources[d.TypeName] = d
+	}
+	return s
 }
 
 var _ tfprotov6.ProviderServer = (*Server)(nil)
@@ -63,9 +75,14 @@ func (s *Server) GetProviderSchema(_ context.Context, _ *tfprotov6.GetProviderSc
 	for name, r := range s.resources {
 		schemas[name] = r.schema()
 	}
+	dsSchemas := map[string]*tfprotov6.Schema{}
+	for name, d := range s.dataSources {
+		dsSchemas[name] = d.schema()
+	}
 	return &tfprotov6.GetProviderSchemaResponse{
-		Provider:        &tfprotov6.Schema{Version: 1, Block: &tfprotov6.SchemaBlock{Version: 1}},
-		ResourceSchemas: schemas,
+		Provider:          &tfprotov6.Schema{Version: 1, Block: &tfprotov6.SchemaBlock{Version: 1}},
+		ResourceSchemas:   schemas,
+		DataSourceSchemas: dsSchemas,
 	}, nil
 }
 
@@ -221,8 +238,36 @@ func (s *Server) ValidateDataResourceConfig(_ context.Context, _ *tfprotov6.Vali
 	return &tfprotov6.ValidateDataResourceConfigResponse{Diagnostics: []*tfprotov6.Diagnostic{unimplemented("ValidateDataResourceConfig")}}, nil
 }
 
-func (s *Server) ReadDataSource(_ context.Context, _ *tfprotov6.ReadDataSourceRequest) (*tfprotov6.ReadDataSourceResponse, error) {
-	return &tfprotov6.ReadDataSourceResponse{Diagnostics: []*tfprotov6.Diagnostic{unimplemented("ReadDataSource")}}, nil
+// ReadDataSource computes a datasource's state from its config. The result is
+// deterministic in the config (counter fixed at 0), so a given config always
+// reads the same attributes (the hermetic-outputs guarantee).
+func (s *Server) ReadDataSource(_ context.Context, req *tfprotov6.ReadDataSourceRequest) (*tfprotov6.ReadDataSourceResponse, error) {
+	d, ok := s.dataSources[req.TypeName]
+	if !ok {
+		return &tfprotov6.ReadDataSourceResponse{Diagnostics: []*tfprotov6.Diagnostic{errDiag(
+			"Unknown data source type",
+			fmt.Sprintf("This provider has no data source type %q.", req.TypeName))}}, nil
+	}
+	cfgVal, err := decode(req.Config, d.objType())
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := asObject(cfgVal)
+	if err != nil {
+		return nil, err
+	}
+	if diags := d.validateConfig(cfg); len(diags) > 0 {
+		return &tfprotov6.ReadDataSourceResponse{Diagnostics: diags}, nil
+	}
+	state, diags := d.applied(cfg, 0)
+	if len(diags) > 0 {
+		return &tfprotov6.ReadDataSourceResponse{Diagnostics: diags}, nil
+	}
+	dv, err := encode(d.objType(), state)
+	if err != nil {
+		return nil, err
+	}
+	return &tfprotov6.ReadDataSourceResponse{State: dv}, nil
 }
 
 func (s *Server) GetFunctions(_ context.Context, _ *tfprotov6.GetFunctionsRequest) (*tfprotov6.GetFunctionsResponse, error) {

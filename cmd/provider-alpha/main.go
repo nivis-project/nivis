@@ -34,8 +34,28 @@ var AlphaToken = fakeprovider.Resource{
 	},
 }
 
+// AlphaLookup is a datasource: it READS a value derived from its `query` input,
+// modeling "look up existing infrastructure". Deterministic in the config.
+var AlphaLookup = fakeprovider.Resource{
+	TypeName: "alpha_lookup",
+	Attrs: map[string]fakeprovider.Attr{
+		"query":  {Type: tftypes.String, Required: true},
+		"id":     {Type: tftypes.String, Computed: true},
+		"result": {Type: tftypes.String, Computed: true},
+	},
+	Apply: func(inputs map[string]string, _ int64) (map[string]string, []*tfprotov6.Diagnostic) {
+		q := inputs["query"]
+		return map[string]string{
+			"id":     fmt.Sprintf("lookup-%s", q),
+			"result": fmt.Sprintf("found:%s", q),
+		}, nil
+	},
+}
+
 // NewServer builds the provider server (shared by main and the test).
-func NewServer() *fakeprovider.Server { return fakeprovider.New(AlphaToken) }
+func NewServer() *fakeprovider.Server {
+	return fakeprovider.New(AlphaToken).WithDataSources(AlphaLookup)
+}
 
 func main() {
 	err := tf6server.Serve(

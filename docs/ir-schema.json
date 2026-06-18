@@ -30,6 +30,13 @@
         "$ref": "#/$defs/resource"
       }
     },
+    "dataSources": {
+      "type": "array",
+      "description": "Datasources: existing infrastructure READ (not created). Optional.",
+      "items": {
+        "$ref": "#/$defs/dataSource"
+      }
+    },
     "edges": {
       "type": "array",
       "items": {
@@ -94,6 +101,37 @@
         },
         "meta": {
           "$ref": "#/$defs/meta"
+        }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "required": [
+        "id",
+        "provider",
+        "type",
+        "name",
+        "config"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^data\\.[^.]+\\.[^.]+\\.[^.]+$",
+          "description": "Stable datasource identity 'data.<provider>.<type>.<name>', unique across the IR. A datasource is read, never applied or destroyed."
+        },
+        "provider": {
+          "type": "string",
+          "description": "Must be a key in top-level 'providers'."
+        },
+        "type": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/$defs/configTree"
         }
       }
     },

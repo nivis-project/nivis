@@ -63,6 +63,12 @@ func (c *recordClient) Destroy(_ context.Context, req provider.DestroyRequest) (
 	c.destroyAttrs = req.Stored
 	return provider.DestroyResult{}, nil
 }
+func (c *recordClient) GetDataSourceSchema(context.Context, string) (provider.ResourceSchema, error) {
+	return provider.ResourceSchema{}, nil
+}
+func (c *recordClient) ReadDataSource(context.Context, provider.ReadDataSourceRequest) (provider.ReadDataSourceResult, error) {
+	return provider.ReadDataSourceResult{}, nil
+}
 
 type recordManager struct{ c *recordClient }
 

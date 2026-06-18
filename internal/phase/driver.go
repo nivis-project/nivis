@@ -136,9 +136,22 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 				continue
 			}
 			node := g.Nodes[id]
-			outs, err := d.applyOne(ctx, g, node, res.Configs[id])
-			if err != nil {
-				return nil, fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
+			// A datasource is READ (never planned/applied/stored); a resource is
+			// applied. Both feed their outputs into the ledger so dependents
+			// resolve. They share this readiness loop, so a datasource whose
+			// config depends on a resource output reads in a later phase.
+			var outs map[string]interface{}
+			var err error
+			if node.Resource.IsData {
+				outs, err = d.readOne(ctx, g, node, res.Configs[id])
+				if err != nil {
+					return nil, fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
+				}
+			} else {
+				outs, err = d.applyOne(ctx, g, node, res.Configs[id])
+				if err != nil {
+					return nil, fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
+				}
 			}
 			d.Ledger.Append(id, outs)
 			applied[id] = true
@@ -208,6 +221,10 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 	var items []PlanItem
 	for _, id := range g.Order {
 		node := g.Nodes[id]
+		// Datasources are read, not created; they never appear in the plan.
+		if node.Resource.IsData {
+			continue
+		}
 		item := PlanItem{ID: id, Type: node.Resource.Type, Op: plan.OpCreate}
 
 		stored, found, err := d.Store.Get(id)
@@ -254,6 +271,35 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+// readOne reads a datasource: it fetches the datasource schema, calls the
+// provider's ReadDataSource with the (fully-known) resolved config, and returns
+// the read attributes. A datasource is never planned, applied, written to state,
+// or destroyed; its outputs feed the ledger like a resource's so dependents
+// resolve against them.
+func (d *Driver) readOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}) (map[string]interface{}, error) {
+	prov, ok := g.Providers[node.Resource.Provider]
+	if !ok {
+		return nil, fmt.Errorf("provider %q not declared", node.Resource.Provider)
+	}
+	client, err := d.Manager.Client(node.Resource.Provider, prov.Source, prov.Config)
+	if err != nil {
+		return nil, fmt.Errorf("provider client: %w", err)
+	}
+	rs, err := client.GetDataSourceSchema(ctx, node.Resource.Type)
+	if err != nil {
+		return nil, err
+	}
+	res, err := client.ReadDataSource(ctx, provider.ReadDataSourceRequest{
+		Schema:      rs,
+		TypeName:    node.Resource.Type,
+		ResolvedCfg: resolvedCfg,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.Attrs, nil
 }
 
 // applyOne fetches the resource's schema, reads any prior state, plans against

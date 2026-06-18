@@ -98,6 +98,9 @@ binary cache):
 
 - `mkResource { provider; type; name; config; }`: a resource, with output
   references (`refAttr`) for wiring one resource into another.
+- `mkData { provider; type; name; config; }`: a datasource (existing infra to
+  read, not create); its outputs feed resources via `refAttr`, read per phase.
+  See **[docs/DATASOURCES.md](docs/DATASOURCES.md)**.
 - `mkProvider { source; config; }`: a provider, config (incl. nested blocks) in
   Nix; flows into the provider's `Configure`.
 - `str`/`derived`: build values from provider outputs (the round trip).

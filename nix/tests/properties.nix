@@ -195,6 +195,41 @@ let
     && (required.success == false)
     && (wrongType.success == false);
 
+  # P10. mkData produces a datasource with a `data.`-prefixed id and a refAttr; a
+  # resource referencing the datasource gets a __ref + an edge; toIR places the
+  # datasource in the `dataSources` array (not `resources`).
+  P10 =
+    let
+      ami = nivis.mkData {
+        provider = "aws";
+        type = "aws_ami";
+        name = "ubuntu";
+        config = { most_recent = true; };
+      };
+      goodId = ami.id == "data.aws.aws_ami.ubuntu";
+      isDataLeaf = ami.refAttr "id" == { __ref = { resource = "data.aws.aws_ami.ubuntu"; path = [ "id" ]; }; };
+      consumer = mkResource {
+        provider = "aws";
+        type = "aws_instance";
+        name = "web";
+        config = { ami = ami.refAttr "id"; };
+      };
+      ir = toIR {
+        providers = { aws = { source = "p"; config = { }; }; };
+        resources = [ consumer ];
+        dataSources = [ ami ];
+      };
+      inDataSources =
+        (builtins.length ir.dataSources == 1)
+        && ((builtins.head ir.dataSources).id == "data.aws.aws_ami.ubuntu")
+        && (builtins.length ir.resources == 1); # the datasource is NOT in resources
+      # the resource's ami ref targets the datasource id, producing an edge.
+      edgeOk = builtins.any (
+        e: e.from == "data.aws.aws_ami.ubuntu" && e.to == "aws.aws_instance.web" && e.via == "ami"
+      ) ir.edges;
+    in
+    goodId && isDataLeaf && inDataSources && edgeOk;
+
   checks = [
     { name = "P1 leaves well-formed"; ok = P1; }
     { name = "P2 ids unique"; ok = P2; }
@@ -205,6 +240,7 @@ let
     { name = "P7 mkProvider validates source"; ok = P7; }
     { name = "P8 drv -> __build leaf, known + no-edge"; ok = P8; }
     { name = "P9 mkVars resolves set/default/required/type"; ok = P9; }
+    { name = "P10 mkData -> datasource node, refAttr + edge, in dataSources"; ok = P10; }
   ];
   failures = builtins.filter (c: !c.ok) checks;
 in

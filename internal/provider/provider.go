@@ -104,6 +104,20 @@ type ReadResult struct {
 	Diagnostics []Diagnostic
 }
 
+// ReadDataSourceRequest / ReadDataSourceResult: read a datasource from its
+// (fully-known) config. Unlike ReadRequest (which sends prior state), this sends
+// the resolved config and returns the datasource's computed attributes.
+type ReadDataSourceRequest struct {
+	Schema      ResourceSchema
+	TypeName    string
+	ResolvedCfg map[string]interface{}
+}
+
+type ReadDataSourceResult struct {
+	Attrs       map[string]interface{}
+	Diagnostics []Diagnostic
+}
+
 // DestroyRequest: delete one resource given its stored state.
 type DestroyRequest struct {
 	Schema   ResourceSchema
@@ -129,9 +143,13 @@ type Client interface {
 	ListResourceTypes(ctx context.Context) ([]string, error)
 	// GetSchema returns the schema for one resource type.
 	GetSchema(ctx context.Context, resourceType string) (ResourceSchema, error)
+	// GetDataSourceSchema returns the schema for one datasource type.
+	GetDataSourceSchema(ctx context.Context, dataSourceType string) (ResourceSchema, error)
 	Plan(ctx context.Context, req PlanRequest) (PlanResult, error)
 	Apply(ctx context.Context, req ApplyRequest) (ApplyResult, error)
 	Read(ctx context.Context, req ReadRequest) (ReadResult, error)
+	// ReadDataSource reads a datasource from its resolved config.
+	ReadDataSource(ctx context.Context, req ReadDataSourceRequest) (ReadDataSourceResult, error)
 	Destroy(ctx context.Context, req DestroyRequest) (DestroyResult, error)
 }
 

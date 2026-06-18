@@ -10,6 +10,7 @@
 let
   ref = import ./ref.nix { inherit lib; };
   mkResource = import ./mkResource.nix { inherit lib ref; };
+  mkData = import ./mkData.nix { inherit lib ref; };
   mkProvider = import ./mkProvider.nix { inherit lib; };
   toIR = import ./toIR.nix { inherit lib ref; };
   expand = import ./expand.nix { inherit lib mkResource; };
@@ -21,6 +22,7 @@ in
     lib
     ref
     mkResource
+    mkData
     mkProvider
     toIR
     ;

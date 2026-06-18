@@ -112,9 +112,10 @@ def structural_errors(ir, schema):
 def referential_errors(ir):
     errs = []
     resources = ir.get("resources", [])
+    data_sources = ir.get("dataSources", [])
     providers = ir.get("providers", {})
 
-    # unique ids
+    # unique ids across resources AND datasources (a ref/edge may target either).
     seen = {}
     ids = set()
     for r in resources:
@@ -123,13 +124,25 @@ def referential_errors(ir):
             errs.append(f"referential: duplicate resource id '{rid}'")
         seen[rid] = True
         ids.add(rid)
+    for d in data_sources:
+        did = d.get("id")
+        if did in seen:
+            errs.append(f"referential: duplicate node id '{did}' (datasource collides)")
+        seen[did] = True
+        ids.add(did)
 
-    # provider declared
+    # provider declared (resources and datasources)
     for r in resources:
         prov = r.get("provider")
         if prov not in providers:
             errs.append(
                 f"referential: resource '{r.get('id')}' uses undeclared provider '{prov}'"
+            )
+    for d in data_sources:
+        prov = d.get("provider")
+        if prov not in providers:
+            errs.append(
+                f"referential: dataSource '{d.get('id')}' uses undeclared provider '{prov}'"
             )
 
     # edge endpoints exist
@@ -155,6 +168,8 @@ def referential_errors(ir):
 
     for r in resources:
         check_refs(r.get("config", {}), f"resource '{r.get('id')}'")
+    for d in data_sources:
+        check_refs(d.get("config", {}), f"dataSource '{d.get('id')}'")
     for c in ir.get("nixConsumers", []):
         check_refs(c.get("value", {}), f"nixConsumer '{c.get('id')}'")
 

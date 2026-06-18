@@ -63,16 +63,18 @@ let
     else
       [ ];
 in
-# toIR :: { providers, resources, nixConsumers ? [], ledger ? {} } -> IR attrset
+# toIR :: { providers, resources, dataSources ? [], nixConsumers ? [], ledger ? {} } -> IR attrset
 {
   providers,
   resources,
+  dataSources ? [ ],
   nixConsumers ? [ ],
   ledger ? { outputs = { }; },
 }:
 let
-  # resolve every resource config and consumer value against the ledger first.
+  # resolve every resource/datasource config and consumer value against the ledger first.
   resolvedResources = map (r: r // { config = resolve ledger r.config; }) resources;
+  resolvedDataSources = map (d: d // { config = resolve ledger d.config; }) dataSources;
   resolvedConsumers = map (c: c // { value = resolve ledger c.value; }) nixConsumers;
 
   # Provider config gets the SAME two passes as resource config: resolve against
@@ -91,7 +93,17 @@ let
     config = encode r.config;
   } // lib.optionalAttrs (r ? meta && r.meta != null) { inherit (r) meta; }) resolvedResources;
 
-  edges = lib.concatMap (r: collectEdges r.id r.config) resolvedResources;
+  # Datasources mirror resources but carry no meta (read, never applied).
+  irDataSources = map (d: {
+    inherit (d) id provider type name;
+    config = encode d.config;
+  }) resolvedDataSources;
+
+  # Edges come from BOTH resources and datasources: a ref to a datasource id
+  # (or a datasource config referencing another node) is an ordinary edge.
+  edges =
+    lib.concatMap (r: collectEdges r.id r.config) resolvedResources
+    ++ lib.concatMap (d: collectEdges d.id d.config) resolvedDataSources;
 
   irConsumers = map (c: {
     inherit (c) id;
@@ -102,6 +114,7 @@ in
   schemaVersion = 1;
   providers = irProviders;
   resources = irResources;
+  dataSources = irDataSources;
   inherit edges;
   nixConsumers = irConsumers;
 }
