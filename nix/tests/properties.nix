@@ -193,7 +193,18 @@ let
     && (dflt.region == "eu-central-1")
     && (builtins.attrNames undecl == [ "region" ]) # undeclared "b" ignored
     && (required.success == false)
-    && (wrongType.success == false);
+    && (wrongType.success == false)
+    # string->scalar coercion: CLI/env vars arrive as strings; an int/bool var
+    # accepts the string form ("5" -> 5, "true" -> true); a non-numeric int throws.
+    && ((nivis.mkVars { n = { type = "int"; }; } { n = "5"; }).n == 5)
+    && ((nivis.mkVars { n = { type = "int"; }; } { n = "-3"; }).n == (0 - 3))
+    && ((nivis.mkVars { b = { type = "bool"; }; } { b = "true"; }).b == true)
+    && ((nivis.mkVars { b = { type = "bool"; }; } { b = "false"; }).b == false)
+    && (
+      (builtins.tryEval (
+        let r = nivis.mkVars { n = { type = "int"; }; } { n = "nope"; }; in builtins.deepSeq r r
+      )).success == false
+    );
 
   # P10. mkData produces a datasource with a `data.`-prefixed id and a refAttr; a
   # resource referencing the datasource gets a __ref + an edge; toIR places the

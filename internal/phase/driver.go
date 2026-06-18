@@ -311,6 +311,42 @@ func (d *Driver) ResolveOutputs(ctx context.Context) (map[string]interface{}, er
 	if err != nil {
 		return nil, err
 	}
+
+	// Datasources are not persisted to state, so an output (or consumer) that
+	// references a datasource result is still an unresolved ref after the
+	// state-seeded eval. Re-read the ready datasources (reads are pure/idempotent),
+	// add their outputs to the ledger, and re-eval so those refs resolve. One pass
+	// suffices for datasources whose config is known from state; a datasource that
+	// itself depends on an unread datasource would need more, but the common case
+	// (datasource read directly, or from a resource in state) is one pass.
+	res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
+	readAny := false
+	for _, id := range res.FullyKnown {
+		node := g.Nodes[id]
+		if !node.Resource.IsData {
+			continue
+		}
+		if _, already := d.Ledger.Outputs[id]; already {
+			continue
+		}
+		outs, err := d.readOne(ctx, g, node, res.Configs[id])
+		if err != nil {
+			return nil, fmt.Errorf("read datasource %q for outputs: %w", id, err)
+		}
+		d.Ledger.Append(id, outs)
+		readAny = true
+	}
+	if readAny {
+		irJSON, err = d.Eval.Eval(ctx, d.Ledger)
+		if err != nil {
+			return nil, err
+		}
+		g, err = ir.IngestIR(irJSON)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	out := map[string]interface{}{}
 	for _, c := range g.Consumers {
 		name, ok := strings.CutPrefix(c.ID, outputPrefix)

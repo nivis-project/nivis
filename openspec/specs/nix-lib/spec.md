@@ -212,6 +212,13 @@ reads (e.g. `vars.region`). Behavior:
 - The supported types are at least `str`, `int`, `bool`, and `any` (no
   validation). A set value whose type does not match its declaration SHALL throw
   an actionable error naming the variable and the expected type.
+- **String values are coerced to the declared scalar type.** Because the CLI
+  (`--var`) and environment (`NIVIS_VAR_*`) always supply strings, an `int` or
+  `bool` variable given a string value SHALL parse it to that type (`"5"` -> `5`,
+  `"-3"` -> `-3`, `"true"`/`"false"` -> the boolean); a value already of the
+  declared type (e.g. a typed `--var-file` JSON value) passes through; a string
+  that does not parse to the type SHALL throw the named, typed error. `str` and
+  `any` keep the value unchanged.
 - The library SHALL stay pure (builtins only); `mkVars` performs no IO and reads
   no environment. It validates data already passed in.
 
@@ -237,6 +244,16 @@ reads (e.g. `vars.region`). Behavior:
 - GIVEN `mkVars { count = { type = "int"; }; }` and injected `{ count = "three"; }`
 - WHEN it resolves
 - THEN evaluation throws an error naming `count` and the expected type `int`.
+
+#### Scenario: a string int from the CLI is coerced
+- GIVEN `mkVars { replicas = { type = "int"; }; }` and injected `{ replicas = "5"; }` (as `--var replicas=5` supplies)
+- WHEN it resolves
+- THEN `vars.replicas` is the integer `5`.
+
+#### Scenario: a string bool from the CLI is coerced
+- GIVEN `mkVars { on = { type = "bool"; }; }` and injected `{ on = "true"; }`
+- WHEN it resolves
+- THEN `vars.on` is the boolean `true`.
 
 #### Scenario: an undeclared injected value is ignored
 - GIVEN `mkVars { a = { type = "str"; default = "x"; }; }` and injected `{ a = "y"; b = "z"; }`

@@ -83,6 +83,9 @@
         plan = import ./nix/example { inherit nivis; };
         # A cyclic variant for the headline e2e's cycle-rejection assertion.
         planCycle = import ./nix/example/cycle.nix { inherit nivis; };
+        # A hermetic tour of the daily-driver features (variables, datasource,
+        # round trip, outputs) against the fakes — see docs/TUTORIAL-FEATURES.md.
+        tutorial = import ./nix/example/tutorial.nix { inherit nivis; };
         # A real-provider example (AWS S3 bucket) — drive with `nivis ... --attr
         # nivis.aws`; creates a real resource (see nix/example/aws.nix).
         aws = import ./nix/example/aws.nix { inherit nivis; };

@@ -71,3 +71,47 @@ func TestStackOutputsResolveE2E(t *testing.T) {
 		}
 	}
 }
+
+// TestStackOutputsResolveDatasource is the regression guard for an output that
+// references a DATASOURCE result. Datasources are not persisted to state, so a
+// standalone `nivis output` (ResolveOutputs) must re-read them to resolve such an
+// output, not leave it as a raw __ref. Uses the nivis.tutorial flake attr (which
+// declares a datasource-derived output) with a required --var.
+func TestStackOutputsResolveDatasource(t *testing.T) {
+	if _, err := exec.LookPath("nix"); err != nil {
+		t.Skip("nix not on PATH")
+	}
+	root := repoRoot(t)
+	buildInto(t, root, "provider-alpha")
+	buildInto(t, root, "provider-beta")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+	st, _ := state.Open(filepath.Join(t.TempDir(), "state.json"))
+
+	newDriver := func() *phase.Driver {
+		l := ledger.New()
+		l.Vars = map[string]interface{}{"env": "prod"} // the tutorial's required var
+		return &phase.Driver{
+			Eval:      phase.NixEval{FlakeRef: ".", Attr: "nivis.tutorial", WorkDir: root},
+			Manager:   relativeManager{mgr: mgr, root: root},
+			Store:     st,
+			Ledger:    l,
+			MaxPhases: 10,
+		}
+	}
+
+	if _, err := newDriver().Run(context.Background()); err != nil {
+		t.Fatalf("apply tutorial: %v", err)
+	}
+	outs, err := newDriver().ResolveOutputs(context.Background())
+	if err != nil {
+		t.Fatalf("ResolveOutputs: %v", err)
+	}
+	// lookupResult comes from the alpha_lookup datasource (result = "found:<query>",
+	// query = env = "prod"). It must be the concrete value, not a __ref.
+	if got := outs["lookupResult"]; got != "found:prod" {
+		t.Errorf("datasource-derived output lookupResult = %#v, want \"found:prod\" (a datasource output must re-read, not stay a __ref)", got)
+	}
+}
