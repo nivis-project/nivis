@@ -72,6 +72,37 @@ nivis completion fish > ~/.config/fish/completions/nivis.fish
 
 Run `nivis completion --help` for per-shell details.
 
+## Working with state
+
+Nivis keeps state in a local JSON file (`--state`, default `nivis.state.json`).
+Day-to-day:
+
+```sh
+nivis state list                 # ids in state (or "No resources in state.")
+nivis state show <id>            # one resource's stored attributes
+nivis state rm <id>              # drop a resource from state
+```
+
+Move the whole state document around with `pull`/`push` (the same shape a future
+remote backend uses):
+
+```sh
+nivis state pull > backup.json           # whole state to stdout (or --out)
+nivis state pull --out backup.json
+
+nivis state push --in backup.json        # replace state from a file
+cat backup.json | nivis state push       # or from stdin
+```
+
+`push` **replaces all of state**, so it confirms first and reports the resource
+counts. Pass `--force` (or `--yes`) to skip the prompt; `--force` is **required**
+when the input is piped (non-interactive), so a scripted push is always explicit.
+
+If a command reports that the state is locked by another `nivis` process, another
+run holds the advisory lock. Wait for it to finish; if it crashed and left a stale
+`*.lock` file, remove that file by hand. (Nivis no longer hangs on a held lock; it
+times out with that message.)
+
 ## Pinning
 
 The `github:` reference floats on the default branch. For reproducible infra, pin

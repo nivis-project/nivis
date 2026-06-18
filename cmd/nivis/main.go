@@ -279,7 +279,7 @@ func stateCmd() *cobra.Command {
 	c.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List resource ids in state",
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			store, err := openStore()
 			if err != nil {
 				return err
@@ -288,8 +288,13 @@ func stateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			w := cmd.OutOrStdout()
+			if len(items) == 0 {
+				fmt.Fprintln(w, "No resources in state.")
+				return nil
+			}
 			for _, rs := range items {
-				fmt.Println(rs.ID)
+				fmt.Fprintln(w, rs.ID)
 			}
 			return nil
 		},
@@ -325,18 +330,25 @@ func stateCmd() *cobra.Command {
 		Short:             "Remove a resource from state",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: stateIDs,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := openStore()
 			if err != nil {
 				return err
 			}
+			if _, ok, err := store.Get(args[0]); err != nil {
+				return err
+			} else if !ok {
+				return fmt.Errorf("%q is not in state (nothing to remove)", args[0])
+			}
 			if err := store.Delete(args[0]); err != nil {
 				return err
 			}
-			fmt.Printf("removed %s from state\n", args[0])
+			fmt.Fprintf(cmd.OutOrStdout(), "removed %s from state\n", args[0])
 			return nil
 		},
 	})
+
+	c.AddCommand(pullCmd(), pushCmd())
 
 	return c
 }
