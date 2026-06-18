@@ -34,6 +34,16 @@ milestone = sys.argv[1]
 mode = sys.argv[2]
 tutorials = sys.argv[3:]
 
+# slugify a milestone title into a stable file slug: drop a leading "M<n>:"
+# number prefix and any "(parenthetical)", then kebab-case. So
+# "M1: Road to v1 (a daily-driver...)" -> "road-to-v1". The gate
+# (tests/check-milestone-notes.sh) MUST use the identical rule.
+def slugify(title):
+    t = re.sub(r'^\s*M\d+\s*:\s*', '', title)   # strip "M1: "
+    t = re.sub(r'\s*\(.*?\)\s*', ' ', t)        # drop "(...)"
+    t = t.split(":")[0]                          # before any remaining colon
+    return re.sub(r'[^a-z0-9]+', '-', t.strip().lower()).strip('-')
+
 # --- milestone + completed child epics from beans -------------------------
 q = '{ bean(id: "%s") { id title body children { id title status type } } }' % milestone
 out = subprocess.run(["beans", "query", "--json", q], capture_output=True, text=True)
@@ -129,9 +139,7 @@ doc = "\n".join(L)
 if mode == "--stdout":
     sys.stdout.write(doc)
 else:
-    # slug from the milestone title: kebab-case, before any ":".
-    base = title.split(":")[0].strip().lower()
-    slug = re.sub(r'[^a-z0-9]+', '-', base).strip('-')
+    slug = slugify(title)
     os.makedirs("docs/releases", exist_ok=True)
     path = os.path.join("docs/releases", slug + ".md")
     open(path, "w").write(doc)

@@ -1,13 +1,13 @@
 ---
 # nixform2-1okn
-title: Enterprise-credible
+title: 'M3: Enterprise-credible'
 status: todo
 type: milestone
 priority: low
 tags:
     - roadmap
 created_at: 2026-06-16T13:38:35Z
-updated_at: 2026-06-16T13:38:35Z
+updated_at: 2026-06-18T15:54:44Z
 ---
 
 ROADMAP Phase C (the longer horizon, after Phases A and B). See docs/ROADMAP.md. NixOS is gaining enterprise traction; this is where Nivis earns a seat there. Deliberately later; several epics are large enough to become their own milestones.

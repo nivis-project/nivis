@@ -1,13 +1,13 @@
 ---
 # nixform2-zdj0
-title: 'Road to v1: a daily-driver for Nix developers'
+title: 'M1: Road to v1 (a daily-driver for Nix developers)'
 status: completed
 type: milestone
 priority: high
 tags:
     - roadmap
 created_at: 2026-06-16T13:37:23Z
-updated_at: 2026-06-18T12:39:41Z
+updated_at: 2026-06-18T15:54:44Z
 ---
 
 The PoC milestone (nixform2-hj4w) is complete: the round trip is proven, real AWS apply/update/replace/destroy works, codegen and the EC2+NixOS example land. Nivis is experimental/alpha (0.3.x).

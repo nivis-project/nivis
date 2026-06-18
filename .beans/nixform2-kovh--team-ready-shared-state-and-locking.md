@@ -1,13 +1,13 @@
 ---
 # nixform2-kovh
-title: 'Team-ready: shared state and locking'
+title: 'M2: Team-ready (shared state and locking)'
 status: todo
 type: milestone
 priority: normal
 tags:
     - roadmap
 created_at: 2026-06-16T13:38:17Z
-updated_at: 2026-06-16T13:38:17Z
+updated_at: 2026-06-18T15:54:44Z
 ---
 
 ROADMAP Phase B (after Phase A, the Road-to-v1 daily-driver milestone). See docs/ROADMAP.md.
