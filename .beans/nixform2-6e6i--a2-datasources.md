@@ -7,7 +7,7 @@ priority: high
 tags:
     - roadmap
 created_at: 2026-06-16T13:37:59Z
-updated_at: 2026-06-18T00:27:52Z
+updated_at: 2026-06-18T06:00:11Z
 parent: nixform2-zdj0
 ---
 
@@ -43,3 +43,7 @@ TESTS: Nix property P10 (mkData id/refAttr/edge/in-dataSources). Go: ir ingest, 
 DOCS (docs-coverage gate: new document): docs/DATASOURCES.md (mkData, when reads happen per phase, the dependent case, resource-vs-datasource table, non-goals); docs-site/src/datasources.md + SUMMARY; README mkData line. No em dashes.
 
 NON-GOALS (deferred): datasource codegen (nivis gen typed mkData); caching/staleness; data depends_on; sensitive beyond existing handling.
+
+
+---
+Follow-up question (2026-06-18): "don't we need outputs to complete datasources?" Answer: NO. A datasource's attributes already flow back IN (mkData refAttr -> ledger -> resources/Nix; the round trip works). The OTHER meaning of "outputs" (named values surfaced OUT of the run, the Terraform `output {}` equivalent: `nivis output` + a published artifact) is a separate, orthogonal gap that applies to resources and datasources alike. Filed as epic nixform2-h9ws (A7) under the same milestone. Datasources ship complete.
