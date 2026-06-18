@@ -122,6 +122,24 @@ func TestThreePhaseChain(t *testing.T) {
 	if got := res.Outputs["beta.beta_record.B.endpoint"]; got != "beta://rec-alpha::0" {
 		t.Errorf("B.endpoint = %q, want beta://rec-alpha::0", got)
 	}
+
+	// Per-phase grouping (A3): 3 groups, one id each, concatenation == Applied,
+	// none marked as a datasource read (all three are resources).
+	if len(res.Phases) != 3 {
+		t.Fatalf("Phases groups = %d, want 3", len(res.Phases))
+	}
+	var flat []string
+	for _, group := range res.Phases {
+		for _, n := range group {
+			if n.IsData {
+				t.Errorf("%s wrongly marked as a datasource read", n.ID)
+			}
+			flat = append(flat, n.ID)
+		}
+	}
+	if strings.Join(flat, ",") != strings.Join(res.Applied, ",") {
+		t.Errorf("Phases concatenation %v != Applied %v", flat, res.Applied)
+	}
 }
 
 func TestTwoPhaseCapLeavesPending(t *testing.T) {

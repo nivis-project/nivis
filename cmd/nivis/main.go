@@ -144,26 +144,27 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			out := newOutput(cmd.OutOrStdout())
 			changes := 0
 			for _, it := range items {
-				marker := "+"
 				switch it.Op {
 				case plan.OpNoop:
-					marker = "="
+					out.noop(it.ID, it.Type)
 				case plan.OpUpdate:
-					marker = "~"
+					out.update(it.ID, it.Type)
+					changes++
 				case plan.OpReplace:
-					marker = "-/+"
-				}
-				if it.Op != plan.OpNoop {
+					out.replace(it.ID, it.Type)
+					changes++
+				default:
+					out.create(it.ID, it.Type)
 					changes++
 				}
-				fmt.Printf("%s %s (%s)\n", marker, it.ID, it.Type)
 			}
 			if changes == 0 {
-				fmt.Printf("\nNo changes. %d resource(s) up to date.\n", len(items))
+				out.printf("\nNo changes. %d resource(s) up to date.\n", len(items))
 			} else {
-				fmt.Printf("\n%d change(s) across %d resource(s) (+ create, ~ update, -/+ replace, = no change). Run `nivis apply`.\n", changes, len(items))
+				out.printf("\n%d change(s) across %d resource(s) (+ create, ~ update, -/+ replace, = no change). Run `nivis apply`.\n", changes, len(items))
 			}
 			return nil
 		},
@@ -198,9 +199,17 @@ func applyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Applied %d resource(s) across %d phase(s):\n", len(res.Applied), res.AppliedPhases)
-			for _, id := range res.Applied {
-				fmt.Printf("  ✓ %s\n", id)
+			out := newOutput(cmd.OutOrStdout())
+			out.printf("Applied %d resource(s) across %d phase(s):\n\n", len(res.Applied), res.AppliedPhases)
+			for i, group := range res.Phases {
+				out.phaseHeading(i + 1)
+				for _, n := range group {
+					if n.IsData {
+						out.read(n.ID, "") // a datasource READ, not a create
+					} else {
+						out.create(n.ID, "")
+					}
+				}
 			}
 			return nil
 		},
@@ -226,9 +235,10 @@ func destroyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Destroyed %d resource(s):\n", len(res.Destroyed))
+			out := newOutput(cmd.OutOrStdout())
+			out.printf("Destroyed %d resource(s):\n", len(res.Destroyed))
 			for _, id := range res.Destroyed {
-				fmt.Printf("  - %s\n", id)
+				out.destroy(id, "")
 			}
 			return nil
 		},

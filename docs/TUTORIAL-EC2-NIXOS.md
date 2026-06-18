@@ -241,16 +241,24 @@ the AWS chain can't all happen at once:
 
 ```
 Applied 9 resource(s) across 4 phase(s):
-  ✓ aws.aws_iam_role.vmimport
-  ✓ aws.aws_iam_policy.vmimport
-  ✓ aws.aws_s3_bucket.image
-  ✓ aws.aws_security_group.web
-  ✓ aws.aws_iam_role_policy_attachment.vmimport
-  ✓ aws.aws_s3_object.image          # the ~2 GB NixOS .vhd
-  ✓ aws.aws_ebs_snapshot_import.nixos
-  ✓ aws.aws_ami.nixos
-  ✓ aws.aws_instance.web
+
+Phase 1
+  + aws.aws_iam_role.vmimport
+  + aws.aws_iam_policy.vmimport
+  + aws.aws_s3_bucket.image
+  + aws.aws_security_group.web
+Phase 2
+  + aws.aws_iam_role_policy_attachment.vmimport
+  + aws.aws_s3_object.image          # the ~2 GB NixOS .vhd
+  + aws.aws_ebs_snapshot_import.nixos
+Phase 3
+  + aws.aws_ami.nixos
+Phase 4
+  + aws.aws_instance.web
 ```
+
+(On a terminal each `+` is colored by change type; piped or with `NO_COLOR` it
+is plain text. A datasource read, if the config had one, would show a dim `r`.)
 
 Read the instance's public address back out of state and check it serves:
 

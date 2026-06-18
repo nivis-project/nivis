@@ -209,9 +209,16 @@ nivis apply
 
 ```
 Applied 2 resource(s) across 2 phase(s):
-  ✓ aws.aws_s3_bucket.demo
-  ✓ aws.aws_s3_object.note
+
+Phase 1
+  + aws.aws_s3_bucket.demo
+Phase 2
+  + aws.aws_s3_object.note
 ```
+
+(On a terminal the markers are colored by change type: `+` create green, `~`
+update yellow, `-/+` replace, `-` destroy red, `=` no-op dim, and a datasource
+read shows a dim `r`. Piped or with `NO_COLOR` set, it is plain text.)
 
 **Two phases, not one.** Phase 1 creates the bucket: nothing else can run,
 because the object's content needs the bucket's name. Nivis then

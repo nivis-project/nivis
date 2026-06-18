@@ -89,9 +89,17 @@ func (d *Driver) priorState(ctx context.Context, client provider.Client, rs prov
 }
 
 // Result summarizes a completed run.
+// AppliedNode is one node that resolved in a phase, with its kind so a renderer
+// can distinguish a datasource READ from a resource apply.
+type AppliedNode struct {
+	ID     string
+	IsData bool // true => the node was READ (a datasource), not applied
+}
+
 type Result struct {
 	AppliedPhases int               // number of phases that applied >=1 resource
 	Applied       []string          // resource ids applied, in order
+	Phases        [][]AppliedNode   // ids resolved in each phase, in phase order (reporting only)
 	FinalLedger   *ledger.Ledger    // the accumulated outputs
 	LastIR        *ir.Graph         // the final phase's ingested IR (for consumer checks)
 	Outputs       map[string]string // flattened "<id>.<attr>" -> string, for asserts
@@ -110,6 +118,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 
 	applied := map[string]bool{}
 	var appliedOrder []string
+	var phases [][]AppliedNode
 	appliedPhases := 0
 	var lastGraph *ir.Graph
 
@@ -131,6 +140,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 		res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
 
 		progressed := false
+		var thisPhase []AppliedNode
 		for _, id := range res.FullyKnown {
 			if applied[id] {
 				continue
@@ -156,10 +166,12 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 			d.Ledger.Append(id, outs)
 			applied[id] = true
 			appliedOrder = append(appliedOrder, id)
+			thisPhase = append(thisPhase, AppliedNode{ID: id, IsData: node.Resource.IsData})
 			progressed = true
 		}
 
 		if progressed {
+			phases = append(phases, thisPhase)
 			appliedPhases++
 			if d.LedgerPath != "" {
 				if err := d.Ledger.Save(d.LedgerPath); err != nil {
@@ -170,7 +182,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 
 		// Done when every resource in the current IR has been applied.
 		if allApplied(g, applied) {
-			return d.finish(appliedPhases, appliedOrder, lastGraph), nil
+			return d.finish(appliedPhases, appliedOrder, phases, lastGraph), nil
 		}
 
 		// Fixpoint: a phase that resolved nothing new and work remains is stuck.
@@ -450,7 +462,7 @@ func storeRoot(path string) string {
 	return path
 }
 
-func (d *Driver) finish(phases int, order []string, last *ir.Graph) *Result {
+func (d *Driver) finish(phaseCount int, order []string, groups [][]AppliedNode, last *ir.Graph) *Result {
 	flat := map[string]string{}
 	for id, attrs := range d.Ledger.Outputs {
 		for k, v := range attrs {
@@ -460,8 +472,9 @@ func (d *Driver) finish(phases int, order []string, last *ir.Graph) *Result {
 		}
 	}
 	return &Result{
-		AppliedPhases: phases,
+		AppliedPhases: phaseCount,
 		Applied:       order,
+		Phases:        groups,
 		FinalLedger:   d.Ledger,
 		LastIR:        last,
 		Outputs:       flat,
