@@ -104,6 +104,13 @@ if ! bash tests/check-milestone-notes.sh; then
   fail=1
 fi
 
+# Changelog gate: every archived OpenSpec change declares a `Changelog:` status,
+# and a non-`none` entry is reflected in CHANGELOG.md [Unreleased]. See
+# docs/RELEASING.md.
+if ! bash tests/check-changelog.sh; then
+  fail=1
+fi
+
 # 5. The site must still build with the includes in place.
 echo "== site builds with includes =="
 if command -v mdbook >/dev/null 2>&1; then

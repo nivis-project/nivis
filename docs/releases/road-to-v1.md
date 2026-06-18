@@ -65,4 +65,46 @@ _From `TUTORIAL-FEATURES.md`._
 
 ## Changelog (unreleased)
 
-_(empty)_
+The **Road to v1** milestone (M1): the daily-driver features, so a Nix developer
+can manage a real, multi-resource project end to end without dropping back to
+Terraform. See `docs/TUTORIAL-FEATURES.md` for a hands-on, no-cloud tour and
+`docs/releases/road-to-v1.md` for the milestone notes.
+
+### Added
+- **Variables** (`nivis.mkVars`): declare typed config variables (`str`/`int`/
+  `bool`/`any`) with defaults; required when no default. Set them with `--var
+  name=value`, `--var-file <json>`, or `NIVIS_VAR_<name>`, with Terraform
+  precedence (an explicit `--var` wins). String values are coerced to the declared
+  scalar type, so `--var replicas=5` satisfies an `int` var.
+- **Datasources** (`nivis.mkData`): read existing infrastructure (an AMI, a VPC, a
+  lookup) and feed it into resources. Read per phase, so a datasource may depend on
+  a resource's apply-time output (it rides the round trip). Never planned, applied,
+  or written to state.
+- **Stack outputs**: declare named values with the `outputs` argument to `toIR`
+  and read them with **`nivis output [name]`** (human-readable, a single value, or
+  `--json` for a CI step / another stack).
+- **Shell completion**: `nivis completion <bash|zsh|fish|powershell>`, with dynamic
+  completion of resource ids (from state) for `state show`, `state rm`, and
+  `--target`.
+- **State pull/push**: `nivis state pull` / `nivis state push` move the whole state
+  document (the seam a remote backend will reuse); `push` confirms before
+  overwriting and requires `--force` when non-interactive.
+- **Codegen now emits nested blocks**: `nivis gen` constructors include a
+  resource's nested blocks with the correct list-vs-single shape, so the generated
+  constructor doubles as the per-provider argument reference.
+- **Docs**: a hands-on feature tutorial (against the in-repo fakes, no cloud),
+  Variables and Datasources reference pages, a comparison page vs other IaC tools,
+  and a forward-looking roadmap.
+
+### Changed
+- **Plan/apply/destroy output is colorised by change type and grouped by phase**
+  (`+` create, `~` update, `-/+` replace, `-` destroy, `=` no-op, `r` datasource
+  read), so the phased fixpoint is visible. Respects `NO_COLOR` and non-TTY output.
+- State commands report clearly: `state list` notes when empty, `state rm` of a
+  missing id says so, and a held state lock now times out with an actionable
+  message instead of hanging.
+
+### Fixed
+- Nested-block shape mistakes (a list-nested block written as a bare attrset) now
+  produce an actionable error naming the attribute and the fix, instead of a
+  cryptic codec error.

@@ -31,10 +31,26 @@ Pushing the tag runs **`.github/workflows/release.yml`**, which uses
 
 `v0.x` tags are marked pre-release automatically.
 
+## Keeping the changelog current (the changelog gate)
+
+The changelog is kept current as you go, tied to OpenSpec archival. Every
+`proposal.md` carries a `Changelog:` line:
+
+```
+Changelog: Added datasources (nivis.mkData): read existing infra and feed it in.
+Changelog: none - internal refactor, no user-facing surface.
+```
+
+`tests/check-changelog.sh` (run inside `tests/check-docs-ssot.sh`) enforces that
+every archived change has the line, and that a non-`none` entry actually appears
+in `CHANGELOG.md`'s `## [Unreleased]` section (matched formatting- and
+wrapping-tolerantly). So a user-facing change cannot be archived without its
+changelog entry being present. Changes archived before the convention are exempt.
+
 ## Before tagging
 
-Write your changes under `## [Unreleased]` in `CHANGELOG.md`. Validate the
-release config locally if you've touched it:
+Write your changes under `## [Unreleased]` in `CHANGELOG.md` (the changelog gate
+keeps this honest). Validate the release config locally if you've touched it:
 
 ```sh
 goreleaser check                       # validate .goreleaser.yaml
