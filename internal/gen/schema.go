@@ -32,8 +32,14 @@ func Fetch(ctx context.Context, client provider.Client) ([]Resource, error) {
 
 // fromSchema converts a provider.ResourceSchema into the codegen model.
 func fromSchema(sch provider.ResourceSchema) Resource {
+	attrs := attrsFromProvider(sch.Attrs)
+	sortAttrs(attrs)
+	return Resource{Type: sch.TypeName, Attrs: attrs, Blocks: blocksFromProvider(sch.Blocks)}
+}
+
+func attrsFromProvider(in []provider.Attr) []Attr {
 	var attrs []Attr
-	for _, a := range sch.Attrs {
+	for _, a := range in {
 		attrs = append(attrs, Attr{
 			Name:      a.Name,
 			Type:      NixType{Kind: kindFromString(a.TypeKind)},
@@ -43,8 +49,38 @@ func fromSchema(sch provider.ResourceSchema) Resource {
 			Sensitive: a.Sensitive,
 		})
 	}
-	sortAttrs(attrs)
-	return Resource{Type: sch.TypeName, Attrs: attrs}
+	return attrs
+}
+
+// blocksFromProvider maps provider nested blocks to the gen model (recursively),
+// sorted by name for deterministic emission.
+func blocksFromProvider(in []provider.NestedBlock) []Block {
+	var blocks []Block
+	for _, b := range in {
+		inner := attrsFromProvider(b.Attrs)
+		sortAttrs(inner)
+		blocks = append(blocks, Block{
+			Name:    b.Name,
+			Nesting: nestingFromProvider(b.Nesting),
+			Attrs:   inner,
+			Blocks:  blocksFromProvider(b.Blocks),
+		})
+	}
+	sort.Slice(blocks, func(i, j int) bool { return blocks[i].Name < blocks[j].Name })
+	return blocks
+}
+
+func nestingFromProvider(n provider.BlockNesting) Nesting {
+	switch n {
+	case provider.BlockList:
+		return NestList
+	case provider.BlockSet:
+		return NestSet
+	case provider.BlockMap:
+		return NestMap
+	default:
+		return NestSingle
+	}
 }
 
 func kindFromString(s string) Kind {

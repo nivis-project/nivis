@@ -119,6 +119,19 @@ named error if missing), passes optional inputs through, omits computed-only
 attributes (they're outputs), and accepts an `overrides` argument so you can
 adjust the generated output.
 
+It also includes the resource's **nested blocks**, each with the shape that
+matches its nesting, so you never guess list-vs-single: a list/set-nested block
+(e.g. `ingress`, `disk_container`) is an argument defaulting to `[]` and written
+`[ { ... } ]`; a single-nested block is a plain attrset; a map-nested block is a
+map of attrsets. Every block is documented in the generated file with its nesting
+and inner attribute names.
+
+So **the generated constructor is your per-provider argument reference**: instead
+of translating a provider's Terraform docs into Nivis terms by hand, run `nivis
+gen` and read the `.nix`. It lists every argument (with type and
+required/optional), every nested block (with its nesting), and the computed
+outputs, all in Nivis form.
+
 ## 7. A real provider (AWS)
 
 <!-- ANCHOR: aws -->

@@ -43,8 +43,29 @@ type Attr struct {
 // attribute (computed && !required && !optional) is an output, not an input.
 func (a Attr) IsInput() bool { return a.Required || a.Optional }
 
+// Nesting is how a nested block nests in config (single/list/set/map).
+type Nesting string
+
+const (
+	NestSingle Nesting = "single"
+	NestList   Nesting = "list"
+	NestSet    Nesting = "set"
+	NestMap    Nesting = "map"
+)
+
+// Block is a nested block in the model: its name, nesting mode, inner attributes,
+// and any blocks nested within it. A block is a constructor input emitted with
+// the shape matching its nesting, so authors never guess list-vs-single.
+type Block struct {
+	Name    string
+	Nesting Nesting
+	Attrs   []Attr
+	Blocks  []Block
+}
+
 // Resource is a resource type's normalized schema.
 type Resource struct {
-	Type  string
-	Attrs []Attr // sorted by name for deterministic emission
+	Type   string
+	Attrs  []Attr  // sorted by name for deterministic emission
+	Blocks []Block // nested blocks, sorted by name
 }

@@ -37,10 +37,32 @@ type Attr struct {
 	Sensitive bool
 }
 
+// BlockNesting is how a nested block is nested in config/state.
+type BlockNesting string
+
+const (
+	BlockSingle BlockNesting = "single" // a single attrset
+	BlockList   BlockNesting = "list"   // a list of attrsets ([ { ... } ])
+	BlockSet    BlockNesting = "set"    // a set of attrsets ([ { ... } ])
+	BlockMap    BlockNesting = "map"    // a map of attrsets ({ k = { ... }; })
+)
+
+// NestedBlock is one nested block of a resource: its name, nesting mode, inner
+// attributes, and any blocks nested within it (recursively). Codegen uses this
+// to emit a constructor argument with the correct shape per nesting, so authors
+// never guess list-vs-single.
+type NestedBlock struct {
+	Name    string
+	Nesting BlockNesting
+	Attrs   []Attr
+	Blocks  []NestedBlock
+}
+
 // ResourceSchema is a resource type's normalized schema.
 type ResourceSchema struct {
 	TypeName string
 	Attrs    []Attr
+	Blocks   []NestedBlock // nested blocks (with nesting mode), for codegen
 	// raw is an opaque, backend-specific handle (e.g. the parsed object type)
 	// the backend needs to encode/decode values for this resource. Callers do
 	// not interpret it; they pass it back via PlanRequest/ApplyRequest.Schema.

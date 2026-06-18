@@ -1,25 +1,6 @@
-# Spec: codegen
+# Spec delta: codegen
 
-## Purpose
-The codegen (tn-gen) turns any provider's tfprotov6 schema into typed Nix
-constructors, the path to "all providers with zero per-provider work" (DESIGN
-D2). It spawns a provider, fetches its schema, maps the schema to a Nix type
-model, and emits `<provider>/<type>.nix` constructors with required-field throws,
-optional passthrough, and an override seam. It is generic and schema-driven; the
-type mapping is validated against synthetic schemas and the pipeline end-to-end
-against the fake providers. Registry download of real providers and flake-app
-packaging are network-gated and tracked separately.
-## Requirements
-### Requirement: Fetch a provider's schema
-The codegen SHALL spawn a provider binary, complete the tfprotov6 handshake, call
-`GetProviderSchema`, and produce a normalized schema model mapping each resource
-type to its attributes (name, type, required/optional/computed/sensitive).
-
-#### Scenario: schema fetched from a fake provider
-- GIVEN the built `provider-alpha` binary
-- WHEN the codegen fetches its schema
-- THEN the model contains resource type `alpha_token` with attributes `label`
-  (optional) and `id`/`value` (computed).
+## MODIFIED Requirements
 
 ### Requirement: Schema-to-Nix type mapping
 The codegen SHALL map each attribute's tftype and role flags to a Nix type
@@ -85,18 +66,3 @@ argument reference.
 - GIVEN a resource with a single-nested block `x`
 - WHEN the constructor is emitted
 - THEN `x` is a constructor argument defaulting to `null` and documented as a single attrset.
-
-### Requirement: Codegen command
-The codegen SHALL be runnable as a command
-`tn-gen --provider <path> --out <dir>` (built with `go build`/`go run`,
-e.g. `go run ./cmd/tn-gen -- --provider <path> --out <dir>`), writing
-`<provider>/<type>.nix` files for each resource type. Packaging it as a flake
-`apps.gen` is network-gated (it requires nixpkgs `buildGoModule`, and the binary
-cache is unreachable per CLAUDE.md §6) and is tracked separately.
-
-#### Scenario: end-to-end generation against a fake provider
-- GIVEN the `provider-alpha` binary
-- WHEN `tn-gen` runs with `--provider <path> --out <dir>`
-- THEN `<dir>` contains a generated constructor file for `alpha_token` that, when
-  imported, produces a valid `mkResource` for that type.
-

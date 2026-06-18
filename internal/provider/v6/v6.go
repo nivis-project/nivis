@@ -132,8 +132,52 @@ func (b *Backend) GetSchema(ctx context.Context, resourceType string) (provider.
 	return provider.ResourceSchema{
 		TypeName: resourceType,
 		Attrs:    attrs,
+		Blocks:   nestedBlocks(sch.GetBlock()),
 		Raw:      schemaRaw{objType: objType, computed: computed},
 	}, nil
+}
+
+// blockAttrs maps a schema block's flat attributes to provider.Attr.
+func blockAttrs(block *tfplugin6.Schema_Block) []provider.Attr {
+	var attrs []provider.Attr
+	for _, a := range block.GetAttributes() {
+		attrs = append(attrs, provider.Attr{
+			Name:      a.GetName(),
+			TypeKind:  typeKind(a),
+			Required:  a.GetRequired(),
+			Optional:  a.GetOptional(),
+			Computed:  a.GetComputed(),
+			Sensitive: a.GetSensitive(),
+		})
+	}
+	return attrs
+}
+
+// nestedBlocks maps a schema block's nested blocks (recursively) to the
+// version-neutral provider.NestedBlock, so codegen learns each block's nesting
+// mode without parsing protobuf.
+func nestedBlocks(block *tfplugin6.Schema_Block) []provider.NestedBlock {
+	var out []provider.NestedBlock
+	for _, b := range block.GetBlockTypes() {
+		var nesting provider.BlockNesting
+		switch b.GetNesting() {
+		case tfplugin6.Schema_NestedBlock_LIST, tfplugin6.Schema_NestedBlock_GROUP:
+			nesting = provider.BlockList
+		case tfplugin6.Schema_NestedBlock_SET:
+			nesting = provider.BlockSet
+		case tfplugin6.Schema_NestedBlock_MAP:
+			nesting = provider.BlockMap
+		default: // SINGLE, INVALID, or unknown: treat as a single attrset
+			nesting = provider.BlockSingle
+		}
+		out = append(out, provider.NestedBlock{
+			Name:    b.GetTypeName(),
+			Nesting: nesting,
+			Attrs:   blockAttrs(b.GetBlock()),
+			Blocks:  nestedBlocks(b.GetBlock()),
+		})
+	}
+	return out
 }
 
 func (b *Backend) GetDataSourceSchema(ctx context.Context, dataSourceType string) (provider.ResourceSchema, error) {

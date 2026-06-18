@@ -114,7 +114,8 @@ binary cache):
   `evalModules` (module composition).
 
 `nivis gen --provider <binary> --out <dir>` generates typed constructors from any
-provider's schema.
+provider's schema, including nested blocks (with the right list-vs-single shape).
+The generated constructor doubles as the per-provider argument reference.
 
 ## Stable contracts
 
