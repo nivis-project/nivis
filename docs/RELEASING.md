@@ -41,6 +41,34 @@ goreleaser check                       # validate .goreleaser.yaml
 goreleaser release --snapshot --clean  # dry build (no publish) -> ./dist
 ```
 
+## Closing a milestone
+
+A version tag is the per-release artifact; a **milestone** is a coherent batch of
+capability (e.g. "Road to v1"). When a milestone's epics are all done, it gets
+**release notes** that show what a user can now do, drawn from the tutorials'
+verified examples, not just a changelog.
+
+1. Mark the milestone **completed** in beans (after its child epics are done).
+2. Feature the runnable examples: in the relevant tutorial(s), wrap the blocks
+   worth highlighting in `<!-- release-note: <title> -->` ... `<!-- /release-note -->`.
+   These are pulled verbatim, so they stay verified where they live.
+3. Generate the notes:
+
+   ```sh
+   scripts/milestone-notes.sh <milestone-id>   # writes docs/releases/<slug>.md
+   ```
+
+   The notes assemble: the milestone goal, **Highlights** (the marked tutorial
+   blocks), **What shipped** (the completed child epics), and the `CHANGELOG`
+   `[Unreleased]` section. The file is generated, do not hand-edit it; rerun the
+   generator.
+4. Commit `docs/releases/<slug>.md`.
+
+`tests/check-milestone-notes.sh` (run inside `tests/check-docs-ssot.sh`) is a
+golden gate: every completed milestone must have notes that **regenerate
+identically**, so missing or stale notes fail the check. Milestones that closed
+before the gate existed (the PoC) are exempt.
+
 ## Conventions
 
 - Semantic versioning. `0.1.x` was the PoC; `0.2.x` onward is active development.

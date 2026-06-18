@@ -97,6 +97,13 @@ if ! bash tests/check-docs-gate.sh; then
   fail=1
 fi
 
+# Milestone release-notes gate: every completed milestone has current, regenerable
+# release notes (drawn from epics + changelog + the tutorials' release-note
+# blocks). See docs/RELEASING.md "Closing a milestone".
+if ! bash tests/check-milestone-notes.sh; then
+  fail=1
+fi
+
 # 5. The site must still build with the includes in place.
 echo "== site builds with includes =="
 if command -v mdbook >/dev/null 2>&1; then

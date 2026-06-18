@@ -8,8 +8,8 @@ tags:
     - discovered
     - roadmap
 created_at: 2026-06-17T23:33:58Z
-updated_at: 2026-06-18T09:33:03Z
-parent: nixform2-zdj0
+updated_at: 2026-06-18T12:37:43Z
+parent: nixform2-1okn
 ---
 
 The second half of nixform2-krwc, deferred from the nested-block-errors change (archived 2026-06-17-nested-block-errors, which fixed the executor error only).
@@ -29,3 +29,7 @@ Doing GAP 1 (codegen emits nested-block structure) jointly with A5 (nixform2-n2r
 GAP 1 DONE via codegen-nested-blocks (archived 2026-06-18-codegen-nested-blocks, jointly with A5): `nivis gen` now emits nested blocks as typed args with the correct per-nesting shape ([] list/set, null attrset single, {} map) + doc comments, so the list-vs-single mistake cannot be guessed. provider.ResourceSchema carries Blocks (recursive); v6/v5 populate from Block.BlockTypes; gen model + emit render them. Tested (gen emit, schema mapping, v6 backend surfacing) + live-eval verified.
 
 REMAINING (this bean now tracks GAP 2 only): Nix-side / eval-time schema validation, so a shape mistake is caught at `nivis plan` before apply. DEFERRED until there is demand: the actionable executor error (krwc) already explains the mistake, and codegen (gap 1) now prevents the common case. Keeping this bean open as the tracker for gap 2; status back to todo.
+
+
+---
+Reparented out of the Road-to-v1 milestone (zdj0) into Enterprise-credible (1okn): gap 2 is Nix-side eval-time schema validation, a hardening/guardrails item, not Phase A daily-driver scope. Deferred until demand; the actionable executor error + codegen (gap 1, done) cover the common case.

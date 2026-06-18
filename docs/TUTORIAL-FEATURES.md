@@ -117,8 +117,12 @@ always wins. An `int` variable accepts the string form from the CLI, so
 
 ## 2. Apply: the datasource read and the round trip, by phase
 
+<!-- release-note: Apply shows the round trip, grouped by phase -->
+A single `apply` reads a datasource, then resolves resources across phases (the
+fixpoint made visible), colorised by change type:
+
 ```sh
-./bin/nivis apply --attr nivis.tutorial --var env=prod
+nivis apply --attr nivis.tutorial --var env=prod
 ```
 
 ```
@@ -131,6 +135,7 @@ Phase 2
 Phase 3
   + beta.beta_record.app
 ```
+<!-- /release-note -->
 
 Read the phases top to bottom, the fixpoint made visible:
 
@@ -163,10 +168,12 @@ from in the next phase.
 
 ## 4. Stack outputs
 
-Read the named values the config declared:
+<!-- release-note: Read named outputs out of a run -->
+Surface named values out of a run with `nivis output` (text, a single value, or
+`--json` for a CI step):
 
 ```sh
-./bin/nivis output --attr nivis.tutorial --var env=prod
+nivis output --attr nivis.tutorial --var env=prod
 ```
 
 ```
@@ -175,6 +182,7 @@ env = prod
 lookupResult = found:prod
 replicas = 2
 ```
+<!-- /release-note -->
 
 - `lookupResult` is from the **datasource**,
 - `endpoint` is the **round-trip** value (built across both providers and phases),
