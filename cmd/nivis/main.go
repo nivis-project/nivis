@@ -72,6 +72,9 @@ func main() {
 	root.PersistentFlags().StringArrayVar(&varFiles, "var-file", nil, "read config variables from a JSON file (repeatable; later files win)")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
+	// --target completes to the resource ids in state.
+	_ = root.RegisterFlagCompletionFunc("target", stateIDs)
+
 	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), genCmd())
 
 	if err := root.Execute(); err != nil {
@@ -293,9 +296,10 @@ func stateCmd() *cobra.Command {
 	})
 
 	c.AddCommand(&cobra.Command{
-		Use:   "show <id>",
-		Short: "Show a resource's stored attributes",
-		Args:  cobra.ExactArgs(1),
+		Use:               "show <id>",
+		Short:             "Show a resource's stored attributes",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: stateIDs,
 		RunE: func(_ *cobra.Command, args []string) error {
 			store, err := openStore()
 			if err != nil {
@@ -317,9 +321,10 @@ func stateCmd() *cobra.Command {
 	})
 
 	c.AddCommand(&cobra.Command{
-		Use:   "rm <id>",
-		Short: "Remove a resource from state",
-		Args:  cobra.ExactArgs(1),
+		Use:               "rm <id>",
+		Short:             "Remove a resource from state",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: stateIDs,
 		RunE: func(_ *cobra.Command, args []string) error {
 			store, err := openStore()
 			if err != nil {

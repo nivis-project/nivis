@@ -53,6 +53,25 @@ go build -o bin/nivis ./cmd/nivis
 nix build .#nivis                     # -> ./result/bin/nivis
 ```
 
+## Shell completion
+
+`nivis completion <shell>` prints a completion script for `bash`, `zsh`, `fish`,
+or `powershell`. It completes commands and flags, and dynamically completes
+resource ids (for `state show`, `state rm`, and `--target`) from your state file.
+
+```sh
+# bash: load it for the current shell, or drop it in your completions dir
+source <(nivis completion bash)
+
+# zsh: write it where your $fpath looks (then restart the shell)
+nivis completion zsh > "${fpath[1]}/_nivis"
+
+# fish
+nivis completion fish > ~/.config/fish/completions/nivis.fish
+```
+
+Run `nivis completion --help` for per-shell details.
+
 ## Pinning
 
 The `github:` reference floats on the default branch. For reproducible infra, pin
