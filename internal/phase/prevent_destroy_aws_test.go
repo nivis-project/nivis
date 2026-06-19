@@ -68,7 +68,7 @@ func TestAWSPreventDestroyRefusesReplace(t *testing.T) {
 	// 1. Create the bucket with its explicit name (no preventDestroy yet).
 	g, node := mkGraph(name, false)
 	cfg := map[string]interface{}{"bucket": name, "force_destroy": true}
-	attrs, err := d.applyOne(ctx, g, node, cfg)
+	attrs, _, err := d.applyOne(ctx, g, node, cfg)
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestAWSPreventDestroyRefusesReplace(t *testing.T) {
 	//    The executor must refuse — not destroy the existing bucket.
 	g2, node2 := mkGraph(name+"-renamed", true)
 	cfg2 := map[string]interface{}{"bucket": name + "-renamed", "force_destroy": true}
-	_, err = d.applyOne(ctx, g2, node2, cfg2)
+	_, _, err = d.applyOne(ctx, g2, node2, cfg2)
 	if err == nil {
 		t.Fatal("expected applyOne to REFUSE the replace (preventDestroy), got nil error")
 	}

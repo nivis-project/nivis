@@ -90,10 +90,13 @@ func (d *Driver) priorState(ctx context.Context, client provider.Client, rs prov
 
 // Result summarizes a completed run.
 // AppliedNode is one node that resolved in a phase, with its kind so a renderer
-// can distinguish a datasource READ from a resource apply.
+// can distinguish a datasource READ from a resource apply, and the operation a
+// resource resolved as so the renderer reports the real change type (not always a
+// create). Op is meaningful only when IsData is false.
 type AppliedNode struct {
 	ID     string
-	IsData bool // true => the node was READ (a datasource), not applied
+	IsData bool    // true => the node was READ (a datasource), not applied
+	Op     plan.Op // the resource's resolved op (create/update/replace/no-op); ignored for datasources
 }
 
 type Result struct {
@@ -151,6 +154,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 			// resolve. They share this readiness loop, so a datasource whose
 			// config depends on a resource output reads in a later phase.
 			var outs map[string]interface{}
+			var op plan.Op
 			var err error
 			if node.Resource.IsData {
 				outs, err = d.readOne(ctx, g, node, res.Configs[id])
@@ -158,7 +162,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 					return nil, fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
 				}
 			} else {
-				outs, err = d.applyOne(ctx, g, node, res.Configs[id])
+				outs, op, err = d.applyOne(ctx, g, node, res.Configs[id])
 				if err != nil {
 					return nil, fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
 				}
@@ -166,7 +170,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 			d.Ledger.Append(id, outs)
 			applied[id] = true
 			appliedOrder = append(appliedOrder, id)
-			thisPhase = append(thisPhase, AppliedNode{ID: id, IsData: node.Resource.IsData})
+			thisPhase = append(thisPhase, AppliedNode{ID: id, IsData: node.Resource.IsData, Op: op})
 			progressed = true
 		}
 
@@ -224,6 +228,40 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Read the (side-effect-free) datasources into the ledger before classifying
+	// resources, so a resource whose config reads a datasource is FullyKnown and
+	// is planned against its provider (reporting its true op) rather than falling
+	// into the "in state but not resolvable -> update pending" fallback. Datasources
+	// are never planned/applied/stored; this read mirrors the apply loop. We iterate
+	// to a fixpoint so a datasource that depends on a stored resource (already
+	// seeded) or on another datasource still reads. Read-only; safe to repeat.
+	readData := map[string]bool{}
+	for {
+		res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
+		known := map[string]bool{}
+		for _, id := range res.FullyKnown {
+			known[id] = true
+		}
+		progressed := false
+		for _, id := range g.Order {
+			node := g.Nodes[id]
+			if !node.Resource.IsData || readData[id] || !known[id] {
+				continue
+			}
+			outs, rerr := d.readOne(ctx, g, node, res.Configs[id])
+			if rerr != nil {
+				return nil, fmt.Errorf("plan: read datasource %q: %w", id, rerr)
+			}
+			d.Ledger.Append(id, outs)
+			readData[id] = true
+			progressed = true
+		}
+		if !progressed {
+			break
+		}
+	}
+
 	res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
 	resolvable := map[string]bool{}
 	for _, id := range res.FullyKnown {
@@ -396,18 +434,18 @@ func (d *Driver) readOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode
 // it (encoding unresolved refs as unknown), and applies the implied operation:
 // create (no prior), update in place, or replace (destroy the prior resource
 // then create). Returns the computed outputs.
-func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}) (map[string]interface{}, error) {
+func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}) (map[string]interface{}, plan.Op, error) {
 	prov, ok := g.Providers[node.Resource.Provider]
 	if !ok {
-		return nil, fmt.Errorf("provider %q not declared", node.Resource.Provider)
+		return nil, plan.OpCreate, fmt.Errorf("provider %q not declared", node.Resource.Provider)
 	}
 	client, err := d.Manager.Client(node.Resource.Provider, prov.Source, prov.Config)
 	if err != nil {
-		return nil, fmt.Errorf("provider client: %w", err)
+		return nil, plan.OpCreate, fmt.Errorf("provider client: %w", err)
 	}
 	rs, err := plan.SchemaFor(ctx, client, node.Resource.Type)
 	if err != nil {
-		return nil, err
+		return nil, plan.OpCreate, err
 	}
 
 	// Realise any __build leaves in this resource's config (Nix build outputs the
@@ -417,7 +455,7 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	// the config re-evaluates. `nivis` evaluates (not builds), so without this the
 	// provider would see an unbuilt store path. `--no-build` skips it.
 	if err := d.realiseBuilds(ctx, node.Resource.ID, resolvedCfg); err != nil {
-		return nil, err
+		return nil, plan.OpCreate, err
 	}
 
 	// Prior state for this resource id, if it was applied in an earlier run.
@@ -425,42 +463,46 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	// out-of-band deletion becomes a create); --refresh=false uses stored state.
 	var prior map[string]interface{}
 	if stored, found, err := d.Store.Get(node.Resource.ID); err != nil {
-		return nil, fmt.Errorf("read prior state for %q: %w", node.Resource.ID, err)
+		return nil, plan.OpCreate, fmt.Errorf("read prior state for %q: %w", node.Resource.ID, err)
 	} else if found {
 		prior, _, err = d.priorState(ctx, client, rs, node, stored.Attrs)
 		if err != nil {
-			return nil, err
+			return nil, plan.OpCreate, err
 		}
 	}
 
 	pr, err := plan.Plan(ctx, client, rs, node, resolvedCfg, prior)
 	if err != nil {
-		return nil, err
+		return nil, plan.OpCreate, err
 	}
 
+	// The op the driver reports for this node (reporting only; behaviour below is
+	// unchanged). It is exactly what plan computed.
 	switch pr.Op {
 	case plan.OpNoop:
 		// Nothing changed: don't touch the provider. Keep the stored state and
 		// surface the prior attributes as this resource's outputs so dependents
 		// still resolve.
-		return prior, nil
+		return prior, plan.OpNoop, nil
 	case plan.OpReplace:
 		// Refuse if the prior resource is protected; otherwise destroy it first so
 		// nothing is orphaned, then create the new one (prior=nil => create).
 		if node.Resource.Meta != nil && node.Resource.Meta.Lifecycle != nil && node.Resource.Meta.Lifecycle.PreventDestroy {
-			return nil, fmt.Errorf("replace of %q requires destroying it, but lifecycle.preventDestroy is set", node.Resource.ID)
+			return nil, plan.OpReplace, fmt.Errorf("replace of %q requires destroying it, but lifecycle.preventDestroy is set", node.Resource.ID)
 		}
 		if _, err := client.Destroy(ctx, provider.DestroyRequest{
 			Schema:   rs,
 			TypeName: node.Resource.Type,
 			Stored:   prior,
 		}); err != nil {
-			return nil, fmt.Errorf("replace %q: destroy prior: %w", node.Resource.ID, err)
+			return nil, plan.OpReplace, fmt.Errorf("replace %q: destroy prior: %w", node.Resource.ID, err)
 		}
-		return apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, nil, d.Store)
+		outs, err := apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, nil, d.Store)
+		return outs, plan.OpReplace, err
 	default:
 		// OpCreate (prior nil) or OpUpdate (prior carried into apply for in-place).
-		return apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, prior, d.Store)
+		outs, err := apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, prior, d.Store)
+		return outs, pr.Op, err
 	}
 }
 

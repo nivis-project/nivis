@@ -106,7 +106,7 @@ func TestApplyOneCreate(t *testing.T) {
 	d := newReplaceDriver(t, c)
 	g, node := replaceGraphNode(nil)
 
-	if _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
+	if _, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
 		t.Fatal(err)
 	}
 	if c.destroyCalls != 0 {
@@ -126,7 +126,7 @@ func TestApplyOneUpdateInPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
+	if _, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
 		t.Fatal(err)
 	}
 	if c.destroyCalls != 0 {
@@ -147,7 +147,7 @@ func TestApplyOneReplaceDestroysThenCreates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	attrs, err := d.applyOne(context.Background(), g, node, map[string]interface{}{})
+	attrs, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestApplyOneNoopSkipsApply(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	outs, err := d.applyOne(context.Background(), g, node, map[string]interface{}{})
+	outs, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestApplyOneReplaceRefusedByPreventDestroy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := d.applyOne(context.Background(), g, node, map[string]interface{}{})
+	_, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{})
 	if err == nil {
 		t.Fatal("expected an error refusing the replace")
 	}

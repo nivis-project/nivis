@@ -34,7 +34,7 @@ func TestApplyOneRefreshUsesReadState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
+	if _, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
 		t.Fatal(err)
 	}
 	if c.readCalls != 1 {
@@ -56,7 +56,7 @@ func TestApplyOneRefreshDeletedRecreates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
+	if _, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
 		t.Fatal(err)
 	}
 	if c.readCalls != 1 {
@@ -83,7 +83,7 @@ func TestApplyOneNoRefreshSkipsRead(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
+	if _, _, err := d.applyOne(context.Background(), g, node, map[string]interface{}{}); err != nil {
 		t.Fatal(err)
 	}
 	if c.readCalls != 0 {

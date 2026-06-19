@@ -8,6 +8,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `nivis apply` always printing `+ create` for every applied resource: it
+  now shows the real op (`+` create, `~` update, `-/+` replace, `=` no-op), with a
+  datasource still shown as `r` read. The state machine was already correct (an
+  in-place update or no-op was never a re-create); only the report was wrong.
+- Fixed `nivis plan` reporting a spurious `~ update` for a resource whose config
+  reads a datasource: plan now reads the (side-effect-free) datasources first, so
+  an unchanged datasource-dependent resource reports no-op (`=`) instead of an
+  update. (Surfaced by the features-0.4 tutorial.)
+
 ## [0.4.3] - 2026-06-19
 
 ### Fixed

@@ -207,9 +207,16 @@ func applyCmd() *cobra.Command {
 			for i, group := range res.Phases {
 				out.phaseHeading(i + 1)
 				for _, n := range group {
-					if n.IsData {
+					switch {
+					case n.IsData:
 						out.read(n.ID, "") // a datasource READ, not a create
-					} else {
+					case n.Op == plan.OpNoop:
+						out.noop(n.ID, "")
+					case n.Op == plan.OpUpdate:
+						out.update(n.ID, "")
+					case n.Op == plan.OpReplace:
+						out.replace(n.ID, "")
+					default: // OpCreate
 						out.create(n.ID, "")
 					}
 				}

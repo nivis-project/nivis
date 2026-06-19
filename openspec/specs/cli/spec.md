@@ -50,6 +50,10 @@ a marker and, on a color-capable terminal, a color: `+` create (green), `~` upda
 datasource read with a distinct `r` marker in a read (dim) color so a read is
 visibly not a create. Apply output SHALL group applied nodes under the phase they
 resolved in, so the phased fixpoint is visible, and SHALL retain a count summary.
+Apply output SHALL render each applied node by the **operation it actually
+resolved as** (the op the phase driver reports for that node), so an in-place
+update shows `~`, a replacement shows `-/+`, a no-op shows `=`, and only a real
+create shows `+`; it SHALL NOT render every applied node as a create.
 
 Color SHALL be gated exactly as the existing `colorEnabled` helper specifies: when
 the output writer is not a TTY (e.g. piped or redirected) or when `NO_COLOR` is
@@ -77,6 +81,11 @@ command's writer (capturable), not the process stdout directly.
 - GIVEN an apply that read a datasource and created a resource
 - WHEN it prints
 - THEN the datasource line uses the `r` read marker (and read color on a TTY), distinct from the `+` create marker.
+
+#### Scenario: apply shows the real op, not always create
+- GIVEN a second apply of an already-applied, unchanged stack
+- WHEN it prints
+- THEN each resource is shown with its true op (a no-op `=` or update `~`), not `+` create.
 
 ### Requirement: Shell completion with dynamic resource-id completion
 The CLI SHALL provide a `completion` command that prints a shell-completion
