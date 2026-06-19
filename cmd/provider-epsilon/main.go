@@ -36,10 +36,28 @@ var EpsilonThing = fakeprovider.Resource{
 	},
 }
 
+// EpsilonNamed has attributes literally named `name` and `overrides`, which
+// collide with the codegen constructor's reserved formals. It exists so codegen's
+// reserved-name guard is provable hermetically (nixform2-56tm): the emitted
+// constructor must still be valid Nix and carry these attrs in config.
+var EpsilonNamed = fakeprovider.Resource{
+	TypeName: "epsilon_named",
+	Attrs: map[string]fakeprovider.Attr{
+		"name":      {Type: tftypes.String, Required: true}, // clashes with the instance name
+		"overrides": {Type: tftypes.String, Optional: true}, // clashes with the override seam
+		"id":        {Type: tftypes.String, Computed: true},
+	},
+	Apply: func(inputs map[string]string, counter int64) (map[string]string, []*tfprotov6.Diagnostic) {
+		return map[string]string{
+			"id": fmt.Sprintf("epsilon-named-%d", counter),
+		}, nil
+	},
+}
+
 // NewServer builds the provider server. WithRequireConfigure makes its
 // ConfigureProvider reject an all-null config (the point of this fake).
 func NewServer() *fakeprovider.Server {
-	return fakeprovider.New(EpsilonThing).WithRequireConfigure()
+	return fakeprovider.New(EpsilonThing, EpsilonNamed).WithRequireConfigure()
 }
 
 func main() {

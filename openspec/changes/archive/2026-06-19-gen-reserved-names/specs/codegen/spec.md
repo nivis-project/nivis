@@ -1,55 +1,6 @@
-# Spec: codegen
+# Spec delta: codegen
 
-## Purpose
-The codegen (tn-gen) turns any provider's tfprotov6 schema into typed Nix
-constructors, the path to "all providers with zero per-provider work" (DESIGN
-D2). It spawns a provider, fetches its schema, maps the schema to a Nix type
-model, and emits `<provider>/<type>.nix` constructors with required-field throws,
-optional passthrough, and an override seam. It is generic and schema-driven; the
-type mapping is validated against synthetic schemas and the pipeline end-to-end
-against the fake providers. Registry download of real providers and flake-app
-packaging are network-gated and tracked separately.
-## Requirements
-### Requirement: Fetch a provider's schema
-The codegen SHALL spawn a provider binary, complete the tfprotov6 handshake, call
-`GetProviderSchema`, and produce a normalized schema model mapping each resource
-type to its attributes (name, type, required/optional/computed/sensitive).
-
-#### Scenario: schema fetched from a fake provider
-- GIVEN the built `provider-alpha` binary
-- WHEN the codegen fetches its schema
-- THEN the model contains resource type `alpha_token` with attributes `label`
-  (optional) and `id`/`value` (computed).
-
-### Requirement: Schema-to-Nix type mapping
-The codegen SHALL map each attribute's tftype and role flags to a Nix type
-descriptor: scalars (string/number/bool), collections (list/set/map), and nested
-objects; with roles required, optional, computed, and sensitive. A computed-only
-attribute SHALL be modeled as an output (not a constructor input). The codegen
-SHALL additionally model a resource's **nested blocks** (the schema's nested
-block types): each block has a name, a nesting mode (single, list, set, or map),
-and its own inner attributes (recursively, for blocks nested within blocks). A
-block is a constructor input (blocks are author-supplied configuration).
-
-#### Scenario: scalar roles
-- GIVEN a required string `from` and a computed string `endpoint`
-- WHEN mapped
-- THEN `from` is a required string input and `endpoint` is a computed output (no input arg).
-
-#### Scenario: collections and nested objects
-- GIVEN a `list(string)` attr, a `map(number)` attr, and a nested object attr
-- WHEN mapped
-- THEN each maps to the corresponding Nix type descriptor (list/map/object) preserving the element/attribute types.
-
-#### Scenario: sensitive is flagged
-- GIVEN an attribute marked sensitive
-- WHEN mapped
-- THEN the descriptor records it as sensitive so the emitter can handle it per the IR contract.
-
-#### Scenario: nested blocks are modeled with their nesting mode
-- GIVEN a resource with a list-nested block `ingress` and a single-nested block `x`, each with inner attributes
-- WHEN mapped
-- THEN the model records `ingress` as a list-nested block and `x` as a single-nested block, each carrying its inner attributes.
+## MODIFIED Requirements
 
 ### Requirement: Constructor emission with required throws and an override seam
 The codegen SHALL emit, per resource type, a Nix constructor that requires the
@@ -106,18 +57,3 @@ attribute names.
 - GIVEN a resource whose schema has an attribute named `overrides`
 - WHEN the constructor is emitted and evaluated
 - THEN the `overrides` merge seam still works (it is not corrupted by the attribute), and the provider `overrides` attribute appears in `config` under its real key.
-
-### Requirement: Codegen command
-The codegen SHALL be runnable as a command
-`tn-gen --provider <path> --out <dir>` (built with `go build`/`go run`,
-e.g. `go run ./cmd/tn-gen -- --provider <path> --out <dir>`), writing
-`<provider>/<type>.nix` files for each resource type. Packaging it as a flake
-`apps.gen` is network-gated (it requires nixpkgs `buildGoModule`, and the binary
-cache is unreachable per CLAUDE.md §6) and is tracked separately.
-
-#### Scenario: end-to-end generation against a fake provider
-- GIVEN the `provider-alpha` binary
-- WHEN `tn-gen` runs with `--provider <path> --out <dir>`
-- THEN `<dir>` contains a generated constructor file for `alpha_token` that, when
-  imported, produces a valid `mkResource` for that type.
-

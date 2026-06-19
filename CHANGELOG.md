@@ -8,6 +8,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `nivis gen` emitting a duplicate `name` formal when a provider attribute
+  is named `name` (also `overrides`/`nivis`), which made the generated `.nix`
+  invalid (`error: duplicate formal function argument 'name'`). The colliding
+  attribute is now accepted under a `cfg_<name>` alias and emitted into `config`
+  under its real key, while the Nivis instance name still threads to mkResource.
+  This unblocked a large class of real-provider constructors (the nivis-registry
+  PoC saw 1379 of 2414 fail on this, mostly azurerm and google `*_iam_policy`).
+
 ### Added
 - Added `nivistutor`, a companion CLI (flake app `#tutor`) that scaffolds a chosen
   tutorial's starter files (a ready `flake.nix`, the config, and a README) into

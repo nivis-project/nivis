@@ -96,9 +96,86 @@ func TestCodegenSkipsConfigure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fetch schema without configure: %v", err)
 	}
-	if len(resources) != 1 || resources[0].Type != "epsilon_thing" {
-		t.Fatalf("schema = %+v, want one epsilon_thing", resources)
+	if !hasResourceType(resources, "epsilon_thing") {
+		t.Fatalf("schema = %+v, want it to include epsilon_thing", resources)
 	}
+}
+
+// TestCodegenReservedNameCollision proves the 56tm fix: a provider attribute
+// named like a reserved constructor formal (epsilon_named has `name` and
+// `overrides`) no longer emits a duplicate formal. The generated constructor must
+// nix-eval, the Nivis instance name must thread to the id, and the provider
+// attributes must land in config under their real keys. Hermetic, no network.
+func TestCodegenReservedNameCollision(t *testing.T) {
+	requireNix(t)
+	root := repoRoot(t)
+	buildBinaries(t, root) // puts provider-epsilon on $PATH
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+	// Codegen path (schema only): epsilon rejects an all-null configure, so this
+	// must be the configure-free client.
+	client, err := mgr.ClientForSchema("epsilon", "provider-epsilon")
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	resources, err := gen.Fetch(context.Background(), client)
+	if err != nil {
+		t.Fatalf("fetch schema: %v", err)
+	}
+	r, ok := resourceByType(resources, "epsilon_named")
+	if !ok {
+		t.Fatalf("schema = %+v, want it to include epsilon_named (with a `name` attr)", resources)
+	}
+
+	// Emit and write the constructor.
+	out := t.TempDir()
+	genFile := filepath.Join(out, "epsilon_named.nix")
+	if err := os.WriteFile(genFile, []byte(gen.Emit("epsilon", r)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Evaluate: the constructor must NOT raise "duplicate formal argument 'name'".
+	// The provider `name`/`overrides` attrs come in under their cfg_ aliases; the
+	// Nivis instance name is `name`. Assert the id uses the instance name and the
+	// provider attrs land in config under their real keys.
+	expr := `
+	  let
+	    nf = import ` + root + `/nix/lib { };
+	    ctor = import ` + genFile + ` { nivis = nf; };
+	    r = ctor { name = "myinstance"; cfg_name = "providerName"; cfg_overrides = "ov"; };
+	  in builtins.toJSON { id = r.id; config = r.config; }
+	`
+	cmd := exec.Command("nix", "eval", "--impure", "--raw", "--expr", expr)
+	cmd.Dir = root
+	res, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("evaluating the colliding constructor failed (regression: duplicate formal?): %v\n%s", err, res)
+	}
+	got := string(res)
+	if !contains(got, `"epsilon.epsilon_named.myinstance"`) {
+		t.Errorf("instance name did not thread to the id: %s", got)
+	}
+	if !contains(got, `"name":"providerName"`) {
+		t.Errorf("provider `name` attr not preserved in config under its real key: %s", got)
+	}
+	if !contains(got, `"overrides":"ov"`) {
+		t.Errorf("provider `overrides` attr not preserved in config under its real key: %s", got)
+	}
+}
+
+func hasResourceType(rs []gen.Resource, typ string) bool {
+	_, ok := resourceByType(rs, typ)
+	return ok
+}
+
+func resourceByType(rs []gen.Resource, typ string) (gen.Resource, bool) {
+	for _, r := range rs {
+		if r.Type == typ {
+			return r, true
+		}
+	}
+	return gen.Resource{}, false
 }
 
 func contains(s, sub string) bool {
