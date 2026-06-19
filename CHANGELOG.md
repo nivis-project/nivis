@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-19
+
 ### Added
 - A `fake-providers` flake package, so the offline tutorials run with a single
   `nix shell .#nivis .#fake-providers` (no `go build`): both in-repo fake
@@ -97,7 +99,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.1
 [0.4.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.0
 [0.3.1]: https://github.com/wearetechnative/nivis/releases/tag/v0.3.1
 [0.3.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.3.0
