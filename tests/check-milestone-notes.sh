@@ -31,23 +31,22 @@ is_exempt() {
   esac
 }
 
-# completed milestone ids (+ a stable slug from the title), via beans.
-# The slug rule MUST match scripts/milestone-notes.sh slugify(): strip a leading
-# "M<n>:" prefix and any "(parenthetical)", then kebab-case.
+# completed milestone ids + their release-notes path, via beans. The
+# milestone -> version map and the path MUST match scripts/milestone-notes.sh
+# (MILESTONE_VERSIONS / notes_path): notes live at
+# docs/releases/release-<version>/release-notes-<version>.md.
 mapfile -t MILESTONES < <(
   beans list --json 2>/dev/null | python3 -c '
-import sys, json, re
+import sys, json
+MILESTONE_VERSIONS = {
+    "nixform2-zdj0": "0.4",  # M1: Road to v1
+}
 d = json.load(sys.stdin)
 bs = d if isinstance(d, list) else (d.get("beans") or d.get("data") or [])
-def slugify(title):
-    t = re.sub(r"^\s*M\d+\s*:\s*", "", title)
-    t = re.sub(r"\s*\(.*?\)\s*", " ", t)
-    t = t.split(":")[0]
-    return re.sub(r"[^a-z0-9]+", "-", t.strip().lower()).strip("-")
 for b in bs:
     if b.get("type") == "milestone" and b.get("status") == "completed":
-        slug = slugify(b["title"])
-        print(b["id"], slug)
+        v = MILESTONE_VERSIONS.get(b["id"], "")
+        print(b["id"], v)
 '
 )
 
@@ -56,11 +55,17 @@ checked=0
 for entry in "${MILESTONES[@]}"; do
   [ -z "$entry" ] && continue
   id="${entry%% *}"
-  slug="${entry##* }"
+  version="${entry##* }"
   if is_exempt "$id"; then
     continue
   fi
-  notes="docs/releases/${slug}.md"
+  if [ -z "$version" ] || [ "$version" = "$id" ]; then
+    echo "FAIL: completed milestone $id has no release version mapped"
+    echo "      add it to MILESTONE_VERSIONS in scripts/milestone-notes.sh and this gate"
+    fail=1
+    continue
+  fi
+  notes="docs/releases/release-${version}/release-notes-${version}.md"
   checked=$((checked + 1))
 
   if [ ! -f "$notes" ]; then

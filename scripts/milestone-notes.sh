@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # milestone-notes.sh: generate a milestone's release-notes document
-# (docs/releases/<slug>.md) from three sources:
+# (docs/releases/release-<version>/release-notes-<version>.md) from three sources:
 #   - the milestone (title + definition-of-done) and its COMPLETED child epics,
 #     from the beans tracker,
 #   - "Highlights": blocks marked in the tutorials with
@@ -12,7 +12,7 @@
 # golden-checked by tests/check-milestone-notes.sh. Pure read + write.
 #
 # Usage:
-#   scripts/milestone-notes.sh <milestone-id>            # write docs/releases/<slug>.md
+#   scripts/milestone-notes.sh <milestone-id>            # write the versioned release-notes file
 #   scripts/milestone-notes.sh <milestone-id> --stdout   # print to stdout (for the gate's diff)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -34,15 +34,19 @@ milestone = sys.argv[1]
 mode = sys.argv[2]
 tutorials = sys.argv[3:]
 
-# slugify a milestone title into a stable file slug: drop a leading "M<n>:"
-# number prefix and any "(parenthetical)", then kebab-case. So
-# "M1: Road to v1 (a daily-driver...)" -> "road-to-v1". The gate
-# (tests/check-milestone-notes.sh) MUST use the identical rule.
-def slugify(title):
-    t = re.sub(r'^\s*M\d+\s*:\s*', '', title)   # strip "M1: "
-    t = re.sub(r'\s*\(.*?\)\s*', ' ', t)        # drop "(...)"
-    t = t.split(":")[0]                          # before any remaining colon
-    return re.sub(r'[^a-z0-9]+', '-', t.strip().lower()).strip('-')
+# Milestone -> release version. Release notes are grouped per version under
+# docs/releases/release-<version>/release-notes-<version>.md, so the docs site can
+# nest them under a "Nivis-<version>" heading. The gate
+# (tests/check-milestone-notes.sh) MUST use the identical map.
+MILESTONE_VERSIONS = {
+    "nixform2-zdj0": "0.4",  # M1: Road to v1
+}
+
+def notes_path(mid):
+    v = MILESTONE_VERSIONS.get(mid)
+    if not v:
+        return None
+    return os.path.join("docs/releases", "release-" + v, "release-notes-" + v + ".md")
 
 # --- milestone + completed child epics from beans -------------------------
 q = '{ bean(id: "%s") { id title body children { id title status type } } }' % milestone
@@ -139,9 +143,12 @@ doc = "\n".join(L)
 if mode == "--stdout":
     sys.stdout.write(doc)
 else:
-    slug = slugify(title)
-    os.makedirs("docs/releases", exist_ok=True)
-    path = os.path.join("docs/releases", slug + ".md")
+    path = notes_path(milestone)
+    if not path:
+        sys.stderr.write("milestone-notes: no release version mapped for %s "
+                         "(add it to MILESTONE_VERSIONS)\n" % milestone)
+        sys.exit(1)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "w").write(doc)
     sys.stderr.write("wrote %s\n" % path)
 PY

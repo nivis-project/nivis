@@ -16,5 +16,6 @@
 - [Roadmap](./roadmap.md)
 - [Brand](./brand.md)
 - [Releases](./releases.md)
-  - [Road to v1](./release-road-to-v1.md)
-  - [Tutorial: the features (no cloud)](./TUTORIAL-FEATURES.md)
+  - [Nivis-0.4]()
+    - [Release Notes 0.4 - Road to v1](./release-notes-0.4.md)
+    - [Tutorial: Nivis 0.4 features explained](./TUTORIAL-FEATURES.md)

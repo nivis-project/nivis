@@ -1,11 +1,14 @@
 # Releases
 
-Per-milestone release notes: what each milestone delivered, with the runnable
+Per-version release notes: what each release delivered, with the runnable
 examples from the tutorials. (For the per-version changelog, see `CHANGELOG.md`;
 for the process, see [Releasing](RELEASING.md).)
 
-- **[Road to v1](releases/road-to-v1.md)**: the daily-driver milestone (variables,
-  datasources, stack outputs, colored phased plan/apply, completion, generated
-  provider references, state ergonomics).
-- **[Tutorial: the features](TUTORIAL-FEATURES.md)**: a hands-on, hermetic tour of
-  everything in Road to v1, runnable against the in-repo fake providers (no cloud).
+## Nivis 0.4 (Road to v1)
+
+The daily-driver milestone: variables, datasources, stack outputs, colored phased
+plan/apply, completion, generated provider references, state ergonomics.
+
+- **[Release Notes 0.4 - Road to v1](releases/release-0.4/release-notes-0.4.md)**.
+- **[Tutorial: Nivis 0.4 features explained](TUTORIAL-FEATURES.md)**: a hands-on,
+  hermetic tour, runnable against the in-repo fake providers (no cloud).
