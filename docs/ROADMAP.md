@@ -128,6 +128,11 @@ enough to be their own milestones.
   the OpenTofu registry. **Network-gated** (CLAUDE.md §6); today providers are
   fetched on first use but this needs hardening, offline/air-gapped mirrors, and
   supply-chain verification for enterprise.
+  > **Companion project:** a separate **`nivis-registry`** project has been
+  > started to own (some or all of) this. The exact split between `nivis-registry`
+  > and the in-repo C3 epic (`nixform2-m83a`) is not decided yet; once it is, this
+  > entry and the bean will be reconciled (C3 may move wholesale to the companion
+  > project or keep only the client-side integration here).
 - **C4. Secrets at scale.** The IR already keeps sensitive values out of the
   world-readable store; extend to integration with real secret stores (Vault,
   SSM, sops-nix) so secrets never transit the Nix store at all.
