@@ -85,16 +85,26 @@ for path in tutorials:
     for mm in marker.finditer(text):
         highlights.append((mm.group("t").strip(), mm.group("b").strip(), path))
 
-# --- CHANGELOG [Unreleased] -----------------------------------------------
-unreleased = ""
+# --- CHANGELOG section ----------------------------------------------------
+# Prefer the mapped version's released section (## [<version>]) once the release
+# has rolled [Unreleased] into it; before release the content lives in
+# [Unreleased]. Try the version section first, then fall back to [Unreleased],
+# so the notes show the changelog whether or not the version has been cut.
+changelog = ""
 if os.path.exists("CHANGELOG.md"):
-    # capture from just after the [Unreleased] header line to the next "## "
-    # header (or EOF). Anchor on the header line so an empty Unreleased section
-    # (just a blank line before the next version) yields "" rather than bleeding
-    # into the next section.
-    cm = re.search(r'(?ms)^##\s*\[Unreleased\][^\n]*\n(.*?)(?=^##\s|\Z)', open("CHANGELOG.md").read())
-    if cm:
-        unreleased = cm.group(1).strip()
+    text = open("CHANGELOG.md").read()
+    version = MILESTONE_VERSIONS.get(milestone)
+    sections = []
+    if version:
+        # the docs version (e.g. "0.4") matches the changelog's semver header
+        # (e.g. "## [0.4.0]") by prefix: [<version>] or [<version>.<patch>...].
+        sections.append(r'^##\s*\[%s(?:\.\d+)*\][^\n]*\n' % re.escape(version))
+    sections.append(r'^##\s*\[Unreleased\][^\n]*\n')
+    for pat in sections:
+        cm = re.search(r'(?ms)' + pat + r'(.*?)(?=^##\s|\Z)', text)
+        if cm and cm.group(1).strip():
+            changelog = cm.group(1).strip()
+            break
 
 # --- render ---------------------------------------------------------------
 L = []
@@ -133,9 +143,9 @@ if epics:
 else:
     L.append("- _(no completed epics recorded)_")
 L.append("")
-L.append("## Changelog (unreleased)")
+L.append("## Changelog")
 L.append("")
-L.append(unreleased if unreleased else "_(empty)_")
+L.append(changelog if changelog else "_(empty)_")
 L.append("")
 
 doc = "\n".join(L)

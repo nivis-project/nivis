@@ -13,7 +13,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The **Road to v1** milestone (M1): the daily-driver features, so a Nix developer
 can manage a real, multi-resource project end to end without dropping back to
 Terraform. See `docs/TUTORIAL-FEATURES.md` for a hands-on, no-cloud tour and
-`docs/releases/road-to-v1.md` for the milestone notes.
+`docs/releases/release-0.4/release-notes-0.4.md` for the milestone notes.
 
 ### Added
 - **Variables** (`nivis.mkVars`): declare typed config variables (`str`/`int`/
