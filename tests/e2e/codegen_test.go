@@ -17,13 +17,14 @@ import (
 func TestCodegenAgainstFake(t *testing.T) {
 	requireNix(t)
 	root := repoRoot(t)
-	buildBinaries(t, root) // puts provider-alpha/beta on $PATH
+	buildBinaries(t, root) // puts provider-alpha/beta/epsilon on $PATH
 
 	mgr := plugin.NewManager()
 	defer mgr.Close()
 
 	// bare name resolves via $PATH (as `nix shell .#fake-providers` provides it).
-	client, err := mgr.Client("alpha", "provider-alpha", map[string]interface{}{})
+	// Codegen uses the schema-only path: GetProviderSchema without Configure.
+	client, err := mgr.ClientForSchema("alpha", "provider-alpha")
 	if err != nil {
 		t.Fatalf("spawn: %v", err)
 	}
@@ -63,6 +64,40 @@ func TestCodegenAgainstFake(t *testing.T) {
 	}
 	if !contains(got, `"label":"hi"`) {
 		t.Errorf("generated resource config wrong: %s", got)
+	}
+}
+
+// TestCodegenSkipsConfigure proves the jcpm fix: a provider that REJECTS an
+// unconfigured Configure (provider-epsilon, mimicking proxmox/azurerm/google
+// validating credentials at configure time) is still extractable by `nivis gen`.
+// The schema-only path (ClientForSchema) must succeed; the plan/apply path
+// (Client, which configures) must still error — proving Configure is unchanged
+// for everything except codegen. Hermetic, no network, no credentials.
+func TestCodegenSkipsConfigure(t *testing.T) {
+	root := repoRoot(t)
+	buildBinaries(t, root) // puts provider-epsilon on $PATH
+
+	// The plan/apply path configures, and epsilon rejects an all-null Configure:
+	// this must fail (Configure is unchanged for plan/apply/refresh/destroy).
+	mgrCfg := plugin.NewManager()
+	defer mgrCfg.Close()
+	if _, err := mgrCfg.Client("epsilon", "provider-epsilon", map[string]interface{}{}); err == nil {
+		t.Fatal("Client (configuring path) unexpectedly succeeded on the configure-rejecting fake; Configure must still run for plan/apply")
+	}
+
+	// The codegen path fetches the schema without configuring: this must succeed.
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+	client, err := mgr.ClientForSchema("epsilon", "provider-epsilon")
+	if err != nil {
+		t.Fatalf("ClientForSchema on configure-rejecting fake: %v", err)
+	}
+	resources, err := gen.Fetch(context.Background(), client)
+	if err != nil {
+		t.Fatalf("fetch schema without configure: %v", err)
+	}
+	if len(resources) != 1 || resources[0].Type != "epsilon_thing" {
+		t.Fatalf("schema = %+v, want one epsilon_thing", resources)
 	}
 }
 

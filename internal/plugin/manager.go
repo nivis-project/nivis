@@ -91,29 +91,76 @@ func NewManager() *Manager { return &Manager{clients: map[string]*entry{}} }
 func (m *Manager) WithResolver(r Resolver) *Manager { m.resolver = r; return m }
 
 // Client spawns (or reuses) the provider binary at path under the given identity
-// and returns a version-neutral provider.Client, configured with the given
-// provider config. Reusing by identity means two resources of the same provider
-// share one process; configuration happens once, on first spawn. go-plugin
-// negotiates the protocol (v5 or v6) and the matching backend is built.
+// and returns a version-neutral provider.Client, **configured** with the given
+// provider config. Use this for plan/apply/refresh/destroy. Reusing by identity
+// means two resources of the same provider share one process; configuration
+// happens once, on first spawn. go-plugin negotiates the protocol (v5 or v6) and
+// the matching backend is built.
 func (m *Manager) Client(identity, path string, config map[string]interface{}) (provider.Client, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	cl, c, reused, err := m.dispense(identity, path)
+	if err != nil {
+		return nil, err
+	}
+	if reused {
+		return cl, nil
+	}
+
+	// Configure the provider once, before it is used for plan/apply. An empty
+	// config is a valid no-op for config-free providers (the fakes).
+	if err := cl.Configure(context.Background(), config); err != nil {
+		c.Kill()
+		return nil, fmt.Errorf("plugin %q: configure: %w", identity, err)
+	}
+
+	m.clients[identity] = &entry{client: c, provider: cl}
+	return cl, nil
+}
+
+// ClientForSchema returns a provider client WITHOUT configuring it, for fetching
+// the schema (codegen). GetProviderSchema does not require configuration per the
+// plugin protocol, so this works even against providers that reject an
+// unconfigured configure (credential-requiring providers such as
+// proxmox/azurerm/google). plan/apply must use Client (which configures); this
+// path is schema-only and never calls Configure.
+func (m *Manager) ClientForSchema(identity, path string) (provider.Client, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cl, c, reused, err := m.dispense(identity, path)
+	if err != nil {
+		return nil, err
+	}
+	if reused {
+		return cl, nil
+	}
+	m.clients[identity] = &entry{client: c, provider: cl}
+	return cl, nil
+}
+
+// dispense spawns (or reuses) the provider, performs the handshake, dispenses the
+// gRPC client, and builds the version-neutral backend, WITHOUT configuring. It is
+// the shared body of Client and ClientForSchema; the caller (holding m.mu) decides
+// whether to configure. When an existing pooled client is reused, reused is true
+// and c is nil. Callers must hold m.mu.
+func (m *Manager) dispense(identity, path string) (cl provider.Client, c *goplugin.Client, reused bool, err error) {
 	if e, ok := m.clients[identity]; ok {
-		return e.provider, nil
+		return e.provider, nil, true, nil
 	}
 
 	// Resolve the source to a local binary path (registry address -> fetched +
 	// verified + cached binary; a filesystem path passes through).
 	if m.resolver != nil {
-		resolved, err := m.resolver.ResolveProvider(context.Background(), path)
-		if err != nil {
-			return nil, fmt.Errorf("plugin %q: resolve %q: %w", identity, path, err)
+		resolved, rerr := m.resolver.ResolveProvider(context.Background(), path)
+		if rerr != nil {
+			return nil, nil, false, fmt.Errorf("plugin %q: resolve %q: %w", identity, path, rerr)
 		}
 		path = resolved
 	}
 
-	c := goplugin.NewClient(&goplugin.ClientConfig{
+	c = goplugin.NewClient(&goplugin.ClientConfig{
 		HandshakeConfig:  handshake,
 		VersionedPlugins: versionedPlugins,
 		Cmd:              exec.Command(path),
@@ -128,45 +175,35 @@ func (m *Manager) Client(identity, path string, config map[string]interface{}) (
 	rpcClient, err := c.Client()
 	if err != nil {
 		c.Kill()
-		return nil, fmt.Errorf("plugin %q: handshake: %w", identity, err)
+		return nil, nil, false, fmt.Errorf("plugin %q: handshake: %w", identity, err)
 	}
 	raw, err := rpcClient.Dispense("provider")
 	if err != nil {
 		c.Kill()
-		return nil, fmt.Errorf("plugin %q: dispense: %w", identity, err)
+		return nil, nil, false, fmt.Errorf("plugin %q: dispense: %w", identity, err)
 	}
 
 	// Build the backend matching the negotiated protocol version.
-	var cl provider.Client
 	switch c.NegotiatedVersion() {
 	case 5:
 		rawClient, ok := raw.(tfplugin5.ProviderClient)
 		if !ok {
 			c.Kill()
-			return nil, fmt.Errorf("plugin %q: negotiated v5 but got %T", identity, raw)
+			return nil, nil, false, fmt.Errorf("plugin %q: negotiated v5 but got %T", identity, raw)
 		}
 		cl = v5.New(rawClient)
 	case 6:
 		rawClient, ok := raw.(tfplugin6.ProviderClient)
 		if !ok {
 			c.Kill()
-			return nil, fmt.Errorf("plugin %q: negotiated v6 but got %T", identity, raw)
+			return nil, nil, false, fmt.Errorf("plugin %q: negotiated v6 but got %T", identity, raw)
 		}
 		cl = v6.New(rawClient)
 	default:
 		c.Kill()
-		return nil, fmt.Errorf("plugin %q: unsupported negotiated protocol version %d", identity, c.NegotiatedVersion())
+		return nil, nil, false, fmt.Errorf("plugin %q: unsupported negotiated protocol version %d", identity, c.NegotiatedVersion())
 	}
-
-	// Configure the provider once, before it is used for plan/apply. An empty
-	// config is a valid no-op for config-free providers (the fakes).
-	if err := cl.Configure(context.Background(), config); err != nil {
-		c.Kill()
-		return nil, fmt.Errorf("plugin %q: configure: %w", identity, err)
-	}
-
-	m.clients[identity] = &entry{client: c, provider: cl}
-	return cl, nil
+	return cl, c, false, nil
 }
 
 // Close kills all spawned provider processes.

@@ -8,6 +8,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed `nivis gen` configuring the provider before fetching its schema, which
+  broke codegen for credential-requiring providers (proxmox, azurerm, google):
+  schema extraction now uses a configure-free client path, so `GetProviderSchema`
+  is fetched without calling `ConfigureProvider`. `plan`/`apply`/`refresh`/
+  `destroy` still configure as before. Reported by the nivis-registry companion
+  project.
+
 ## [0.4.1] - 2026-06-19
 
 ### Added

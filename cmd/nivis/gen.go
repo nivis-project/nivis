@@ -37,10 +37,11 @@ func genCmd() *cobra.Command {
 			mgr := plugin.NewManager()
 			defer mgr.Close()
 
-			// Codegen only fetches the schema; configure with an empty config
-			// (real providers accept an all-null configure and the schema RPC
-			// works regardless).
-			client, err := mgr.Client(identity, providerPath, map[string]interface{}{})
+			// Codegen only fetches the schema (GetProviderSchema), which the
+			// plugin protocol allows BEFORE configure. Use the configure-free
+			// path so providers that validate credentials at configure time
+			// (proxmox, azurerm, google, …) are still extractable.
+			client, err := mgr.ClientForSchema(identity, providerPath)
 			if err != nil {
 				return err
 			}

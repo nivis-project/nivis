@@ -88,6 +88,7 @@
           subPackages = [
             "cmd/provider-alpha"
             "cmd/provider-beta"
+            "cmd/provider-epsilon"
           ];
           ldflags = [
             "-s"

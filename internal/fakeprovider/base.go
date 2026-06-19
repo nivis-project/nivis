@@ -16,9 +16,10 @@ import (
 // diagnostics for the RPCs a fake does not need (functions, ephemeral resources,
 // import, move).
 type Server struct {
-	resources   map[string]Resource
-	dataSources map[string]Resource
-	counter     *Counter
+	resources     map[string]Resource
+	dataSources   map[string]Resource
+	counter       *Counter
+	requireConfig bool // when true, ConfigureProvider rejects an empty/null config
 }
 
 // New builds a Server from a list of Resources, seeding the deterministic
@@ -38,6 +39,15 @@ func (s *Server) WithDataSources(ds ...Resource) *Server {
 	for _, d := range ds {
 		s.dataSources[d.TypeName] = d
 	}
+	return s
+}
+
+// WithRequireConfigure marks the provider as credential-requiring: its
+// ConfigureProvider returns an error diagnostic (so an all-null configure fails,
+// mimicking proxmox/azurerm/google), while GetProviderSchema still works. Used to
+// prove that codegen fetches the schema WITHOUT configuring.
+func (s *Server) WithRequireConfigure() *Server {
+	s.requireConfig = true
 	return s
 }
 
@@ -91,6 +101,13 @@ func (s *Server) ValidateProviderConfig(_ context.Context, _ *tfprotov6.Validate
 }
 
 func (s *Server) ConfigureProvider(_ context.Context, _ *tfprotov6.ConfigureProviderRequest) (*tfprotov6.ConfigureProviderResponse, error) {
+	if s.requireConfig {
+		// Mimic a credential-requiring provider: reject configure. (Codegen must
+		// fetch the schema without configuring, so it never hits this.)
+		return &tfprotov6.ConfigureProviderResponse{Diagnostics: []*tfprotov6.Diagnostic{errDiag(
+			"missing credentials",
+			"this provider requires configuration; an unconfigured/all-null configure is rejected")}}, nil
+	}
 	return &tfprotov6.ConfigureProviderResponse{}, nil
 }
 
