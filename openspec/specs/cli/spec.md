@@ -207,6 +207,14 @@ network. `nivistutor` SHALL refuse to overwrite existing files without explicit
 confirmation. A non-interactive mode (a flag selecting the tutorial and target
 dir) SHALL exist so the behaviour is testable.
 
+The tutorial list (both `--list` and the interactive menu) SHALL be presented in a
+deterministic, controlled order, not merely alphabetical: the **getting-started**
+tutorial SHALL always be listed first (it is the entry point), followed by the
+`features-<version>` tutorials ordered **newest version first** (compared
+numerically by version), followed by any other tutorials alphabetically. A new
+`features-<version>` tutorial SHALL slot into this order by its version without a
+code change.
+
 #### Scenario: scaffold a chosen tutorial into a new directory
 - GIVEN `nivistutor` with a tutorial selected and a new target directory
 - WHEN it runs
@@ -216,6 +224,11 @@ dir) SHALL exist so the behaviour is testable.
 - GIVEN the available tutorials
 - WHEN `nivistutor` starts
 - THEN it offers at least the getting-started tutorial and the current release's features tutorial.
+
+#### Scenario: getting-started is listed first, then features newest-first
+- GIVEN the embedded tutorials getting-started and several features-<version> (e.g. 0.4, 0.5, 0.10)
+- WHEN the list or menu is presented
+- THEN getting-started is first, and the features tutorials follow it ordered newest-version-first (0.10 before 0.5 before 0.4, a numeric not lexical compare).
 
 #### Scenario: it does not clobber existing files silently
 - GIVEN a target directory already containing a tutorial file

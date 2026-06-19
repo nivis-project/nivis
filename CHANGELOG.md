@@ -8,6 +8,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Changed the `nivistutor` tutorial menu order so getting-started is always listed
+  first, followed by the per-release feature tutorials newest-first (a numeric
+  version compare), instead of a plain alphabetical sort.
+
 ### Fixed
 - Fixed `nivis apply` always printing `+ create` for every applied resource: it
   now shows the real op (`+` create, `~` update, `-/+` replace, `=` no-op), with a
