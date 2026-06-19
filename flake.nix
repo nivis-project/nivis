@@ -70,6 +70,31 @@
             mainProgram = "nivis";
           };
         };
+
+      # The in-repo fake tfprotov6 providers (hermetic test substrate), packaged
+      # so the offline tutorials can build them with Nix instead of `go build`:
+      # `nix build .#fake-providers` -> ./result/bin/provider-{alpha,beta}.
+      # They are a test/tutorial aid, not a published artifact.
+      mkFakeProviders =
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        pkgs.buildGoModule {
+          pname = "nivis-fake-providers";
+          inherit version;
+          src = ./.;
+          vendorHash = "sha256-LjGLaFdEYWqe42JHhRG1IzGqFn7yobbhIeLJ/Enc+l4=";
+          subPackages = [
+            "cmd/provider-alpha"
+            "cmd/provider-beta"
+          ];
+          ldflags = [
+            "-s"
+            "-w"
+          ];
+          meta.description = "Nivis in-repo fake tfprotov6 providers (test/tutorial substrate)";
+        };
     in
     {
       # The public library, for `import`/`lib` consumers. Pure builtins.
@@ -108,6 +133,9 @@
         {
           nivis = cli;
           default = cli;
+          # The in-repo fake providers, for the offline tutorials (no cloud):
+          # `nix build .#fake-providers` -> ./result/bin/provider-{alpha,beta}.
+          fake-providers = mkFakeProviders system;
           # The NixOS amazon image for the EC2 tutorial. `nivis` evaluates the
           # config but does not build derivations, so the image must be realised
           # before `nivis apply` uploads it: `nix build .#ec2-image`. Its store

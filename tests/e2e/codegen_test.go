@@ -17,13 +17,13 @@ import (
 func TestCodegenAgainstFake(t *testing.T) {
 	requireNix(t)
 	root := repoRoot(t)
-	buildBinaries(t, root)
+	buildBinaries(t, root) // puts provider-alpha/beta on $PATH
 
-	bin := filepath.Join(root, "bin", "provider-alpha")
 	mgr := plugin.NewManager()
 	defer mgr.Close()
 
-	client, err := mgr.Client("alpha", bin, map[string]interface{}{})
+	// bare name resolves via $PATH (as `nix shell .#fake-providers` provides it).
+	client, err := mgr.Client("alpha", "provider-alpha", map[string]interface{}{})
 	if err != nil {
 		t.Fatalf("spawn: %v", err)
 	}

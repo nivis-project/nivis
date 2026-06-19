@@ -5,6 +5,7 @@ package phase_test
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -12,7 +13,6 @@ import (
 	"github.com/wearetechnative/nivis/internal/ledger"
 	"github.com/wearetechnative/nivis/internal/phase"
 	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/provider"
 	"github.com/wearetechnative/nivis/internal/state"
 )
 
@@ -32,11 +32,10 @@ func TestRealNixRoundTrip(t *testing.T) {
 		t.Skip("nix not on PATH")
 	}
 	root := repoRoot(t)
-	// The flake's provider sources are "./bin/provider-<x>"; build them there so
-	// the spawned paths resolve relative to the repo (the executor uses the
-	// provider 'source' field verbatim).
-	buildInto(t, root, "provider-alpha")
-	buildInto(t, root, "provider-beta")
+	// The flake's provider sources are bare names ("provider-<x>"); put the built
+	// fakes on $PATH so the executor's exec.Command resolves them (as `nix shell
+	// .#fake-providers` would).
+	buildFakesOnPath(t, root)
 
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
@@ -46,7 +45,7 @@ func TestRealNixRoundTrip(t *testing.T) {
 
 	d := &phase.Driver{
 		Eval:      phase.NixEval{FlakeRef: ".", Attr: "nivis.plan", WorkDir: root},
-		Manager:   relativeManager{mgr: mgr, root: root},
+		Manager:   mgr,
 		Store:     st,
 		Ledger:    ledger.New(),
 		MaxPhases: 10,
@@ -100,28 +99,22 @@ func TestRealNixRoundTrip(t *testing.T) {
 	}
 }
 
-func buildInto(t *testing.T, root, pkg string) {
+// buildFakesOnPath builds the fake providers into a temp dir and prepends it to
+// $PATH, so a bare-name provider `source` (e.g. "provider-alpha", as the example
+// flake configs use) resolves via the executor's exec.Command PATH lookup, just
+// as `nix shell .#fake-providers` provides them. Returns nothing; the providers
+// are found on PATH.
+func buildFakesOnPath(t *testing.T, root string) {
 	t.Helper()
-	bin := filepath.Join(root, "bin", pkg)
-	cmd := exec.Command("go", "build", "-o", bin, "./cmd/"+pkg)
-	cmd.Dir = root
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Skipf("cannot build %s: %v\n%s", pkg, err, out)
+	dir := t.TempDir()
+	for _, pkg := range []string{"provider-alpha", "provider-beta"} {
+		cmd := exec.Command("go", "build", "-o", filepath.Join(dir, pkg), "./cmd/"+pkg)
+		cmd.Dir = root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Skipf("cannot build %s: %v\n%s", pkg, err, out)
+		}
 	}
-}
-
-// relativeManager resolves a provider 'source' like "./bin/provider-alpha"
-// against the repo root before spawning, then delegates to the real manager.
-type relativeManager struct {
-	mgr  *plugin.Manager
-	root string
-}
-
-func (m relativeManager) Client(identity, path string, config map[string]interface{}) (provider.Client, error) {
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(m.root, path)
-	}
-	return m.mgr.Client(identity, path, config)
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 func keys(m map[string]string) []string {

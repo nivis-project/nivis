@@ -26,13 +26,12 @@ func TestLifecycleRefreshThenDestroy(t *testing.T) {
 	st, _ := state.Open(statePath)
 	mgr := plugin.NewManager()
 	defer mgr.Close()
-	rmgr := relMgr{mgr: mgr, root: root}
 	ctx := context.Background()
 
 	// 1. Apply the headline topology to a fixpoint.
 	d := &phase.Driver{
 		Eval:      phase.NixEval{FlakeRef: ".", Attr: "nivis.plan", WorkDir: root},
-		Manager:   rmgr,
+		Manager:   mgr,
 		Store:     st,
 		Ledger:    ledger.New(),
 		MaxPhases: 10,
@@ -51,7 +50,7 @@ func TestLifecycleRefreshThenDestroy(t *testing.T) {
 	g := phase0Graph(t, ctx, root)
 
 	// 3. Refresh: state must be unchanged (fake ReadResource echoes state).
-	if _, err := refresh.Run(ctx, g, rmgr, st); err != nil {
+	if _, err := refresh.Run(ctx, g, mgr, st); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 	after := snapshot(t, st)
@@ -64,7 +63,7 @@ func TestLifecycleRefreshThenDestroy(t *testing.T) {
 	}
 
 	// 4. Destroy: must remove C, B, A in reverse dependency order.
-	res, err := destroy.Run(ctx, g, rmgr, st, destroy.Options{})
+	res, err := destroy.Run(ctx, g, mgr, st, destroy.Options{})
 	if err != nil {
 		t.Fatalf("destroy: %v", err)
 	}

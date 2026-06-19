@@ -36,7 +36,7 @@ in
 toIR {
   providers = {
     alpha = {
-      source = "./bin/provider-alpha";
+      source = "provider-alpha";
       config = { };
     };
   };

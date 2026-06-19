@@ -15,7 +15,6 @@ import (
 	"github.com/wearetechnative/nivis/internal/phase"
 	"github.com/wearetechnative/nivis/internal/plugin"
 	"github.com/wearetechnative/nivis/internal/state"
-	"github.com/wearetechnative/nivis/internal/provider"
 )
 
 func repoRoot(t *testing.T) string {
@@ -40,29 +39,21 @@ func requireNix(t *testing.T) {
 	}
 }
 
+// buildBinaries builds the fake providers into a temp dir and prepends it to
+// $PATH, so the bare-name provider `source` in the example flake configs resolves
+// via the executor's exec.Command PATH lookup (as `nix shell .#fake-providers`
+// would provide them).
 func buildBinaries(t *testing.T, root string) {
 	t.Helper()
+	dir := t.TempDir()
 	for _, pkg := range []string{"provider-alpha", "provider-beta"} {
-		bin := filepath.Join(root, "bin", pkg)
-		cmd := exec.Command("go", "build", "-o", bin, "./cmd/"+pkg)
+		cmd := exec.Command("go", "build", "-o", filepath.Join(dir, pkg), "./cmd/"+pkg)
 		cmd.Dir = root
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Skipf("cannot build %s: %v\n%s", pkg, err, out)
 		}
 	}
-}
-
-// relMgr resolves "./bin/..." provider sources against the repo root.
-type relMgr struct {
-	mgr  *plugin.Manager
-	root string
-}
-
-func (m relMgr) Client(identity, path string, config map[string]interface{}) (provider.Client, error) {
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(m.root, path)
-	}
-	return m.mgr.Client(identity, path, config)
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 func newDriver(t *testing.T, root, attr string, maxPhases int) (*phase.Driver, func()) {
@@ -71,7 +62,7 @@ func newDriver(t *testing.T, root, attr string, maxPhases int) (*phase.Driver, f
 	st, _ := state.Open(filepath.Join(t.TempDir(), "state.json"))
 	d := &phase.Driver{
 		Eval:      phase.NixEval{FlakeRef: ".", Attr: attr, WorkDir: root},
-		Manager:   relMgr{mgr: mgr, root: root},
+		Manager:   mgr,
 		Store:     st,
 		Ledger:    ledger.New(),
 		MaxPhases: maxPhases,
@@ -189,4 +180,3 @@ func consumerValue(t *testing.T, res *phase.Result, id string) map[string]interf
 	t.Fatalf("consumer %q not in final IR", id)
 	return nil
 }
-

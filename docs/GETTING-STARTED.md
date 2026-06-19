@@ -4,23 +4,24 @@ A hands-on walkthrough using the in-repo **fake providers**. Everything here run
 **offline**: no provider registry, no cloud account, no credentials. You need
 **Go 1.22+** and **Nix**.
 
-## 1. Build the binaries
+## 1. Get the binaries on your PATH
+
+Enter a shell with `nivis` and the in-repo fake providers, in one command:
 
 ```sh
-go build -o bin/provider-alpha ./cmd/provider-alpha
-go build -o bin/provider-beta  ./cmd/provider-beta
-go build -o bin/nivis ./cmd/nivis
+nix shell .#nivis .#fake-providers
 ```
 
 `provider-alpha` and `provider-beta` are minimal `tfprotov6` providers used as a
 hermetic test substrate. Their outputs are a deterministic function of inputs (a
 per-process counter seeded by `TERRAE_NIVIS_FAKE_COUNTER`, default 0), so every run is
-reproducible.
+reproducible. The example configs reference them by bare name, so once they are on
+your `PATH` there is nothing to build or copy.
 
-> Prefer Nix? The flake builds the CLIs from source: `nix run .#nivis -- …` and
-> `nix run .#nivis-gen -- …` (or `nix build .#nivis`). Everywhere below, `./bin/nivis` can
-> be read as `nix run .#nivis --`. You still build the fake providers with `go build`
-> (they aren't packaged as apps).
+> Contributors who'd rather use the Go toolchain directly can build instead:
+> `go build -o bin/provider-alpha ./cmd/provider-alpha` (and `provider-beta`,
+> `nivis`). If you do, prepend `./bin` to your `PATH` (`export PATH=$PWD/bin:$PATH`)
+> so the `nivis` and bare-name provider sources resolve just as in the Nix shell.
 
 ## 2. The example configuration
 
@@ -47,26 +48,30 @@ forces multiple phases.
 ## 3. Plan and apply
 
 ```sh
-./bin/nivis plan
+nivis plan
 ```
 
 ```
-+ alpha.alpha_token.A (alpha_token)
-+ beta.beta_record.B (beta_record)
-+ alpha.alpha_token.C (alpha_token)
+  + alpha.alpha_token.A (alpha_token)
+  + beta.beta_record.B (beta_record)
+  + alpha.alpha_token.C (alpha_token)
 
-3 resource(s) to resolve across phases. Run `nivis apply`.
+3 change(s) across 3 resource(s) (+ create, ~ update, -/+ replace, = no change). Run `nivis apply`.
 ```
 
 ```sh
-./bin/nivis apply
+nivis apply
 ```
 
 ```
 Applied 3 resource(s) across 3 phase(s):
-  ✓ alpha.alpha_token.A
-  ✓ beta.beta_record.B
-  ✓ alpha.alpha_token.C
+
+Phase 1
+  + alpha.alpha_token.A
+Phase 2
+  + beta.beta_record.B
+Phase 3
+  + alpha.alpha_token.C
 ```
 
 Three phases, not one: phase 1 applies A (nothing else is ready); re-evaluating
@@ -76,8 +81,8 @@ The loop halts at a fixpoint once nothing new resolves.
 ## 4. Inspect the round trip
 
 ```sh
-./bin/nivis state list
-./bin/nivis state show alpha.alpha_token.C
+nivis state list
+nivis state show alpha.alpha_token.C
 ```
 
 ```
@@ -111,7 +116,7 @@ toIR {
 Read them after apply with `nivis output` (resolved from current state):
 
 ```sh
-./bin/nivis output
+nivis output
 ```
 
 ```
@@ -127,8 +132,8 @@ and phases comes back concrete.
 ## 5. Refresh and destroy
 
 ```sh
-./bin/nivis refresh    # reconciles state via ReadResource; no changes here
-./bin/nivis destroy    # tears down in reverse dependency order
+nivis refresh    # reconciles state via ReadResource; no changes here
+nivis destroy    # tears down in reverse dependency order
 ```
 
 ```
@@ -143,7 +148,7 @@ Destroyed 3 resource(s):
 `nivis gen` turns any provider's schema into typed Nix constructors:
 
 ```sh
-go run ./cmd/nivis gen -- --provider ./bin/provider-alpha --out ./generated
+nivis gen --provider provider-alpha --out ./generated
 cat ./generated/alpha/alpha_token.nix
 ```
 

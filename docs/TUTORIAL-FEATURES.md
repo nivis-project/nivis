@@ -17,13 +17,16 @@ below exactly.
 
 ## Setup
 
-From a checkout of the Nivis repo:
+From a checkout of the Nivis repo, enter a shell with `nivis` and the in-repo fake
+providers on your `PATH`, in one command:
 
 ```sh
-go build -o bin/provider-alpha ./cmd/provider-alpha
-go build -o bin/provider-beta  ./cmd/provider-beta
-go build -o bin/nivis ./cmd/nivis
+nix shell .#nivis .#fake-providers
 ```
+
+That is all the setup. `nivis` and the fake providers (`provider-alpha`,
+`provider-beta`) are now on your `PATH`, and the example config references them by
+bare name, so there is nothing to build or copy.
 
 The config for this tutorial ships with the repo as `nix/example/tutorial.nix`,
 exposed as the flake attribute `nivis.tutorial`. Every command below passes
@@ -66,8 +69,8 @@ let
 in
 toIR {
   providers = {
-    alpha = { source = "./bin/provider-alpha"; config = { }; };
-    beta  = { source = "./bin/provider-beta";  config = { }; };
+    alpha = { source = "provider-alpha"; config = { }; };  # on $PATH (nix shell)
+    beta  = { source = "provider-beta";  config = { }; };
   };
   dataSources = [ lookup ];
   resources = [ token record ];
@@ -87,7 +90,7 @@ toIR {
 `env` has no default, so it is required. Run a plan without it:
 
 ```sh
-./bin/nivis plan --attr nivis.tutorial
+nivis plan --attr nivis.tutorial
 ```
 
 ```
@@ -97,7 +100,7 @@ error: nivis.mkVars: required variable 'env' is not set (declare a default or pa
 That is `mkVars` refusing to proceed until you supply `env`. Set it with `--var`:
 
 ```sh
-./bin/nivis plan --attr nivis.tutorial --var env=prod
+nivis plan --attr nivis.tutorial --var env=prod
 ```
 
 ```
@@ -152,7 +155,7 @@ markers are plain text.
 ## 3. Inspect the round trip in state
 
 ```sh
-./bin/nivis state show alpha.alpha_token.app
+nivis state show alpha.alpha_token.app
 ```
 
 ```
@@ -191,10 +194,10 @@ replicas = 2
 Print one output, or get JSON for a CI step / another stack:
 
 ```sh
-./bin/nivis output endpoint --attr nivis.tutorial --var env=prod
+nivis output endpoint --attr nivis.tutorial --var env=prod
 # beta://env-prod-alpha:found:prod:0
 
-./bin/nivis output --attr nivis.tutorial --var env=prod --json
+nivis output --attr nivis.tutorial --var env=prod --json
 ```
 
 ```json
@@ -214,15 +217,15 @@ Change the variable and watch the outputs change: `--var env=dev` gives
 The whole state document is portable:
 
 ```sh
-./bin/nivis state pull > backup.json     # whole state to a file
-./bin/nivis state list                   # the resource ids in state
+nivis state pull > backup.json     # whole state to a file
+nivis state list                   # the resource ids in state
 ```
 
 `state push` replaces state from a file or stdin; it confirms first (and requires
 `--force` when piped), so you cannot clobber your state of record by accident:
 
 ```sh
-./bin/nivis state push --in backup.json --force
+nivis state push --in backup.json --force
 ```
 
 If another `nivis` is running, a state command reports `state appears locked by
@@ -234,9 +237,9 @@ Install tab-completion for your shell (it completes commands, flags, and resourc
 ids in state for `state show` / `--target`):
 
 ```sh
-source <(./bin/nivis completion bash)        # bash, current shell
-# zsh:  ./bin/nivis completion zsh  > "${fpath[1]}/_nivis"
-# fish: ./bin/nivis completion fish > ~/.config/fish/completions/nivis.fish
+source <(nivis completion bash)        # bash, current shell
+# zsh:  nivis completion zsh  > "${fpath[1]}/_nivis"
+# fish: nivis completion fish > ~/.config/fish/completions/nivis.fish
 ```
 
 ## 7. Generate a provider reference
@@ -247,14 +250,14 @@ file lists every argument (with type and required/optional), every nested block
 as the per-provider argument reference:
 
 ```sh
-./bin/nivis gen --provider ./bin/provider-alpha --out ./generated
+nivis gen --provider provider-alpha --out ./generated   # provider-alpha is on $PATH
 cat ./generated/alpha/alpha_token.nix
 ```
 
 ## 8. Tear down
 
 ```sh
-./bin/nivis destroy --attr nivis.tutorial --var env=prod
+nivis destroy --attr nivis.tutorial --var env=prod
 ```
 
 ```

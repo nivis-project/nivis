@@ -45,11 +45,11 @@ in
 toIR {
   providers = {
     alpha = {
-      source = "./bin/provider-alpha";
+      source = "provider-alpha";
       config = { };
     };
     beta = {
-      source = "./bin/provider-beta";
+      source = "provider-beta";
       config = { };
     };
   };

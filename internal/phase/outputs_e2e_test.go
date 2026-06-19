@@ -25,8 +25,7 @@ func TestStackOutputsResolveE2E(t *testing.T) {
 		t.Skip("nix not on PATH")
 	}
 	root := repoRoot(t)
-	buildInto(t, root, "provider-alpha")
-	buildInto(t, root, "provider-beta")
+	buildFakesOnPath(t, root)
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
 	mgr := plugin.NewManager()
@@ -36,7 +35,7 @@ func TestStackOutputsResolveE2E(t *testing.T) {
 	newDriver := func() *phase.Driver {
 		return &phase.Driver{
 			Eval:      phase.NixEval{FlakeRef: ".", Attr: "nivis.plan", WorkDir: root},
-			Manager:   relativeManager{mgr: mgr, root: root},
+			Manager:   mgr,
 			Store:     st,
 			Ledger:    ledger.New(),
 			MaxPhases: 10,
@@ -82,8 +81,7 @@ func TestStackOutputsResolveDatasource(t *testing.T) {
 		t.Skip("nix not on PATH")
 	}
 	root := repoRoot(t)
-	buildInto(t, root, "provider-alpha")
-	buildInto(t, root, "provider-beta")
+	buildFakesOnPath(t, root)
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 
 	mgr := plugin.NewManager()
@@ -95,7 +93,7 @@ func TestStackOutputsResolveDatasource(t *testing.T) {
 		l.Vars = map[string]interface{}{"env": "prod"} // the tutorial's required var
 		return &phase.Driver{
 			Eval:      phase.NixEval{FlakeRef: ".", Attr: "nivis.tutorial", WorkDir: root},
-			Manager:   relativeManager{mgr: mgr, root: root},
+			Manager:   mgr,
 			Store:     st,
 			Ledger:    l,
 			MaxPhases: 10,
