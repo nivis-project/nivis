@@ -34,19 +34,22 @@ milestone = sys.argv[1]
 mode = sys.argv[2]
 tutorials = sys.argv[3:]
 
-# Milestone -> release version. Release notes are grouped per version under
-# docs/releases/release-<version>/release-notes-<version>.md, so the docs site can
-# nest them under a "Nivis-<version>" heading. The gate
+# Milestone -> { series, release }. `series` is the version line (e.g. "0.4")
+# used for the file path / docs grouping (docs/releases/release-<series>/
+# release-notes-<series>.md, nested under a "Nivis-<series>" heading). `release`
+# is the exact CHANGELOG section the milestone shipped as (e.g. "0.4.0"), so the
+# notes pin to that section rather than a later patch in the same line. The gate
 # (tests/check-milestone-notes.sh) MUST use the identical map.
 MILESTONE_VERSIONS = {
-    "nixform2-zdj0": "0.4",  # M1: Road to v1
+    "nixform2-zdj0": {"series": "0.4", "release": "0.4.0"},  # M1: Road to v1
 }
 
 def notes_path(mid):
-    v = MILESTONE_VERSIONS.get(mid)
-    if not v:
+    m = MILESTONE_VERSIONS.get(mid)
+    if not m:
         return None
-    return os.path.join("docs/releases", "release-" + v, "release-notes-" + v + ".md")
+    s = m["series"]
+    return os.path.join("docs/releases", "release-" + s, "release-notes-" + s + ".md")
 
 # --- milestone + completed child epics from beans -------------------------
 q = '{ bean(id: "%s") { id title body children { id title status type } } }' % milestone
@@ -86,19 +89,17 @@ for path in tutorials:
         highlights.append((mm.group("t").strip(), mm.group("b").strip(), path))
 
 # --- CHANGELOG section ----------------------------------------------------
-# Prefer the mapped version's released section (## [<version>]) once the release
-# has rolled [Unreleased] into it; before release the content lives in
-# [Unreleased]. Try the version section first, then fall back to [Unreleased],
-# so the notes show the changelog whether or not the version has been cut.
+# Pin to the milestone's EXACT release section (## [0.4.0]) once the release has
+# rolled [Unreleased] into it; before release the content lives in [Unreleased].
+# Matching the exact release (not a prefix) keeps the notes stable when a later
+# patch in the same line (e.g. 0.4.1) is cut.
 changelog = ""
 if os.path.exists("CHANGELOG.md"):
     text = open("CHANGELOG.md").read()
-    version = MILESTONE_VERSIONS.get(milestone)
+    m = MILESTONE_VERSIONS.get(milestone)
     sections = []
-    if version:
-        # the docs version (e.g. "0.4") matches the changelog's semver header
-        # (e.g. "## [0.4.0]") by prefix: [<version>] or [<version>.<patch>...].
-        sections.append(r'^##\s*\[%s(?:\.\d+)*\][^\n]*\n' % re.escape(version))
+    if m:
+        sections.append(r'^##\s*\[%s\][^\n]*\n' % re.escape(m["release"]))
     sections.append(r'^##\s*\[Unreleased\][^\n]*\n')
     for pat in sections:
         cm = re.search(r'(?ms)' + pat + r'(.*?)(?=^##\s|\Z)', text)

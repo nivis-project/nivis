@@ -31,22 +31,21 @@ is_exempt() {
   esac
 }
 
-# completed milestone ids + their release-notes path, via beans. The
-# milestone -> version map and the path MUST match scripts/milestone-notes.sh
-# (MILESTONE_VERSIONS / notes_path): notes live at
-# docs/releases/release-<version>/release-notes-<version>.md.
+# completed milestone ids + their notes series, via beans. The milestone -> map
+# and the path MUST match scripts/milestone-notes.sh (MILESTONE_VERSIONS /
+# notes_path): notes live at docs/releases/release-<series>/release-notes-<series>.md.
 mapfile -t MILESTONES < <(
   beans list --json 2>/dev/null | python3 -c '
 import sys, json
 MILESTONE_VERSIONS = {
-    "nixform2-zdj0": "0.4",  # M1: Road to v1
+    "nixform2-zdj0": {"series": "0.4", "release": "0.4.0"},  # M1: Road to v1
 }
 d = json.load(sys.stdin)
 bs = d if isinstance(d, list) else (d.get("beans") or d.get("data") or [])
 for b in bs:
     if b.get("type") == "milestone" and b.get("status") == "completed":
-        v = MILESTONE_VERSIONS.get(b["id"], "")
-        print(b["id"], v)
+        m = MILESTONE_VERSIONS.get(b["id"])
+        print(b["id"], m["series"] if m else "")
 '
 )
 
