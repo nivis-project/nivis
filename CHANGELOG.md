@@ -8,6 +8,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- A `fake-providers` flake package, so the offline tutorials run with a single
+  `nix shell .#nivis .#fake-providers` (no `go build`): both in-repo fake
+  providers land on `PATH`, and the example configs reference them by bare name.
+
+### Changed
+- The offline docs (getting-started, the feature tutorial) are Nix-first: enter
+  `nix shell .#nivis .#fake-providers` and run `nivis …`, rather than building
+  binaries with the Go toolchain (kept as a contributor fallback).
+
 ## [0.4.0] - 2026-06-18
 
 The **Road to v1** milestone (M1): the daily-driver features, so a Nix developer
