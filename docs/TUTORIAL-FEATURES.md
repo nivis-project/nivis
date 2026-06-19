@@ -28,10 +28,24 @@ That is all the setup. `nivis` and the fake providers (`provider-alpha`,
 `provider-beta`) are now on your `PATH`, and the example config references them by
 bare name, so there is nothing to build or copy.
 
-The config for this tutorial ships with the repo as `nix/example/tutorial.nix`,
-exposed as the flake attribute `nivis.tutorial`. Every command below passes
-`--attr nivis.tutorial`. (In your own project you would write your own flake with
-`nivis.plan`; here we point at the bundled one so there is nothing to scaffold.)
+The config for this tutorial ships with the repo as the starter
+`nix/example/tutorial-features-0.4/`, exposed as the flake attribute
+`nivis.tutorial`. Every command below passes `--attr nivis.tutorial`. (In your
+own project you would write your own flake with `nivis.plan`; here we point at the
+bundled one so there is nothing to scaffold.)
+
+> **No repo checkout? Scaffold it into a sandbox.** `nivistutor` writes this
+> tutorial's files (a ready `flake.nix`, the config, and a README) into your own
+> directory, so you run it with plain `nivis` (no `--attr`). In a throwaway shell:
+>
+> ```sh
+> nix shell github:wearetechnative/nivis#nivis github:wearetechnative/nivis#tutor
+> nivistutor --tutorial features-0.4 --dir nivis-features
+> cd nivis-features
+> nivis plan --var env=prod
+> ```
+>
+> See [the nivistutor section in Getting started](GETTING-STARTED.md#scaffold-a-tutorial-with-nivistutor).
 
 Here is the whole config, annotated. It is one small graph that touches every
 feature:

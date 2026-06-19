@@ -13,6 +13,15 @@ result-*
 *.test
 *.out
 /coverage.out
+# `go build ./cmd/<x>` with no -o drops the binary in the repo root; ignore the
+# ones we have (so an ad-hoc build is never accidentally committed).
+/nivis
+/nivistutor
+/provider-alpha
+/provider-beta
+/provider-delta
+/provider-epsilon
+/provider-gamma
 # Go workspace file is machine-local
 go.work
 go.work.sum

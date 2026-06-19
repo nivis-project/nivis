@@ -23,6 +23,34 @@ your `PATH` there is nothing to build or copy.
 > `nivis`). If you do, prepend `./bin` to your `PATH` (`export PATH=$PWD/bin:$PATH`)
 > so the `nivis` and bare-name provider sources resolve just as in the Nix shell.
 
+### Scaffold a tutorial with nivistutor
+
+If you do **not** have a repo checkout and just want to try Nivis in a sandbox,
+`nivistutor` writes a tutorial's starter files (a ready `flake.nix`, the config,
+and a README) into a directory of your choosing, so you run it with plain `nivis`,
+with no `--flake`/`--attr` flags. It scaffolds the files for you to read and run;
+it does not run `nivis` for you (you learn by doing).
+
+```sh
+nix shell github:wearetechnative/nivis#nivis github:wearetechnative/nivis#tutor
+nivistutor
+```
+
+It greets you, lists the available tutorials (this **getting-started** one and the
+current release's **features** tutorial), asks whether to write into a new
+subdirectory or the current one, writes the files, and prints the exact `nivis`
+commands to run next. The `#tutor` shell carries the fake providers too, so the
+scaffolded project runs immediately. Non-interactively:
+
+```sh
+nivistutor --list                                   # the available tutorials
+nivistutor --tutorial getting-started --dir my-nivis # write without prompts
+```
+
+The starter's `flake.nix` is pinned to the nivis release that scaffolded it, so
+the library and your `nivis` binary agree. Existing files are never overwritten
+without `--force`.
+
 ## 2. The example configuration
 
 The flake's `nivis.plan` (in `nix/example/`) describes three resources and a

@@ -96,6 +96,40 @@
           ];
           meta.description = "Nivis in-repo fake tfprotov6 providers (test/tutorial substrate)";
         };
+
+      # The tutorial scaffolder (flake app `#tutor`). It bundles `nivistutor`
+      # together with the fake providers in one /bin, so a single
+      # `nix shell …#nivis …#tutor` carries nivis + nivistutor + the providers a
+      # scaffolded tutorial needs on PATH. The starter files are embedded in the
+      # binary (go:embed), so this is offline and version-locked to the build.
+      mkTutor =
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        pkgs.buildGoModule {
+          pname = "nivistutor";
+          inherit version;
+          src = ./.;
+          vendorHash = "sha256-LjGLaFdEYWqe42JHhRG1IzGqFn7yobbhIeLJ/Enc+l4=";
+          subPackages = [
+            "cmd/nivistutor"
+            "cmd/provider-alpha"
+            "cmd/provider-beta"
+            "cmd/provider-epsilon"
+          ];
+          # Inject the canonical version: nivistutor reports it and pins a
+          # scaffolded starter's nivis input to this release (v<version>).
+          ldflags = [
+            "-s"
+            "-w"
+            "-X main.version=${version}"
+          ];
+          meta = {
+            description = "Nivis tutorial scaffolder (and the fake providers it needs on PATH)";
+            mainProgram = "nivistutor";
+          };
+        };
     in
     {
       # The public library, for `import`/`lib` consumers. Pure builtins.
@@ -111,7 +145,10 @@
         planCycle = import ./nix/example/cycle.nix { inherit nivis; };
         # A hermetic tour of the daily-driver features (variables, datasource,
         # round trip, outputs) against the fakes — see docs/TUTORIAL-FEATURES.md.
-        tutorial = import ./nix/example/tutorial.nix { inherit nivis; };
+        # The config is the features-0.4 tutorial starter (also scaffolded by
+        # `nivistutor`); kept as `nivis.tutorial` so the milestone-notes golden
+        # gate and the docs include keep referring to one place.
+        tutorial = import ./nix/example/tutorial-features-0.4/config.nix { inherit nivis; };
         # A real-provider example (AWS S3 bucket) — drive with `nivis ... --attr
         # nivis.aws`; creates a real resource (see nix/example/aws.nix).
         aws = import ./nix/example/aws.nix { inherit nivis; };
@@ -137,6 +174,10 @@
           # The in-repo fake providers, for the offline tutorials (no cloud):
           # `nix build .#fake-providers` -> ./result/bin/provider-{alpha,beta}.
           fake-providers = mkFakeProviders system;
+          # The tutorial scaffolder + the fake providers in one /bin, so
+          # `nix shell .#nivis .#tutor` carries nivis + nivistutor + the
+          # providers a scaffolded tutorial needs. `nix run .#tutor` scaffolds.
+          tutor = mkTutor system;
           # The NixOS amazon image for the EC2 tutorial. `nivis` evaluates the
           # config but does not build derivations, so the image must be realised
           # before `nivis apply` uploads it: `nix build .#ec2-image`. Its store
@@ -150,6 +191,7 @@
         system:
         let
           cli = mkCli system;
+          tutor = mkTutor system;
         in
         {
           nivis = {
@@ -159,6 +201,11 @@
           default = {
             type = "app";
             program = "${cli}/bin/nivis";
+          };
+          # `nix run .#tutor` scaffolds a tutorial into your directory.
+          tutor = {
+            type = "app";
+            program = "${tutor}/bin/nivistutor";
           };
         }
       );

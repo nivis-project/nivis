@@ -54,5 +54,20 @@ nix eval --impure --json --expr '
 python3 tests/ir-conformance/check.py validate /tmp/tn-ir-modules.json
 rm -f /tmp/tn-ir-modules.json
 
+echo "== 6. tutorial starters produce conforming IR =="
+# Each self-contained starter (scaffolded by nivistutor) must evaluate through the
+# lib to conforming IR at phase 0, so a scaffolded tutorial runs with plain nivis.
+# getting-started needs no vars; features-0.4 needs a required `env` var.
+check_starter() {
+  name="$1"; ledger="$2"
+  nix eval --impure --json \
+    --expr "let nf = import ./nix/lib { }; cfg = import ./nix/example/tutorial-${name}/config.nix { nivis = nf; }; in cfg (${ledger})" \
+    2>/dev/null > "/tmp/tn-ir-${name}.json"
+  python3 tests/ir-conformance/check.py validate "/tmp/tn-ir-${name}.json"
+  rm -f "/tmp/tn-ir-${name}.json"
+}
+check_starter getting-started '{ phase = 0; outputs = {}; }'
+check_starter features-0.4 '{ phase = 0; outputs = {}; vars = { env = "prod"; }; }'
+
 echo
 echo "All Nix tests passed."

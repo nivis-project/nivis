@@ -8,6 +8,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Added `nivistutor`, a companion CLI (flake app `#tutor`) that scaffolds a chosen
+  tutorial's starter files (a ready `flake.nix`, the config, and a README) into
+  your own directory so you read, edit, and run them with plain `nivis` (no
+  `--flake`/`--attr`); it does not run nivis for you. Ships a **getting-started**
+  tutorial and a **features-0.4** tutorial, embedded in the binary (offline,
+  version-locked). `nix shell …#nivis …#tutor` carries nivis, nivistutor, and the
+  fake providers a scaffolded tutorial needs. Tutorials are now self-contained
+  starter directories under `nix/example/tutorial-<name>/`.
+
 ## [0.4.2] - 2026-06-19
 
 ### Fixed

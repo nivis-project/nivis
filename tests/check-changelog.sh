@@ -29,13 +29,14 @@ echo "== changelog-update gate =="
 # formatting and line wrapping in the changelog and the declared entry.
 normalize() { tr -d '*_`#' | tr '\n' ' ' | tr -s ' ' | tr '[:upper:]' '[:lower:]'; }
 
-# Extract + normalize the current ## [Unreleased] section of CHANGELOG.md
-# (up to the next "## " header), for substring checks.
-unreleased="$(awk '
-  /^## \[Unreleased\]/ {grab=1; next}
-  /^## / && grab {exit}
-  grab {print}
-' CHANGELOG.md | normalize)"
+# Extract + normalize the changelog body for substring checks. A declared entry
+# starts life under ## [Unreleased]; when a release is cut, release.sh rolls that
+# section into a dated ## [<version>] section, so a change archived BEFORE its
+# release and read AFTER it would no longer be in [Unreleased]. The entry is still
+# present (just in a versioned section now), so we search the whole changelog
+# rather than only [Unreleased]: the gate's job is "a declared entry is present",
+# not "still pending release".
+changelog_body="$(normalize < CHANGELOG.md)"
 
 shopt -s nullglob
 for p in openspec/changes/archive/*/proposal.md; do
@@ -68,8 +69,8 @@ for p in openspec/changes/archive/*/proposal.md; do
   # the declared value the same way, and use its first ~5 words as a distinctive,
   # formatting- and wrapping-tolerant fingerprint.
   fingerprint="$(printf '%s' "$value" | normalize | cut -d' ' -f1-5)"
-  if ! printf '%s' "$unreleased" | grep -qF -- "$fingerprint"; then
-    echo "FAIL: $dir declares a changelog entry not found in CHANGELOG.md [Unreleased]"
+  if ! printf '%s' "$changelog_body" | grep -qF -- "$fingerprint"; then
+    echo "FAIL: $dir declares a changelog entry not found in CHANGELOG.md"
     echo "      declared: $value"
     echo "      add it under '## [Unreleased]' (normalized fingerprint: \"$fingerprint\")"
     fail=1

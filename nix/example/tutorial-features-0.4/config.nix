@@ -1,10 +1,11 @@
 # A hermetic tour of the "Road to v1" daily-driver features, against the in-repo
-# fake providers (no cloud, no credentials). Exercised by the feature tutorial
-# (docs/TUTORIAL-FEATURES.md) and runnable as the flake attr `nivis.tutorial`:
+# fake providers (no cloud, no credentials). This is the per-release "what's new
+# in 0.4" tutorial config; the starter's flake.nix exposes it as `nivis.plan` so
+# you run it with plain `nivis` (no --attr/--flake):
 #
-#   nivis plan   --attr nivis.tutorial --var env=prod
-#   nivis apply  --attr nivis.tutorial --var env=prod
-#   nivis output --attr nivis.tutorial --var env=prod
+#   nivis plan   --var env=prod
+#   nivis apply  --var env=prod
+#   nivis output --var env=prod
 #
 # It shows, in one graph:
 #   - VARIABLES (mkVars): a typed `env` var (required) + a `replicas` default,
