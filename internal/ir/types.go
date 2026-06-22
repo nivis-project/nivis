@@ -20,6 +20,11 @@ type Document struct {
 	DataSources   []DataSource              `json:"dataSources,omitempty"`
 	Edges         []Edge                    `json:"edges"`
 	NixConsumers  []NixConsumer             `json:"nixConsumers"`
+	// Backend is the optional remote-state backend declaration (e.g. an s3
+	// bucket/key/region). Static config: it must be known before evaluation, so it
+	// carries no refs/unknowns. Absent => the local file store. The IR layer only
+	// validates `type` present and no-refs; a specific backend interprets its keys.
+	Backend map[string]interface{} `json:"backend,omitempty"`
 }
 
 // ProviderConfig is a provider declaration. Config is a raw attribute tree.
@@ -153,4 +158,8 @@ type Graph struct {
 	Consumers []NixConsumer
 	// AllRefs is every classified reference across resources and consumers.
 	AllRefs []RefEdge
+	// Backend is the optional remote-state backend declaration (nil => local file
+	// store). Validated static (type present, no refs) at ingest; its keys are
+	// interpreted by the chosen backend, not here.
+	Backend map[string]interface{}
 }

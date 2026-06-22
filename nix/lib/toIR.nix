@@ -63,7 +63,7 @@ let
     else
       [ ];
 in
-# toIR :: { providers, resources, dataSources ? [], nixConsumers ? [], outputs ? {}, ledger ? {} } -> IR attrset
+# toIR :: { providers, resources, dataSources ? [], nixConsumers ? [], outputs ? {}, backend ? null, ledger ? {} } -> IR attrset
 {
   providers,
   resources,
@@ -73,6 +73,12 @@ in
   # nixConsumer `output.<name>` with value { value = <expr>; }, so it rides the
   # existing consumer resolution and is read out by `nivis output`.
   outputs ? { },
+  # Optional remote-state backend declaration, e.g.
+  #   { type = "s3"; bucket = "..."; key = "..."; region = "..."; }
+  # Static config: plain values only (no refs/derived), since the executor must
+  # know where state lives before it evaluates anything. Emitted only when set;
+  # absent => the local file store. Credentials are NEVER here (AWS chain).
+  backend ? null,
   ledger ? { outputs = { }; },
 }:
 let
@@ -130,3 +136,7 @@ in
   inherit edges;
   nixConsumers = irConsumers;
 }
+# The backend is emitted only when declared (omitted => local file store). It is
+# static config, passed through verbatim (no resolve/encode: it must not contain
+# refs or unknowns).
+// lib.optionalAttrs (backend != null) { inherit backend; }

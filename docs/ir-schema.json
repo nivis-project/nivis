@@ -17,6 +17,21 @@
       "const": 1,
       "description": "Bumped on any breaking change to the IR shape."
     },
+    "backend": {
+      "type": "object",
+      "description": "OPTIONAL. Where state is stored (e.g. an s3 bucket/key/region). Static config: no refs/unknowns, no credentials. Absent => the local file store. Backend-specific keys are validated by the chosen backend, not this schema.",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The backend kind, e.g. \"s3\"."
+        }
+      },
+      "additionalProperties": true
+    },
     "providers": {
       "type": "object",
       "description": "Map of provider-id -> provider declaration.",

@@ -11,6 +11,12 @@ OpenSpec change to this document first, then downstream updates. Version it.
 ```jsonc
 {
   "schemaVersion": 1,
+  "backend": {                                   // OPTIONAL; where state is stored
+    "type": "s3",                                // required; the backend kind
+    "bucket": "my-state", "key": "prod/app", "region": "eu-west-1"
+    // backend-specific keys; STATIC only (no refs/unknowns); NO credentials here
+    // (those come from the provider/AWS credential chain). Absent => local file store.
+  },
   "providers": {
     "<provider-id>": {                 // e.g. "alpha", "registry.opentofu.org/x/alpha"
       "source": "<source-or-path>",    // for PoC: filesystem path to the binary
@@ -56,6 +62,19 @@ OpenSpec change to this document first, then downstream updates. Version it.
   ]
 }
 ```
+
+## Backend (`backend`)
+
+The OPTIONAL top-level `backend` object declares **where state is stored**. It is
+**static configuration**: it must be known before any evaluation (the executor has
+to know where state lives before it evaluates anything), so its leaves are plain
+JSON scalars/objects and may **not** contain a `__ref`, `__derived`, or other
+unknown leaf. It has a required non-empty string `type` naming the backend kind
+(e.g. `"s3"`); other keys are backend-specific and are interpreted by that backend,
+not the IR layer. Credentials are **never** in `backend` (they come from the
+provider/AWS credential chain); only the location of state. When `backend` is
+absent, the executor uses the **local file store** (the default). Adding the
+optional field is additive: `schemaVersion` stays `1`.
 
 ## Reference encoding (the core of the contract)
 

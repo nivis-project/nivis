@@ -8,6 +8,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Added an optional `backend` field to the IR (and `toIR`/`toModuleIR`) declaring
+  where state is stored (e.g. an s3 `bucket`/`key`/`region`), so a remote state
+  backend is configured in the Nix flake rather than via flags or env vars. It is
+  static config (no refs, no credentials); absent means the local file store. This
+  is the contract groundwork for the S3 backend (M2/B1); no backend is implemented
+  yet.
+
 ## [0.4.4] - 2026-06-19
 
 ### Changed

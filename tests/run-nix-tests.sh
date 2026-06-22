@@ -69,5 +69,28 @@ check_starter() {
 check_starter getting-started '{ phase = 0; outputs = {}; }'
 check_starter features-0.4 '{ phase = 0; outputs = {}; vars = { env = "prod"; }; }'
 
+echo "== 7. toIR backend field (emitted only when declared) =="
+# toIR emits the optional backend block verbatim when set, and omits it otherwise;
+# an IR carrying a backend still conforms to the schema.
+got=$(nix eval --impure --json --expr '
+  let
+    nf = import ./nix/lib { };
+    base = { providers = { alpha = { source = "p"; config = {}; }; }; resources = []; };
+    withB = nf.toIR (base // { backend = { type = "s3"; bucket = "b"; key = "k"; region = "r"; }; });
+    without = nf.toIR base;
+  in { hasBackend = withB ? backend; ty = withB.backend.type or null; withoutHas = without ? backend; }
+' 2>/dev/null)
+want='{"hasBackend":true,"ty":"s3","withoutHas":false}'
+if [ "$got" != "$want" ]; then
+  echo "   FAIL: toIR backend = $got, want $want" >&2
+  exit 1
+fi
+nix eval --impure --json --expr '
+  let nf = import ./nix/lib { };
+  in (import ./nix/example { nivis = nf; }) { phase = 0; outputs = {}; } // { backend = { type = "s3"; bucket = "b"; key = "k"; region = "r"; }; }
+' 2>/dev/null > /tmp/tn-ir-backend.json
+python3 tests/ir-conformance/check.py validate /tmp/tn-ir-backend.json
+rm -f /tmp/tn-ir-backend.json
+
 echo
 echo "All Nix tests passed."

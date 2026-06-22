@@ -62,11 +62,14 @@ let
         acc // { ${r.id} = r; }
     ) { } resources;
 
-  # toModuleIR :: { modules; specialArgs ? {} } -> IR (optionally ledger-resolved)
+  # toModuleIR :: { modules; specialArgs ? {}; backend ? null } -> IR (optionally ledger-resolved)
   toModuleIR =
     args@{
       modules,
       specialArgs ? { },
+      # Optional remote-state backend declaration, passed through to toIR (emitted
+      # only when set). See toIR.nix for the shape; static config, no refs.
+      backend ? null,
       ledger ? { outputs = { }; },
     }:
     let
@@ -74,7 +77,7 @@ let
     in
     toIR {
       inherit (g) providers resources nixConsumers;
-      inherit ledger;
+      inherit backend ledger;
     };
 in
 {

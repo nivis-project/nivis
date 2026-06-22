@@ -21,6 +21,11 @@ func IngestIR(data []byte) (*Graph, error) {
 		return nil, fmt.Errorf("ir: unsupported schemaVersion %d (want %d)", doc.SchemaVersion, SchemaVersion)
 	}
 
+	// Backend (optional): static config only — `type` required, no refs/unknowns.
+	if err := validateBackend(doc.Backend); err != nil {
+		return nil, err
+	}
+
 	// Second, raw pass to inspect meta objects for disallowed keys the typed
 	// Meta struct would silently drop (count/for_each).
 	rawMeta, err := rawResourceMetas(data)
@@ -33,6 +38,7 @@ func IngestIR(data []byte) (*Graph, error) {
 		Nodes:     make(map[string]*ResourceNode, len(doc.Resources)),
 		Edges:     doc.Edges,
 		Consumers: doc.NixConsumers,
+		Backend:   doc.Backend,
 	}
 	if g.Providers == nil {
 		g.Providers = map[string]ProviderConfig{}
@@ -182,4 +188,59 @@ func rawResourceMetas(data []byte) (map[string]map[string]interface{}, error) {
 		out[r.ID] = r.Meta
 	}
 	return out, nil
+}
+
+// validateBackend enforces the IR contract's rules for the optional `backend`
+// field: when present it must have a non-empty string `type`, and it must be
+// statically known — no `__ref`/`__derived`/`__sensitiveRef` (or any marker) leaf
+// anywhere in it, because the executor must know where state lives before it
+// evaluates anything. A nil/absent backend is valid (the local file store).
+func validateBackend(b map[string]interface{}) error {
+	if b == nil {
+		return nil
+	}
+	t, ok := b["type"]
+	if !ok {
+		return fmt.Errorf("ir: backend.type is required (the backend kind, e.g. \"s3\")")
+	}
+	ts, ok := t.(string)
+	if !ok || ts == "" {
+		return fmt.Errorf("ir: backend.type must be a non-empty string, got %v", t)
+	}
+	return assertNoMarkers("backend", b)
+}
+
+// assertNoMarkers walks a decoded JSON tree and fails if any node is one of the
+// reserved marker objects (__ref/__derived/__sensitiveRef), naming the path. Used
+// to enforce that a value must be statically known (no unresolved references).
+func assertNoMarkers(path string, v interface{}) error {
+	if kind, _, _, _, _ := parseLeaf(v); kind != "" {
+		return fmt.Errorf("ir: %s must be static (no references), found %s at %s", rootOf(path), kind, path)
+	}
+	switch t := v.(type) {
+	case map[string]interface{}:
+		for k, child := range t {
+			if err := assertNoMarkers(path+"."+k, child); err != nil {
+				return err
+			}
+		}
+	case []interface{}:
+		for i, child := range t {
+			if err := assertNoMarkers(fmt.Sprintf("%s[%d]", path, i), child); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// rootOf returns the leading path segment (before the first '.' or '['), so an
+// error message reads "backend must be static" rather than the full leaf path.
+func rootOf(path string) string {
+	for i, c := range path {
+		if c == '.' || c == '[' {
+			return path[:i]
+		}
+	}
+	return path
 }
