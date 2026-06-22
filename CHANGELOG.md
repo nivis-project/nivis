@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-06-22
+
 ### Added
 - Added state locking for the S3 backend: `apply`/`destroy` take an advisory lock
   (an S3 `<key>.lock` object via a conditional put) so concurrent runs cannot
@@ -162,7 +164,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.5
 [0.4.4]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.4
 [0.4.3]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.3
 [0.4.2]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.2
