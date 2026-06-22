@@ -149,6 +149,11 @@
         # `nivistutor`); kept as `nivis.tutorial` so the milestone-notes golden
         # gate and the docs include keep referring to one place.
         tutorial = import ./nix/example/tutorial-features-0.4/config.nix { inherit nivis; };
+        # Remote state on real S3 (M2/B1+B2): fake resources, but state stored in
+        # an S3 object with locking. Set the bucket/region in the file first; drive
+        # with `AWS_PROFILE=… nivis … --attr nivis.remoteState`. See
+        # docs/TUTORIAL-REMOTE-STATE.md.
+        remoteState = import ./nix/example/remote-state.nix { inherit nivis; };
         # A real-provider example (AWS S3 bucket) — drive with `nivis ... --attr
         # nivis.aws`; creates a real resource (see nix/example/aws.nix).
         aws = import ./nix/example/aws.nix { inherit nivis; };

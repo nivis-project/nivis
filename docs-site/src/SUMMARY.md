@@ -10,6 +10,7 @@
 - [Variables](./variables.md)
 - [Datasources](./datasources.md)
 - [Remote state (S3)](./remote-state.md)
+  - [Tutorial: remote state + locking](./TUTORIAL-REMOTE-STATE.md)
 - [Architecture & decisions](./design.md)
 - [Compare to other tools](./comparison.md)
 - [The IR contract](./ir-contract.md)
@@ -20,3 +21,4 @@
   - [Nivis-0.4]()
     - [Release Notes 0.4 - Road to v1](./release-notes-0.4.md)
     - [Tutorial: Nivis 0.4 features explained](./TUTORIAL-FEATURES.md)
+    - [Release Notes 0.4.5 - remote state + locking](./release-notes-0.4.5.md)
