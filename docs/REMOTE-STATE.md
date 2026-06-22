@@ -57,13 +57,38 @@ keys) in your shell or CI; the config carries only the location.
 Every write requests **server-side encryption** (`AES256`) on the state object.
 Enable bucket policies/versioning on your side as you would for any state bucket.
 
-## Locking (not yet)
+## Locking
 
-This backend does **not** yet serialize concurrent applies. Each operation is an
-atomic read-modify-write of the state object, but two people (or two CI jobs)
-applying the same stack at the same time can still race. **State locking is the
-next M2 epic (B2)** and will add a distributed lock with a `force-unlock` escape
-hatch. Until then, coordinate so only one apply runs at a time.
+`nivis apply` and `nivis destroy` take an **advisory lock** on the state before
+they run, so two people (or two CI jobs) cannot mutate the same stack at the same
+time and corrupt it. The lock is a small sibling object next to your state object
+(`<key>.lock`), created atomically with an S3 conditional write (no DynamoDB or
+other service is needed). It is released automatically when the run finishes,
+including when it fails.
+
+Read-only commands (`plan`, `refresh`, `output`, `state pull`) do not lock.
+
+If a run is already holding the lock, the next `apply`/`destroy` stops before
+doing anything and tells you who holds it and since when:
+
+```
+error: state is locked by alice@ci-runner since 2026-06-22T10:31:04Z for "apply"; run `nivis force-unlock` to override
+```
+
+### force-unlock
+
+If a run crashes (or is killed) while holding the lock, the lock object is left
+behind and the next run is blocked. Clear it with:
+
+```sh
+nivis force-unlock
+```
+
+It confirms first in an interactive shell; pass `--force` (or `--yes`) to skip the
+prompt in CI. **Only force-unlock when you are sure no other run is active**, or you
+risk two concurrent applies. The local file store does not use this lock (it is
+single-machine and has its own per-operation file lock), so `force-unlock` there
+reports there is nothing to clear.
 
 ## Migrating local state to S3
 

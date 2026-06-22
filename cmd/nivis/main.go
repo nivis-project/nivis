@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -75,7 +76,7 @@ func main() {
 	// --target completes to the resource ids in state.
 	_ = root.RegisterFlagCompletionFunc("target", stateIDs)
 
-	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), outputCmd(), genCmd())
+	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), outputCmd(), genCmd(), forceUnlockCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -142,6 +143,31 @@ func openStore(ctx context.Context) (state.Store, error) {
 		return state.Open(statePath)
 	}
 	return state.OpenBackend(g.Backend, statePath)
+}
+
+// withStateLock runs fn while holding the backend's advisory state lock, for a
+// mutating operation (apply/destroy). If the store does not support locking (the
+// local file store), it just runs fn (unlocked, as today). On a held lock the
+// acquire fails before fn runs (naming the holder). The lock is released after fn,
+// including on failure, so a failed run never leaves the state locked.
+func withStateLock(w io.Writer, store state.Store, operation string, fn func() error) error {
+	lk, ok := store.(state.Locker)
+	if !ok {
+		return fn()
+	}
+	id, err := lk.Lock(state.NewLockInfo(operation))
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(w, "Acquired state lock.")
+	defer func() {
+		if uerr := lk.Unlock(id); uerr != nil {
+			fmt.Fprintln(w, "warning: releasing state lock:", uerr)
+		} else {
+			fmt.Fprintln(w, "Released state lock.")
+		}
+	}()
+	return fn()
 }
 
 func planCmd() *cobra.Command {
@@ -218,8 +244,13 @@ func applyCmd() *cobra.Command {
 				NoRefresh:  !doRefresh,
 				NoBuild:    !doBuild,
 			}
-			res, err := d.Run(cmd.Context())
-			if err != nil {
+			// Hold the state lock for the whole apply (no-op on an unlockable store).
+			var res *phase.Result
+			if err := withStateLock(cmd.OutOrStdout(), store, "apply", func() error {
+				r, runErr := d.Run(cmd.Context())
+				res = r
+				return runErr
+			}); err != nil {
 				return err
 			}
 			out := newOutput(cmd.OutOrStdout())
@@ -261,8 +292,13 @@ func destroyCmd() *cobra.Command {
 			}
 			mgr := newManager()
 			defer mgr.Close()
-			res, err := destroy.Run(cmd.Context(), g, mgr, store, destroy.Options{Target: target})
-			if err != nil {
+			// Hold the state lock for the destroy (no-op on an unlockable store).
+			var res *destroy.Result
+			if err := withStateLock(cmd.OutOrStdout(), store, "destroy", func() error {
+				r, runErr := destroy.Run(cmd.Context(), g, mgr, store, destroy.Options{Target: target})
+				res = r
+				return runErr
+			}); err != nil {
 				return err
 			}
 			out := newOutput(cmd.OutOrStdout())

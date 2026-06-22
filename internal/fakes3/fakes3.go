@@ -67,6 +67,17 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPut:
 		body, _ := io.ReadAll(r.Body)
+		// Conditional create-if-absent (IfNoneMatch: "*"): if the object already
+		// exists, fail with 412 PreconditionFailed (how S3 enforces an atomic lock).
+		if r.Header.Get("If-None-Match") == "*" {
+			s.mu.Lock()
+			_, exists := s.objs[id]
+			s.mu.Unlock()
+			if exists {
+				writePreconditionFailed(w)
+				return
+			}
+		}
 		s.mu.Lock()
 		s.objs[id] = body
 		s.sse[id] = r.Header.Get("X-Amz-Server-Side-Encryption")
@@ -108,6 +119,18 @@ func parsePath(p string) (bucket, key string, ok bool) {
 		return "", "", false
 	}
 	return bucket, key, true
+}
+
+// writePreconditionFailed returns the S3 412 the SDK surfaces as a
+// PreconditionFailed API error, used for a conditional create-if-absent that
+// loses the race (the lock is already held).
+func writePreconditionFailed(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusPreconditionFailed)
+	_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?>`+
+		`<Error><Code>PreconditionFailed</Code>`+
+		`<Message>At least one of the pre-conditions you specified did not hold</Message>`+
+		`<Condition>If-None-Match</Condition></Error>`)
 }
 
 // writeNoSuchKey returns the S3 NoSuchKey error the SDK maps to a typed error the

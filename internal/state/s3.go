@@ -6,6 +6,7 @@ package state
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -163,6 +164,112 @@ func (s *s3Store) Restore(data []byte) error {
 		return err
 	}
 	return s.writeDoc(context.Background(), doc)
+}
+
+// lockKey is the S3 object key of this state's advisory lock (a sibling of the
+// state object).
+func (s *s3Store) lockKey() string { return s.key + ".lock" }
+
+// Lock acquires the advisory lock by creating the lock object with a conditional
+// put (IfNoneMatch:"*", atomic create-if-absent). A precondition failure means the
+// lock is held: it reads the holder back and returns an actionable error.
+func (s *s3Store) Lock(info LockInfo) (string, error) {
+	ctx := context.Background()
+	body, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("state: s3: marshal lock info: %w", err)
+	}
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:               aws.String(s.bucket),
+		Key:                  aws.String(s.lockKey()),
+		Body:                 bytes.NewReader(body),
+		IfNoneMatch:          aws.String("*"), // create iff the lock object is absent
+		ServerSideEncryption: types.ServerSideEncryptionAes256,
+		ContentType:          aws.String("application/json"),
+	})
+	if err != nil {
+		if isPreconditionFailed(err) {
+			holder, herr := s.readLock(ctx)
+			if herr != nil {
+				return "", fmt.Errorf("state is locked (s3://%s/%s); run `nivis force-unlock` to override",
+					s.bucket, s.lockKey())
+			}
+			return "", fmt.Errorf("state is locked by %s; run `nivis force-unlock` to override",
+				holder.describe())
+		}
+		return "", fmt.Errorf("state: s3: acquire lock %s/%s: %w", s.bucket, s.lockKey(), err)
+	}
+	return info.ID, nil
+}
+
+// Unlock releases the lock only when the held lock's id matches lockID, so a stale
+// release cannot drop another run's lock.
+func (s *s3Store) Unlock(lockID string) error {
+	ctx := context.Background()
+	held, err := s.readLock(ctx)
+	if err != nil {
+		if isNotFound(err) {
+			return nil // already released
+		}
+		return fmt.Errorf("state: s3: read lock before unlock: %w", err)
+	}
+	if held.ID != lockID {
+		return fmt.Errorf("state: s3: refusing to unlock: the lock is held by %s, not this run",
+			held.describe())
+	}
+	return s.deleteLock(ctx)
+}
+
+// ForceUnlock removes the lock unconditionally (no-op if absent).
+func (s *s3Store) ForceUnlock() error {
+	return s.deleteLock(context.Background())
+}
+
+// readLock fetches and parses the lock object. A missing object surfaces an
+// isNotFound error (so callers can distinguish "no lock").
+func (s *s3Store) readLock(ctx context.Context) (LockInfo, error) {
+	var li LockInfo
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(s.lockKey()),
+	})
+	if err != nil {
+		return li, err
+	}
+	defer out.Body.Close()
+	data, err := io.ReadAll(out.Body)
+	if err != nil {
+		return li, fmt.Errorf("state: s3: read lock body: %w", err)
+	}
+	if err := json.Unmarshal(data, &li); err != nil {
+		return li, fmt.Errorf("state: s3: parse lock object: %w", err)
+	}
+	return li, nil
+}
+
+// deleteLock removes the lock object (DeleteObject is idempotent in S3).
+func (s *s3Store) deleteLock(ctx context.Context) error {
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(s.lockKey()),
+	})
+	if err != nil {
+		return fmt.Errorf("state: s3: delete lock %s/%s: %w", s.bucket, s.lockKey(), err)
+	}
+	return nil
+}
+
+// isPreconditionFailed reports whether an S3 error is a 412 PreconditionFailed,
+// which a conditional create-if-absent returns when the object already exists.
+func isPreconditionFailed(err error) bool {
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.ErrorCode() {
+		case "PreconditionFailed", "412":
+			return true
+		}
+	}
+	return false
 }
 
 // isNotFound reports whether an S3 error means the object/bucket-key is absent

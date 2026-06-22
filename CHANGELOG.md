@@ -9,11 +9,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Added state locking for the S3 backend: `apply`/`destroy` take an advisory lock
+  (an S3 `<key>.lock` object via a conditional put) so concurrent runs cannot
+  corrupt shared state, with a "locked by whom/since when" error and a `nivis
+  force-unlock` escape hatch. Read-only commands do not lock. See
+  `docs/REMOTE-STATE.md`.
 - Added an S3 remote state backend: declare `nivis.backend = { type = "s3"; bucket;
   key; region; }` in the flake and state is stored in that S3 object (server-side
   encrypted, AWS credential chain, Nivis's own format, no tfstate compatibility).
-  Absent means the local file store. Locking is a follow-up (M2/B2); see
-  `docs/REMOTE-STATE.md`.
+  Absent means the local file store. See `docs/REMOTE-STATE.md`.
 - Added an optional `backend` field to the IR (and `toIR`/`toModuleIR`) declaring
   where state is stored (e.g. an s3 `bucket`/`key`/`region`), so a remote state
   backend is configured in the Nix flake rather than via flags or env vars. It is
