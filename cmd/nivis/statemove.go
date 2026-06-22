@@ -24,7 +24,7 @@ func pullCmd() *cobra.Command {
 		Use:   "pull",
 		Short: "Write the whole state document to stdout (or --out)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ func pushCmd() *cobra.Command {
 		Short: "Replace the whole state from stdin (or --in); requires --force when non-interactive",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			force = force || yes // --yes is an alias for --force
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}

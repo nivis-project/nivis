@@ -122,7 +122,27 @@ func phase0Graph(ctx context.Context) (*ir.Graph, error) {
 	return ir.IngestIR(irJSON)
 }
 
-func openStore() (state.Store, error) { return state.Open(statePath) }
+// openStore opens the state backend the config selects. It tries to evaluate the
+// config once (phase 0) to read the optional IR `backend` block: when present
+// (e.g. an s3 backend) the store is opened from it; absent, the local file store
+// at --state is used (today's default). The location comes from `backend`;
+// credentials never do (the AWS chain).
+//
+// The eval is only needed to DISCOVER a remote backend. If it fails (no flake in
+// the working dir, an eval error), openStore falls back to the local store rather
+// than failing: state subcommands and completion that operate on the document
+// without a config (e.g. `state pull` in a bare dir) still work, and the local
+// store is the correct default when no backend is declared. Commands that must
+// evaluate the config (plan/apply/destroy/refresh) surface that eval error
+// themselves; here a failed eval simply means "no remote backend discovered".
+func openStore(ctx context.Context) (state.Store, error) {
+	g, err := phase0Graph(ctx)
+	if err != nil {
+		// Could not evaluate the config to learn the backend: default to local.
+		return state.Open(statePath)
+	}
+	return state.OpenBackend(g.Backend, statePath)
+}
 
 func planCmd() *cobra.Command {
 	return &cobra.Command{
@@ -131,7 +151,7 @@ func planCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Plan each resource against its prior state via the provider, so an
 			// unchanged resource reports no change (not a blanket "~").
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -179,7 +199,7 @@ func applyCmd() *cobra.Command {
 		Use:   "apply",
 		Short: "Resolve and apply the configuration to a fixpoint",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -235,7 +255,7 @@ func destroyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -264,7 +284,7 @@ func refreshCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -287,7 +307,7 @@ func stateCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List resource ids in state",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -312,8 +332,8 @@ func stateCmd() *cobra.Command {
 		Short:             "Show a resource's stored attributes",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: stateIDs,
-		RunE: func(_ *cobra.Command, args []string) error {
-			store, err := openStore()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -338,7 +358,7 @@ func stateCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: stateIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openStore()
+			store, err := openStore(cmd.Context())
 			if err != nil {
 				return err
 			}

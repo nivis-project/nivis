@@ -8,7 +8,6 @@
 package state
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,22 +113,16 @@ func (s *fileStore) withLock(fn func() error) error {
 }
 
 func (s *fileStore) read() (document, error) {
-	doc := document{Resources: map[string]ResourceState{}}
 	data, err := os.ReadFile(s.path)
 	if os.IsNotExist(err) {
-		return doc, nil
+		return document{Resources: map[string]ResourceState{}}, nil
 	}
 	if err != nil {
-		return doc, fmt.Errorf("state: read %q: %w", s.path, err)
+		return document{Resources: map[string]ResourceState{}}, fmt.Errorf("state: read %q: %w", s.path, err)
 	}
-	if len(data) == 0 {
-		return doc, nil
-	}
-	if err := json.Unmarshal(data, &doc); err != nil {
+	doc, err := parseDocument(data)
+	if err != nil {
 		return doc, fmt.Errorf("state: parse %q: %w", s.path, err)
-	}
-	if doc.Resources == nil {
-		doc.Resources = map[string]ResourceState{}
 	}
 	return doc, nil
 }
@@ -137,9 +130,9 @@ func (s *fileStore) read() (document, error) {
 // writeAtomic writes doc to a temp file then renames it over the target, so the
 // state file is never observed half-written.
 func (s *fileStore) writeAtomic(doc document) error {
-	data, err := json.MarshalIndent(doc, "", "  ")
+	data, err := marshalDocument(doc)
 	if err != nil {
-		return fmt.Errorf("state: marshal: %w", err)
+		return err
 	}
 	tmp := s.path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o600); err != nil {
@@ -218,9 +211,9 @@ func (s *fileStore) Snapshot() ([]byte, error) {
 		if err != nil {
 			return err
 		}
-		data, err := json.MarshalIndent(doc, "", "  ")
+		data, err := marshalDocument(doc)
 		if err != nil {
-			return fmt.Errorf("state: marshal snapshot: %w", err)
+			return err
 		}
 		out = data
 		return nil
@@ -232,18 +225,9 @@ func (s *fileStore) Snapshot() ([]byte, error) {
 // input is parsed and validated BEFORE the file is touched, so malformed input
 // leaves existing state unchanged; then it is written atomically under the lock.
 func (s *fileStore) Restore(data []byte) error {
-	var doc document
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return fmt.Errorf("state: restore: input is not a valid state document: %w", err)
-	}
-	if doc.Resources == nil {
-		doc.Resources = map[string]ResourceState{}
-	}
-	// every entry's map key must match its id (a well-formed document invariant).
-	for id, rs := range doc.Resources {
-		if rs.ID != id {
-			return fmt.Errorf("state: restore: resource key %q does not match its id %q", id, rs.ID)
-		}
+	doc, err := parseDocumentStrict(data)
+	if err != nil {
+		return err
 	}
 	return s.withLock(func() error {
 		return s.writeAtomic(doc)

@@ -9,6 +9,7 @@
   - [Tutorial: NixOS on EC2](./TUTORIAL-EC2-NIXOS.md)
 - [Variables](./variables.md)
 - [Datasources](./datasources.md)
+- [Remote state (S3)](./remote-state.md)
 - [Architecture & decisions](./design.md)
 - [Compare to other tools](./comparison.md)
 - [The IR contract](./ir-contract.md)
