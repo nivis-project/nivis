@@ -56,7 +56,7 @@
           pname = "nivis";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-LjGLaFdEYWqe42JHhRG1IzGqFn7yobbhIeLJ/Enc+l4=";
+          vendorHash = "sha256-V92mGVEAxdQqjH/qPiFkMgzR9OIFhAsFy64zZeV3OPk=";
           subPackages = [ "cmd/nivis" ];
           # Inject the canonical version into the binary (overrides the "dev"
           # default in cmd/nivis). -s -w strip debug info.
