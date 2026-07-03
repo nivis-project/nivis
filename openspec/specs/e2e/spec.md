@@ -105,7 +105,7 @@ docs-SSOT check SHALL guard against duplication.
 ### Requirement: Installing the tn CLI is documented
 The docs SHALL include a standalone install guide (`docs/INSTALL.md`) covering how
 to obtain the `tn` CLI without a repo checkout — at minimum `nix run
-github:wearetechnative/nivis#tn`, an ad-hoc `nix shell`, a persistent
+github:nivis-project/nivis#tn`, an ad-hoc `nix shell`, a persistent
 install (`nix profile install`), and building from a clone (`go`/`nix build`). It
 SHALL note `tn`'s runtime needs (Nix available; network for the first provider
 fetch). Tutorials SHALL link to it rather than repeating install steps, and the

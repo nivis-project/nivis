@@ -19,7 +19,7 @@ region are.
 Enter a shell with `nivis` and the fake providers, and point AWS at your profile:
 
 ```sh
-nix shell github:wearetechnative/nivis#nivis github:wearetechnative/nivis#fake-providers
+nix shell github:nivis-project/nivis#nivis github:nivis-project/nivis#fake-providers
 export AWS_PROFILE=your-profile
 ```
 

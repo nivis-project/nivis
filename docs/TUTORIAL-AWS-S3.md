@@ -19,14 +19,14 @@ The CLI is `nivis`. You don't need to clone anything; the quickest path is to ru
 straight from the flake:
 
 ```sh
-nix run github:wearetechnative/nivis#nivis -- --version
+nix run github:nivis-project/nivis#nivis -- --version
 ```
 
 If you'd rather have `nivis` on your `PATH` for the rest of this tutorial, install it
 persistently or open a shell with it: see **[Installing Nivis](INSTALL.md)** for all
 the options (`nix run`, `nix shell`, `nix profile
 install`, building from a clone). The rest of this tutorial writes `nivis …`; if you
-chose the ad-hoc form, read that as `nix run github:wearetechnative/nivis#nivis -- …`.
+chose the ad-hoc form, read that as `nix run github:nivis-project/nivis#nivis -- …`.
 
 ## Part 2: A fresh infra flake
 
@@ -48,7 +48,7 @@ contents with the infra flake below.
 
   # Pull Nivis in as a dependency. `nix flake lock` (run automatically by
   # the first nivis command) records the exact revision in flake.lock.
-  inputs.nivis.url = "github:wearetechnative/nivis";
+  inputs.nivis.url = "github:nivis-project/nivis";
 
   outputs =
     { self, nivis }:

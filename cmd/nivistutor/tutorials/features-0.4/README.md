@@ -11,7 +11,7 @@ You need `nivis` and the fake providers on your PATH. The one-liner that gives y
 both (and `nivistutor`) in a throwaway shell:
 
 ```sh
-nix shell github:wearetechnative/nivis#nivis github:wearetechnative/nivis#tutor
+nix shell github:nivis-project/nivis#nivis github:nivis-project/nivis#tutor
 ```
 
 The configs reference the providers by bare name (`source = "provider-alpha"`),

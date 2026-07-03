@@ -31,9 +31,9 @@ var version = "dev"
 // floats on the default branch so a local checkout still resolves.
 func nivisRef() string {
 	if version == "dev" || version == "" {
-		return "github:wearetechnative/nivis"
+		return "github:nivis-project/nivis"
 	}
-	return "github:wearetechnative/nivis/v" + version
+	return "github:nivis-project/nivis/v" + version
 }
 
 func main() {

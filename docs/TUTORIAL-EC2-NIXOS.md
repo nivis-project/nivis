@@ -44,7 +44,7 @@ resources that ship it: that two-domain mix is the whole point of this tutorial.
 ```nix
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
-  inputs.nivis.url = "github:wearetechnative/nivis";
+  inputs.nivis.url = "github:nivis-project/nivis";
 
   outputs = { self, nixpkgs, nivis }:
     let

@@ -8,6 +8,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- The repository moved to `github.com/nivis-project/nivis`. Updated the GitHub URLs
+  throughout (flake refs `github:nivis-project/nivis#…`, clone/run/install commands,
+  the `nivistutor` scaffolded flake ref, the goreleaser release owner, and the
+  changelog links). The Go module path stays `github.com/wearetechnative/nivis` (a
+  module path need not match the repo host; renaming it would break every import),
+  so this is a URL/hosting change only, no code or import changes.
+
 ## [0.4.6] - 2026-07-03
 
 ### Fixed
@@ -173,14 +181,14 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.6...HEAD
-[0.4.6]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.6
-[0.4.5]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.5
-[0.4.4]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.4
-[0.4.3]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.3
-[0.4.2]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.2
-[0.4.1]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.1
-[0.4.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.0
-[0.3.1]: https://github.com/wearetechnative/nivis/releases/tag/v0.3.1
-[0.3.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.3.0
-[0.1.0]: https://github.com/wearetechnative/nivis/releases/tag/v0.1.0
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/nivis-project/nivis/releases/tag/v0.4.6
+[0.4.5]: https://github.com/nivis-project/nivis/releases/tag/v0.4.5
+[0.4.4]: https://github.com/nivis-project/nivis/releases/tag/v0.4.4
+[0.4.3]: https://github.com/nivis-project/nivis/releases/tag/v0.4.3
+[0.4.2]: https://github.com/nivis-project/nivis/releases/tag/v0.4.2
+[0.4.1]: https://github.com/nivis-project/nivis/releases/tag/v0.4.1
+[0.4.0]: https://github.com/nivis-project/nivis/releases/tag/v0.4.0
+[0.3.1]: https://github.com/nivis-project/nivis/releases/tag/v0.3.1
+[0.3.0]: https://github.com/nivis-project/nivis/releases/tag/v0.3.0
+[0.1.0]: https://github.com/nivis-project/nivis/releases/tag/v0.1.0

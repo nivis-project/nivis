@@ -4,7 +4,7 @@
   # Pinned to the nivis release that scaffolded this tutorial, so the library and
   # your `nivis` binary agree. nivistutor rewrites @NIVIS_REF@ to its own build's
   # tag when it writes this file; if you see the literal token, replace it with a
-  # nivis ref, e.g. github:wearetechnative/nivis/v0.4.3.
+  # nivis ref, e.g. github:nivis-project/nivis/v0.4.3.
   inputs.nivis.url = "@NIVIS_REF@";
 
   outputs =

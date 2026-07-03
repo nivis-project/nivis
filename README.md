@@ -26,14 +26,14 @@ resource, or the body of a file, computed in Nix. (See it end to end in the
 You need **Nix** (with flakes). Run Nivis straight from the flake, no checkout:
 
 ```sh
-nix run github:wearetechnative/nivis#nivis -- --version
+nix run github:nivis-project/nivis#nivis -- --version
 ```
 
 Then point it at a flake that describes your infra. A minimal one:
 
 ```nix
 {
-  inputs.nivis.url = "github:wearetechnative/nivis";
+  inputs.nivis.url = "github:nivis-project/nivis";
 
   outputs = { self, nivis }:
     let lib = nivis.lib; in {

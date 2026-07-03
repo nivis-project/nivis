@@ -32,7 +32,7 @@ with no `--flake`/`--attr` flags. It scaffolds the files for you to read and run
 it does not run `nivis` for you (you learn by doing).
 
 ```sh
-nix shell github:wearetechnative/nivis#nivis github:wearetechnative/nivis#tutor
+nix shell github:nivis-project/nivis#nivis github:nivis-project/nivis#tutor
 nivistutor
 ```
 

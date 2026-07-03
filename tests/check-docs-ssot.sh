@@ -74,7 +74,7 @@ check_unique \
 # 5. Install instructions — canonical in docs/INSTALL.md; the tutorial and README
 #    link to it rather than repeating the persistent-install command.
 check_unique \
-  "nix profile install github:wearetechnative/nivis#nivis" \
+  "nix profile install github:nivis-project/nivis#nivis" \
   docs/INSTALL.md \
   docs/TUTORIAL-AWS-S3.md README.md
 

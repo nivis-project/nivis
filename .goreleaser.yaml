@@ -44,7 +44,7 @@ changelog:
 
 release:
   github:
-    owner: wearetechnative
+    owner: nivis-project
     name: nivis
   name_template: "Nivis {{ .Tag }}"
   draft: false

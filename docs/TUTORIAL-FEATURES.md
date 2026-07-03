@@ -39,7 +39,7 @@ bundled one so there is nothing to scaffold.)
 > directory, so you run it with plain `nivis` (no `--attr`). In a throwaway shell:
 >
 > ```sh
-> nix shell github:wearetechnative/nivis#nivis github:wearetechnative/nivis#tutor
+> nix shell github:nivis-project/nivis#nivis github:nivis-project/nivis#tutor
 > nivistutor --tutorial features-0.4 --dir nivis-features
 > cd nivis-features
 > nivis plan --var env=prod

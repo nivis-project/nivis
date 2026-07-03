@@ -64,12 +64,12 @@ run is active.
 
 ## Changelog
 
-See the `[0.4.5]` section of [CHANGELOG.md](https://github.com/wearetechnative/nivis/blob/main/CHANGELOG.md).
+See the `[0.4.5]` section of [CHANGELOG.md](https://github.com/nivis-project/nivis/blob/main/CHANGELOG.md).
 
 ## Try it
 
 ```sh
-nix shell github:wearetechnative/nivis#nivis github:wearetechnative/nivis#fake-providers
+nix shell github:nivis-project/nivis#nivis github:nivis-project/nivis#fake-providers
 export AWS_PROFILE=your-profile
 # edit nix/example/remote-state.nix: set your bucket + region
 nivis apply --attr nivis.remoteState     # state -> s3://<bucket>/nivis-tutorial/remote-state/app.json

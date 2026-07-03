@@ -16,8 +16,8 @@ The quickest way: run straight from the flake; Nix builds it on first use and
 caches the result:
 
 ```sh
-nix run github:wearetechnative/nivis#nivis -- --version
-nix run github:wearetechnative/nivis#nivis -- plan      # in your infra dir
+nix run github:nivis-project/nivis#nivis -- --version
+nix run github:nivis-project/nivis#nivis -- plan      # in your infra dir
 ```
 
 Everything after `--` is passed to `nivis`; codegen is `nivis -- gen …`.
@@ -27,7 +27,7 @@ Everything after `--` is passed to `nivis`; codegen is `nivis -- gen …`.
 Drop into a shell with `nivis` on `PATH` for the session, handy while iterating:
 
 ```sh
-nix shell github:wearetechnative/nivis#nivis
+nix shell github:nivis-project/nivis#nivis
 nivis --version
 ```
 
@@ -36,7 +36,7 @@ nivis --version
 Add `nivis` to your user profile so it's always available:
 
 ```sh
-nix profile install github:wearetechnative/nivis#nivis
+nix profile install github:nivis-project/nivis#nivis
 nivis --version
 ```
 

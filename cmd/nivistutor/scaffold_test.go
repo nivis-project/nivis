@@ -24,7 +24,7 @@ func TestScaffoldWritesStarterFiles(t *testing.T) {
 	for _, tut := range ts {
 		t.Run(tut.Name, func(t *testing.T) {
 			dir := t.TempDir()
-			written, err := scaffold(tut.Name, scaffoldOptions{Dir: dir, NivisRef: "github:wearetechnative/nivis/v9.9.9"})
+			written, err := scaffold(tut.Name, scaffoldOptions{Dir: dir, NivisRef: "github:nivis-project/nivis/v9.9.9"})
 			if err != nil {
 				t.Fatalf("scaffold: %v", err)
 			}
@@ -51,7 +51,7 @@ func TestScaffoldWritesStarterFiles(t *testing.T) {
 			if strings.Contains(string(fl), nivisRefPlaceholder) {
 				t.Errorf("flake.nix still contains the %s placeholder", nivisRefPlaceholder)
 			}
-			if !strings.Contains(string(fl), "github:wearetechnative/nivis/v9.9.9") {
+			if !strings.Contains(string(fl), "github:nivis-project/nivis/v9.9.9") {
 				t.Errorf("flake.nix did not pin the supplied nivis ref:\n%s", fl)
 			}
 		})
