@@ -8,9 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/provider"
-	"github.com/wearetechnative/nivis/internal/registry"
+	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/registry"
 )
 
 // TestAWSConfigureAndPlan is gated by TERRAE_NIVIS_NET_TESTS=1 and requires AWS

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 func TestSnapshotRoundTripsThroughRestore(t *testing.T) {

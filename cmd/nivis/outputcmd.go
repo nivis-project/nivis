@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/wearetechnative/nivis/internal/phase"
+	"github.com/nivis-project/nivis/internal/phase"
 )
 
 // outputCmd prints a stack's declared outputs (the `outputs` arg to toIR),

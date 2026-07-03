@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/apply"
-	"github.com/wearetechnative/nivis/internal/ir"
-	"github.com/wearetechnative/nivis/internal/plan"
-	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/apply"
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/plan"
+	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // buildProvider compiles a fake provider binary into a temp dir and returns its

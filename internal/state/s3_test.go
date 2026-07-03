@@ -6,8 +6,8 @@ package state_test
 import (
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/fakes3"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/fakes3"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // s3 backend config pointing at a fake S3 server. Region/creds are irrelevant to

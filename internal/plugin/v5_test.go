@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/provider"
 )
 
 // TestV5NegotiationAndRoundTrip spawns the REAL fake v5 provider (provider-gamma)

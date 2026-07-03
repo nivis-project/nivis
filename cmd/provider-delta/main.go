@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/fakeproviderx"
+	"github.com/nivis-project/nivis/internal/fakeproviderx"
 )
 
 // metaType is the nested-object output type: object({ region=string, count=number }).

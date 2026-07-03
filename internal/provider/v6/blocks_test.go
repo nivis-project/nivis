@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/wearetechnative/nivis/internal/provider"
-	"github.com/wearetechnative/nivis/internal/tfplugin6"
+	"github.com/nivis-project/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/tfplugin6"
 )
 
 // blockClient returns a schema with a list-nested and a single-nested block, so

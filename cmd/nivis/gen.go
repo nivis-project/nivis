@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/wearetechnative/nivis/internal/gen"
-	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/gen"
+	"github.com/nivis-project/nivis/internal/plugin"
 )
 
 // genCmd is `nivis gen`: generate typed Nix constructors from a provider's

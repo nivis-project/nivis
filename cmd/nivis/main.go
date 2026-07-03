@@ -14,16 +14,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/wearetechnative/nivis/internal/destroy"
-	"github.com/wearetechnative/nivis/internal/ir"
-	"github.com/wearetechnative/nivis/internal/ledger"
-	"github.com/wearetechnative/nivis/internal/phase"
-	"github.com/wearetechnative/nivis/internal/plan"
-	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/refresh"
-	"github.com/wearetechnative/nivis/internal/registry"
-	"github.com/wearetechnative/nivis/internal/state"
-	"github.com/wearetechnative/nivis/internal/vars"
+	"github.com/nivis-project/nivis/internal/destroy"
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/ledger"
+	"github.com/nivis-project/nivis/internal/phase"
+	"github.com/nivis-project/nivis/internal/plan"
+	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/refresh"
+	"github.com/nivis-project/nivis/internal/registry"
+	"github.com/nivis-project/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/vars"
 )
 
 var (

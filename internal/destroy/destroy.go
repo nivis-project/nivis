@@ -10,11 +10,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wearetechnative/nivis/internal/graph"
-	"github.com/wearetechnative/nivis/internal/ir"
-	"github.com/wearetechnative/nivis/internal/plan"
-	"github.com/wearetechnative/nivis/internal/provider"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/graph"
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/plan"
+	"github.com/nivis-project/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // Manager is the provider-client seam (internal/plugin.Manager satisfies it).

@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/provider"
-	"github.com/wearetechnative/nivis/internal/registry"
+	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/registry"
 )
 
 // TestAWSEC2NixOSServesHTTP is gated by TERRAE_NIVIS_NET_TESTS=1 + AWS creds, and

@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/fakeprovider"
+	"github.com/nivis-project/nivis/internal/fakeprovider"
 )
 
 // helpers ---------------------------------------------------------------------

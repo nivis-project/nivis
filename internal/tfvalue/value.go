@@ -13,8 +13,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/tfcodec"
-	"github.com/wearetechnative/nivis/internal/tfplugin6"
+	"github.com/nivis-project/nivis/internal/tfcodec"
+	"github.com/nivis-project/nivis/internal/tfplugin6"
 )
 
 // ObjectType builds the tftypes.Object for a schema block: one attribute per

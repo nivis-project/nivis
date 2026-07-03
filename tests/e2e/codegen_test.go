@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/gen"
-	"github.com/wearetechnative/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/gen"
+	"github.com/nivis-project/nivis/internal/plugin"
 )
 
 // TestCodegenAgainstFake runs the codegen end-to-end against the real

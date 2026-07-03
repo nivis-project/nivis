@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/wearetechnative/nivis/internal/tfplugin6"
+	"github.com/nivis-project/nivis/internal/tfplugin6"
 )
 
 // countingClient is a minimal tfplugin6.ProviderClient that records how many

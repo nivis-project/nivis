@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/fakeproviderv5"
+	"github.com/nivis-project/nivis/internal/fakeproviderv5"
 )
 
 // GammaWidget is the gamma_widget resource definition, exported so the

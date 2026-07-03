@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/ir"
-	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/provider"
 )
 
 // stubClient is an in-memory provider.Client for unit-testing the plan engine's

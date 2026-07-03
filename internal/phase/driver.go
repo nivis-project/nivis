@@ -18,13 +18,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wearetechnative/nivis/internal/apply"
-	"github.com/wearetechnative/nivis/internal/graph"
-	"github.com/wearetechnative/nivis/internal/ir"
-	"github.com/wearetechnative/nivis/internal/ledger"
-	"github.com/wearetechnative/nivis/internal/plan"
-	"github.com/wearetechnative/nivis/internal/provider"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/apply"
+	"github.com/nivis-project/nivis/internal/graph"
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/ledger"
+	"github.com/nivis-project/nivis/internal/plan"
+	"github.com/nivis-project/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // ProviderManager spawns/pools provider clients by identity. internal/plugin's

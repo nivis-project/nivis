@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/wearetechnative/nivis/internal/ledger"
+	"github.com/nivis-project/nivis/internal/ledger"
 )
 
 // NixEvaluator produces the IR JSON for a given outputs ledger. The real impl

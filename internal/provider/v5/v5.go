@@ -12,8 +12,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/provider"
-	"github.com/wearetechnative/nivis/internal/tfplugin5"
+	"github.com/nivis-project/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/tfplugin5"
 )
 
 // Backend wraps a tfprotov5 gRPC client as a version-neutral provider.Client.

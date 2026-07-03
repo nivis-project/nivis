@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/ir"
 )
 
 // minimal valid IR with a substitutable backend snippet. %s is the (optional)

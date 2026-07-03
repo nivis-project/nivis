@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/tfcodec"
+	"github.com/nivis-project/nivis/internal/tfcodec"
 )
 
 // Attr is a rich-typed resource attribute.

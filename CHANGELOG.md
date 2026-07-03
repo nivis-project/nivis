@@ -8,6 +8,19 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Renamed the Go module path `github.com/wearetechnative/nivis` ->
+  `github.com/nivis-project/nivis` to match the repository's new home (done while
+  there are no external consumers). All imports and the proto `go_package` options
+  updated; no behaviour change. (The generated `*.pb.go` file descriptors keep the
+  old path embedded until `proto/generate.sh` is next run with protoc available;
+  harmless at runtime.)
+
+### Security
+- Bumped `google.golang.org/grpc` 1.79.2 -> 1.79.3 to fix GHSA-p77j-4mvh-x3m3
+  (authorization bypass via a missing leading slash in `:path`). Updated the flake
+  `vendorHash` accordingly.
+
 ## [0.4.7] - 2026-07-03
 
 ### Changed

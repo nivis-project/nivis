@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/fakeprovider"
+	"github.com/nivis-project/nivis/internal/fakeprovider"
 )
 
 // BetaRecord is the beta_record resource definition, exported for the

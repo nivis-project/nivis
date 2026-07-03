@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // OpenBackend selects the right store from an IR backend block and errors clearly

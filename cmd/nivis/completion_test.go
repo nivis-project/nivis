@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/nivis-project/nivis/internal/state"
 	"github.com/spf13/cobra"
-	"github.com/wearetechnative/nivis/internal/state"
 )
 
 // stateIDs completes to the resource ids in the state file, with NoFileComp so a

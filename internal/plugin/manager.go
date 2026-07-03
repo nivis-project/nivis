@@ -17,11 +17,11 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
-	"github.com/wearetechnative/nivis/internal/provider"
-	v5 "github.com/wearetechnative/nivis/internal/provider/v5"
-	v6 "github.com/wearetechnative/nivis/internal/provider/v6"
-	"github.com/wearetechnative/nivis/internal/tfplugin5"
-	"github.com/wearetechnative/nivis/internal/tfplugin6"
+	"github.com/nivis-project/nivis/internal/provider"
+	v5 "github.com/nivis-project/nivis/internal/provider/v5"
+	v6 "github.com/nivis-project/nivis/internal/provider/v6"
+	"github.com/nivis-project/nivis/internal/tfplugin5"
+	"github.com/nivis-project/nivis/internal/tfplugin6"
 )
 
 // handshake matches the values tfprotov6's tf6server serves with. They MUST be

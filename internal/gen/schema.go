@@ -7,7 +7,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/provider"
 )
 
 // Fetch returns the normalized resource models for codegen via the

@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/provider"
 )
 
 // TestDeltaCollectionsRoundTrip drives the REAL provider-delta binary through

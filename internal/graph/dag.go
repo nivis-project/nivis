@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/ir"
 )
 
 // DAG is a dependency graph over resource ids. An edge from A to B means "B

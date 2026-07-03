@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wearetechnative/nivis/internal/ir"
-	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/provider"
 )
 
 // Op is the operation a plan implies for a resource.

@@ -7,12 +7,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/fakes3"
-	"github.com/wearetechnative/nivis/internal/ledger"
-	"github.com/wearetechnative/nivis/internal/phase"
-	"github.com/wearetechnative/nivis/internal/plan"
-	"github.com/wearetechnative/nivis/internal/plugin"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/fakes3"
+	"github.com/nivis-project/nivis/internal/ledger"
+	"github.com/nivis-project/nivis/internal/phase"
+	"github.com/nivis-project/nivis/internal/plan"
+	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // TestS3BackendRoundTrip proves the S3 remote state backend end to end against the

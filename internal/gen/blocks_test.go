@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/provider"
 )
 
 // A resource with a list-nested and a single-nested block emits each as a

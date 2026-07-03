@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/fakes3"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/fakes3"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // openS3Locker opens an s3 store and asserts it implements Locker.

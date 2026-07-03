@@ -4,7 +4,7 @@
 package graph
 
 import (
-	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/ir"
 )
 
 // Outputs maps a resource id to its known output attributes.

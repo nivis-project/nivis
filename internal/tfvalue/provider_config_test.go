@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/tfplugin6"
+	"github.com/nivis-project/nivis/internal/tfplugin6"
 )
 
 // TestProviderConfigRoundTrip proves that a provider config map declared in Nix

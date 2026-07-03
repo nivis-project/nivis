@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/graph"
-	"github.com/wearetechnative/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/graph"
+	"github.com/nivis-project/nivis/internal/ir"
 )
 
 func mustIngest(t *testing.T, s string) *ir.Graph {

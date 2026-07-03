@@ -9,8 +9,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/wearetechnative/nivis/internal/tfcodec"
-	"github.com/wearetechnative/nivis/internal/tfplugin5"
+	"github.com/nivis-project/nivis/internal/tfcodec"
+	"github.com/nivis-project/nivis/internal/tfplugin5"
 )
 
 // This is the v5 mirror of internal/tfvalue: the same encode/decode logic

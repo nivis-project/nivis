@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // runPush drives the push command with the given stdin and args, returning the

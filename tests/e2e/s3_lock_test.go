@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/fakes3"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/fakes3"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // TestS3StateLockMutualExclusion proves B2 end to end against the hermetic fake

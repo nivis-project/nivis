@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/wearetechnative/nivis/internal/graph"
+	"github.com/nivis-project/nivis/internal/graph"
 )
 
 // Ledger is the contract's { phase, outputs, vars } shape. `outputs` accumulates

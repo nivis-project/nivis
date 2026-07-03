@@ -9,6 +9,14 @@
 #
 # Toolchain (verified 2026-06): protoc from nixpkgs; the two Go gen plugins via
 # `go install`. Run from the repo root: bash proto/generate.sh
+#
+# NOTE: the .proto `go_package` tracks this module's path. If the module path
+# changes (e.g. the 2026-07 move to github.com/nivis-project/nivis) without protoc
+# on hand, the committed *.pb.go keep the OLD path embedded in their file
+# descriptor (rawDesc) — harmless at runtime (go_package does not affect
+# execution), and this script regenerates them to match on the next run. Do NOT
+# hand-edit the rawDesc string: its length prefix is byte-encoded and a text
+# replace corrupts the descriptor (a proto-init panic).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

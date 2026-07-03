@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 func TestRoundTrip(t *testing.T) {

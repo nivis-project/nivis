@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wearetechnative/nivis/internal/ir"
-	"github.com/wearetechnative/nivis/internal/provider"
-	"github.com/wearetechnative/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/provider"
+	"github.com/nivis-project/nivis/internal/state"
 )
 
 // Apply applies a planned resource, extracts the now-known outputs, and writes
