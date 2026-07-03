@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-07-03
+
 ### Fixed
 - Fixed the remaining stale flake `vendorHash` pins for the `fake-providers` and
   `tutor` packages (the AWS SDK added for the S3 backend changed the vendored set).
@@ -171,7 +173,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.6
 [0.4.5]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.5
 [0.4.4]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.4
 [0.4.3]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.3
