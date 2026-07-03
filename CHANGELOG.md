@@ -8,6 +8,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Fixed the remaining stale flake `vendorHash` pins for the `fake-providers` and
+  `tutor` packages (the AWS SDK added for the S3 backend changed the vendored set).
+  PR #1 fixed the `nivis` package; these two were still failing `nix build
+  .#fake-providers` / `.#tutor` (so `nix shell .#nivis .#fake-providers`, used by
+  the tutorials) with a go-modules hash mismatch. All three packages build now.
+
 ## [0.4.5] - 2026-06-22
 
 ### Added

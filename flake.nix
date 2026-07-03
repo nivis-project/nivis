@@ -84,7 +84,7 @@
           pname = "nivis-fake-providers";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-LjGLaFdEYWqe42JHhRG1IzGqFn7yobbhIeLJ/Enc+l4=";
+          vendorHash = "sha256-V92mGVEAxdQqjH/qPiFkMgzR9OIFhAsFy64zZeV3OPk=";
           subPackages = [
             "cmd/provider-alpha"
             "cmd/provider-beta"
@@ -111,7 +111,7 @@
           pname = "nivistutor";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-LjGLaFdEYWqe42JHhRG1IzGqFn7yobbhIeLJ/Enc+l4=";
+          vendorHash = "sha256-V92mGVEAxdQqjH/qPiFkMgzR9OIFhAsFy64zZeV3OPk=";
           subPackages = [
             "cmd/nivistutor"
             "cmd/provider-alpha"
