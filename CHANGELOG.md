@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-07-03
+
 ### Changed
 - The repository moved to `github.com/nivis-project/nivis`. Updated the GitHub URLs
   throughout (flake refs `github:nivis-project/nivis#…`, clone/run/install commands,
@@ -181,7 +183,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.7
 [0.4.6]: https://github.com/nivis-project/nivis/releases/tag/v0.4.6
 [0.4.5]: https://github.com/nivis-project/nivis/releases/tag/v0.4.5
 [0.4.4]: https://github.com/nivis-project/nivis/releases/tag/v0.4.4
