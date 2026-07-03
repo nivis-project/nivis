@@ -4,6 +4,8 @@
 
 # Nivis
 
+see: https://nivis-project.github.io/nivis/
+
 Nivis lets you manage real infrastructure from Nix: Terraform/OpenTofu **provider
 resources are first-class Nix values**. You write your infra in a flake; a thin
 Go executor speaks the provider plugin protocol directly to **unmodified provider
