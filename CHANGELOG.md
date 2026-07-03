@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-07-03
+
 ### Changed
 - Renamed the Go module path `github.com/wearetechnative/nivis` ->
   `github.com/nivis-project/nivis` to match the repository's new home (done while
@@ -196,7 +198,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.8
 [0.4.7]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.7
 [0.4.6]: https://github.com/nivis-project/nivis/releases/tag/v0.4.6
 [0.4.5]: https://github.com/nivis-project/nivis/releases/tag/v0.4.5
