@@ -56,7 +56,7 @@
           pname = "nivis";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-9G0rhcwNqho0TClnRAmiTPid1DjQezCChFBTYQ/NO4s=";
+          vendorHash = "sha256-TkxtYjR7jVEI5vamsOWfaDLA8x8eN00x9qA4Cj7GP8Q=";
           subPackages = [ "cmd/nivis" ];
           # Inject the canonical version into the binary (overrides the "dev"
           # default in cmd/nivis). -s -w strip debug info.
@@ -84,7 +84,7 @@
           pname = "nivis-fake-providers";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-9G0rhcwNqho0TClnRAmiTPid1DjQezCChFBTYQ/NO4s=";
+          vendorHash = "sha256-TkxtYjR7jVEI5vamsOWfaDLA8x8eN00x9qA4Cj7GP8Q=";
           subPackages = [
             "cmd/provider-alpha"
             "cmd/provider-beta"
@@ -111,7 +111,7 @@
           pname = "nivistutor";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-9G0rhcwNqho0TClnRAmiTPid1DjQezCChFBTYQ/NO4s=";
+          vendorHash = "sha256-TkxtYjR7jVEI5vamsOWfaDLA8x8eN00x9qA4Cj7GP8Q=";
           subPackages = [
             "cmd/nivistutor"
             "cmd/provider-alpha"

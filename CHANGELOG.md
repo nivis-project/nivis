@@ -22,6 +22,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   serialized descriptor's length prefixes adjusted so it stays valid; verified by
   the packages' descriptor `init` and the full `go test ./...` suite.
 
+### Security
+- Bumped `google.golang.org/grpc` 1.79.3 -> 1.82.1 (GHSA-hrxh-6v49-42gf: xDS RBAC
+  authorization bypass + HTTP/2 Rapid Reset DoS) and `golang.org/x/net` 0.48.0 ->
+  0.55.0 (GHSA-5cv4-jp36-h3mw: HTML-parser DoS), clearing both Dependabot alerts.
+  Real exposure was low — Nivis speaks gRPC only to locally spawned provider
+  binaries (no xDS/RBAC, no network-facing server) and never parses HTML (`x/net`
+  is a transitive dep the module doesn't import — `go mod why` reports it unused).
+  Updated the flake `vendorHash` accordingly; `go build`/`go test ./...` and
+  `nix build .#nivis` pass.
+
 ## [0.4.8] - 2026-07-03
 
 ### Changed
