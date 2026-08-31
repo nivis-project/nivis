@@ -8,6 +8,20 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Finished the `wearetechnative` -> `nivis-project` move for the references the
+  0.4.7/0.4.8 renames missed: the docs-site GitHub links in `book.toml`
+  (`git-repository-url`, `edit-url-template`), the social-preview/canonical URLs in
+  `docs-site/theme/head.hbs` and `docs-site/README.md` (now
+  `https://nivis-project.github.io/nivis/`), the `scripts/release.sh` repo URL, the
+  `proto/generate.sh` `--go_opt`/`--go-grpc_opt` module paths, and the
+  reference-style changelog links.
+- Rewrote the embedded `go_package` in the `tfplugin5`/`tfplugin6` `*.pb.go` file
+  descriptors to `github.com/nivis-project/nivis/...`, resolving the "old path
+  embedded" caveat noted in 0.4.8. Done by hand (protoc unavailable) with the
+  serialized descriptor's length prefixes adjusted so it stays valid; verified by
+  the packages' descriptor `init` and the full `go test ./...` suite.
+
 ## [0.4.8] - 2026-07-03
 
 ### Changed
@@ -198,9 +212,9 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/wearetechnative/nivis/compare/v0.4.8...HEAD
-[0.4.8]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.8
-[0.4.7]: https://github.com/wearetechnative/nivis/releases/tag/v0.4.7
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.4.8...HEAD
+[0.4.8]: https://github.com/nivis-project/nivis/releases/tag/v0.4.8
+[0.4.7]: https://github.com/nivis-project/nivis/releases/tag/v0.4.7
 [0.4.6]: https://github.com/nivis-project/nivis/releases/tag/v0.4.6
 [0.4.5]: https://github.com/nivis-project/nivis/releases/tag/v0.4.5
 [0.4.4]: https://github.com/nivis-project/nivis/releases/tag/v0.4.4

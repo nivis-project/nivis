@@ -8662,7 +8662,7 @@ const file_tfplugin6_proto_rawDesc = "" +
 	"\vUnlockState\x12\x1e.tfplugin6.UnlockState.Request\x1a\x1f.tfplugin6.UnlockState.Response\x12H\n" +
 	"\tGetStates\x12\x1c.tfplugin6.GetStates.Request\x1a\x1d.tfplugin6.GetStates.Response\x12N\n" +
 	"\vDeleteState\x12\x1e.tfplugin6.DeleteState.Request\x1a\x1f.tfplugin6.DeleteState.Response\x12Q\n" +
-	"\fStopProvider\x12\x1f.tfplugin6.StopProvider.Request\x1a .tfplugin6.StopProvider.ResponseB5Z3github.com/wearetechnative/nivis/internal/tfplugin6b\x06proto3"
+	"\fStopProvider\x12\x1f.tfplugin6.StopProvider.Request\x1a .tfplugin6.StopProvider.ResponseB3Z1github.com/nivis-project/nivis/internal/tfplugin6b\x06proto3"
 
 var (
 	file_tfplugin6_proto_rawDescOnce sync.Once

@@ -5,7 +5,7 @@ It **reuses** the repository's Markdown docs (via `{{#include}}`) so there is on
 source of truth, and applies the [brand tokens](../docs/BRAND.md) through a custom
 theme.
 
-**Live:** <https://wearetechnative.github.io/nivis/> — deployed to GitHub
+**Live:** <https://nivis-project.github.io/nivis/> — deployed to GitHub
 Pages by `.github/workflows/docs.yml` on every push to `main` (Pages source =
 GitHub Actions). It's a project page served under the `/nivis/` subpath,
 which is why `book.toml` sets `site-url = "/nivis/"`.

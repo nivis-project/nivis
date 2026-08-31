@@ -13,8 +13,9 @@ default-theme = "navy"
 preferred-dark-theme = "navy"
 no-section-label = false
 additional-css = ["theme/custom.css"]
-git-repository-url = "https://github.com/wearetechnative/nivis"
-edit-url-template = "https://github.com/wearetechnative/nivis/edit/main/docs-site/{path}"
+
+git-repository-url = "https://github.com/nivis-project/nivis"
+edit-url-template = "https://github.com/nivis-project/nivis/edit/main/docs-site/{path}"
 
 [output.html.playground]
 runnable = false

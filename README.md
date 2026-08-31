@@ -4,7 +4,6 @@
 
 # Nivis
 
-see: https://nivis-project.github.io/nivis/
 
 Nivis lets you manage real infrastructure from Nix: Terraform/OpenTofu **provider
 resources are first-class Nix values**. You write your infra in a flake; a thin
@@ -79,7 +78,7 @@ verifies real providers from the OpenTofu registry on first use.)
 - **How does it compare?** An honest **[comparison](docs/COMPARISON.md)** with
   Terranix, OpenTofu/Terraform, Pulumi, NixOps, CDK and CloudFormation, including
   where Nivis is still young.
-- Browse it all on the **[docs site](https://wearetechnative.github.io/nivis/)**.
+- Browse it all on the **[docs site](https://nivis-project.github.io/nivis/)**.
 
 ## How it works (one paragraph)
 

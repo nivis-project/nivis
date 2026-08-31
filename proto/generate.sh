@@ -31,8 +31,8 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 
 "$PROTOC" \
   --proto_path=proto \
-  --go_out=. --go_opt=module=github.com/wearetechnative/nivis \
-  --go-grpc_out=. --go-grpc_opt=module=github.com/wearetechnative/nivis \
+  --go_out=. --go_opt=module=github.com/nivis-project/nivis \
+  --go-grpc_out=. --go-grpc_opt=module=github.com/nivis-project/nivis \
   proto/tfplugin6.proto proto/tfplugin5.proto
 
 echo "Generated internal/tfplugin6/{tfplugin6.pb.go,tfplugin6_grpc.pb.go}"
