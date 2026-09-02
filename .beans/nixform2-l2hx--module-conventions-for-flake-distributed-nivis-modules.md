@@ -50,3 +50,19 @@ keeps `vendorHash`/lockfiles in the module repo. Document as the standard.
   provider-presence validation).
 - The TechNative extraction (`nivis-aws-form-action`, `nivis-aws-amplify-site`)
   can serve as the reference implementation / acceptance case.
+
+
+---
+UPDATE 2026-09-02: the reference implementation EXISTS and is production-proven.
+- github.com/wearetechnative/nivis-aws-form-action (altcha form backend: Go
+  Lambda + APIGW v2 + SES; exports lib.mkLambdaZip pkgs for consumer-toolchain
+  artifact builds — reproducible zip, envelope timestamps normalized)
+- github.com/wearetechnative/nivis-aws-amplify-site (Amplify app/branch/domain/
+  service role, redirects, optional formProxy 200-rewrite option)
+Conventions as implemented: `{ nivis, namePrefix ? "", cfg }` -> `{ resources,
+dataSources ? , outputs }`; namePrefix "" keeps canonical names (extraction-
+from-inline stays id-stable); provider referenced by id "aws", supplied by the
+consumer. Migration of the technative.eu v2026 domain was gated on an eval-level
+IR diff (ids + configs identical except the acknowledged lambda zip-envelope
+settle, binary byte-identical) and a post-settle plan of "No changes. 14
+resource(s) up to date."
