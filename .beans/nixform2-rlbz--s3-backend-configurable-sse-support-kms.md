@@ -5,7 +5,8 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-08-31T21:22:26Z
-updated_at: 2026-08-31T21:22:26Z
+updated_at: 2026-09-02T10:14:39Z
+parent: nixform2-kovh
 ---
 
 The S3 state backend hardcodes `ServerSideEncryption: AES256` (SSE-S3) on every

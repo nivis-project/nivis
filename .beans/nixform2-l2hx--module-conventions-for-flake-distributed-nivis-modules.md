@@ -5,7 +5,8 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-09-01T13:49:06Z
-updated_at: 2026-09-01T13:49:06Z
+updated_at: 2026-09-02T10:14:26Z
+parent: nixform2-kovh
 ---
 
 The first real-world nivis deployment (TechNative web-dns, `website_technative_eu_v2026`:

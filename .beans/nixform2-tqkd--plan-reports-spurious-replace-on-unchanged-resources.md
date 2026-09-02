@@ -5,7 +5,8 @@ status: completed
 type: task
 priority: normal
 created_at: 2026-08-31T22:04:31Z
-updated_at: 2026-09-02T00:00:00Z
+updated_at: 2026-09-02T10:15:08Z
+parent: nixform2-kovh
 ---
 
 On an **unchanged, freshly-applied** stack, `nivis plan` reports `-/+` (replace)

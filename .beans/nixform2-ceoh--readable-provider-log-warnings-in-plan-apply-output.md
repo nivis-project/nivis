@@ -5,7 +5,8 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-08-31T22:04:31Z
-updated_at: 2026-08-31T22:04:31Z
+updated_at: 2026-09-02T10:14:33Z
+parent: nixform2-kovh
 ---
 
 `nivis plan`/`apply` forward the provider's raw hclog diagnostic lines straight
