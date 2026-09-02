@@ -252,10 +252,23 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	if err != nil {
 		return provider.PlanResult{}, err
 	}
+	// ProposedNewState is NOT the config: against an existing resource it must
+	// merge prior values into unset computed attributes (Terraform core's
+	// objchange.ProposedNew), or SDKv2 providers see phantom changes and flag
+	// ForceNew computed attrs as requires-replace on every plan. On a create
+	// (no prior) the config encoding — unknown for unset computed — is correct.
+	proposed := cfgDV
+	if req.Prior != nil {
+		mp, perr := tfvalue.ProposedMsgPack(raw.objType, raw.computed, req.ResolvedCfg, req.Prior)
+		if perr != nil {
+			return provider.PlanResult{}, fmt.Errorf("encode proposed state: %w", perr)
+		}
+		proposed = &tfplugin6.DynamicValue{Msgpack: mp}
+	}
 	resp, err := b.client.PlanResourceChange(ctx, &tfplugin6.PlanResourceChange_Request{
 		TypeName:         req.TypeName,
 		Config:           cfgDV,
-		ProposedNewState: cfgDV,
+		ProposedNewState: proposed,
 		PriorState:       prior,
 	})
 	if err != nil {

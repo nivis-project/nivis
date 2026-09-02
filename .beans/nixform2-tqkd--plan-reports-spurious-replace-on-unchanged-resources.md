@@ -1,11 +1,11 @@
 ---
 # nixform2-tqkd
 title: plan reports spurious -/+ replace on unchanged resources (stored == desired)
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-08-31T22:04:31Z
-updated_at: 2026-08-31T22:04:31Z
+updated_at: 2026-09-02T00:00:00Z
 ---
 
 On an **unchanged, freshly-applied** stack, `nivis plan` reports `-/+` (replace)
@@ -69,3 +69,23 @@ with no config change.
   stored state equals desired.
 - Confirm/guarantee apply idempotency for all-ForceNew / quirky-read resource
   types (`aws_lambda_permission`, `aws_iam_role_policy`, `aws_iam_role`).
+
+
+---
+DONE. Root cause: Plan sent the raw encoded CONFIG as ProposedNewState
+(v5.go/v6.go), skipping Terraform core's objchange.ProposedNew merge. Unset
+computed attributes were therefore encoded as UNKNOWN against an existing
+resource; SDKv2 providers read that as "this value will change", and when the
+attribute is also ForceNew (aws_iam_role.name_prefix,
+aws_iam_role_policy.name_prefix, aws_lambda_permission.statement_id_prefix)
+they flag requires-replace on every plan — hence the perpetual -/+ on exactly
+those types while e.g. aws_iam_role_policy_attachment (no computed+ForceNew
+attrs) planned clean. It was NOT plan-display-only: apply consumed the same
+result and genuinely destroyed+recreated the three resources every run.
+
+Fix: tfvalue.ProposedMsgPack builds the proposed state per the objchange
+contract (config where set; PRIOR value for unset computed attrs; null for
+unset plain attrs; unknown only for unresolved refs / creates), wired into both
+v5 and v6 Plan. Unit test: internal/tfvalue/proposed_test.go. Verified against
+the real AWS provider + live TechNative v2026 stack: plan now reports
+"No changes. 14 resource(s) up to date."

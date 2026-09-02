@@ -232,3 +232,55 @@ func DecodeState(objType tftypes.Object, dv *tfplugin6.DynamicValue) (map[string
 func valueToGo(v tftypes.Value) (interface{}, bool, error) {
 	return tfcodec.ValueToGo(v)
 }
+
+// ProposedMsgPack builds the msgpack body of a ProposedNewState for
+// PlanResourceChange against an EXISTING resource, following Terraform core's
+// objchange.ProposedNew contract at attribute granularity:
+//
+//   - attributes set in config use the config value (unresolved __ref/__derived
+//     leaves become unknown);
+//   - computed attributes absent from config take their PRIOR value — sending
+//     unknown here (as EncodeConfig rightly does for a create) makes SDKv2
+//     providers see a phantom "will change" diff, and when such an attribute is
+//     also ForceNew (aws_iam_role.name_prefix,
+//     aws_lambda_permission.statement_id_prefix, ...) the provider flags
+//     requires-replace on every plan of an UNCHANGED resource (perpetual -/+);
+//   - non-computed attributes absent from config are null, so intentionally
+//     unsetting an optional attribute still plans as a removal.
+//
+// The caller wraps the bytes in its protocol version's DynamicValue (the
+// msgpack body is identical for tfprotov5 and v6).
+func ProposedMsgPack(objType tftypes.Object, computed map[string]bool, config, prior map[string]interface{}) ([]byte, error) {
+	vals := map[string]tftypes.Value{}
+	for name, attrType := range objType.AttributeTypes {
+		raw, present := config[name]
+		switch {
+		case present && isUnresolved(raw):
+			vals[name] = tftypes.NewValue(attrType, tftypes.UnknownValue)
+		case present:
+			v, err := goToValue(attrType, raw)
+			if err != nil {
+				return nil, fmt.Errorf("attr %q: %w", name, err)
+			}
+			vals[name] = v
+		case computed[name]:
+			praw, ok := prior[name]
+			if !ok || praw == nil {
+				vals[name] = tftypes.NewValue(attrType, nil)
+				continue
+			}
+			v, err := goToValue(attrType, praw)
+			if err != nil {
+				return nil, fmt.Errorf("attr %q (prior): %w", name, err)
+			}
+			vals[name] = v
+		default:
+			vals[name] = tftypes.NewValue(attrType, nil)
+		}
+	}
+	mp, err := tftypes.NewValue(objType, vals).MarshalMsgPack(objType) //nolint:staticcheck // msgpack is the wire format
+	if err != nil {
+		return nil, fmt.Errorf("marshal proposed msgpack: %w", err)
+	}
+	return mp, nil
+}

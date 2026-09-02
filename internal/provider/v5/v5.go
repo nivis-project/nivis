@@ -14,6 +14,7 @@ import (
 
 	"github.com/nivis-project/nivis/internal/provider"
 	"github.com/nivis-project/nivis/internal/tfplugin5"
+	"github.com/nivis-project/nivis/internal/tfvalue"
 )
 
 // Backend wraps a tfprotov5 gRPC client as a version-neutral provider.Client.
@@ -242,10 +243,21 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	if err != nil {
 		return provider.PlanResult{}, err
 	}
+	// See the v6 backend: proposed state merges prior values into unset computed
+	// attributes for an existing resource, or SDKv2 providers flag ForceNew
+	// computed attrs as requires-replace on every plan (perpetual -/+).
+	proposed := cfgDV
+	if req.Prior != nil {
+		mp, perr := tfvalue.ProposedMsgPack(raw.objType, raw.computed, req.ResolvedCfg, req.Prior)
+		if perr != nil {
+			return provider.PlanResult{}, fmt.Errorf("encode proposed state: %w", perr)
+		}
+		proposed = &tfplugin5.DynamicValue{Msgpack: mp}
+	}
 	resp, err := b.client.PlanResourceChange(ctx, &tfplugin5.PlanResourceChange_Request{
 		TypeName:         req.TypeName,
 		Config:           cfgDV,
-		ProposedNewState: cfgDV,
+		ProposedNewState: proposed,
 		PriorState:       prior,
 	})
 	if err != nil {
