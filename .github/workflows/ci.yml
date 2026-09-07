@@ -1,0 +1,51 @@
+# The test gate, on every push to main and every pull request.
+#
+# `nix flake check` is the gate: it builds the CLI and the fake providers, runs
+# `go test ./...`, enforces the coverage floors in scripts/coverage.sh, and checks
+# that the tree is gofmt-clean. Two gates cannot run inside the flake's build
+# sandbox (no `nix` binary, no mdbook there), so they run as their own steps:
+# the Nix-library tests and the docs checks. Together these are exactly what
+# scripts/ship-change.sh runs locally before it archives and commits.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read # nothing is published from here
+
+# One run per ref: a new push supersedes an in-flight check of the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      # Build + `go test ./...` + coverage floors + gofmt. --print-build-logs so
+      # a failing check shows its output instead of just a store path.
+      - name: nix flake check
+        run: nix flake check --print-build-logs
+
+      # Needs `nix eval`, which the build sandbox does not have.
+      - name: Nix-library tests
+        run: bash tests/run-nix-tests.sh
+
+      # Docs single-source-of-truth + the docs-coverage gate. The mdbook build
+      # check inside it skips itself when mdbook is absent (the docs workflow
+      # builds the site).
+      - name: Docs checks
+        run: bash tests/check-docs-ssot.sh
