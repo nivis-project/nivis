@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-07
+
 ### Added
 - `nivis state migrate --to-remote` / `--from-remote` moves the whole state
   document between your local state file and the backend your configuration
@@ -248,7 +250,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.4.8...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/nivis-project/nivis/releases/tag/v0.5.0
 [0.4.8]: https://github.com/nivis-project/nivis/releases/tag/v0.4.8
 [0.4.7]: https://github.com/nivis-project/nivis/releases/tag/v0.4.7
 [0.4.6]: https://github.com/nivis-project/nivis/releases/tag/v0.4.6
