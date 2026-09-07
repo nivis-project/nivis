@@ -47,6 +47,11 @@
       # Single source of truth for the version: the top-level VERSION file.
       version = nixpkgs.lib.fileContents ./VERSION;
 
+      # Go module dependency hash, shared by every buildGoModule call below (they
+      # all build the same go.mod). If go.mod changes, `nix build` reports the
+      # expected hash; update it here, in this one place.
+      goVendorHash = "sha256-TkxtYjR7jVEI5vamsOWfaDLA8x8eN00x9qA4Cj7GP8Q=";
+
       mkCli =
         system:
         let
@@ -56,7 +61,7 @@
           pname = "nivis";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-TkxtYjR7jVEI5vamsOWfaDLA8x8eN00x9qA4Cj7GP8Q=";
+          vendorHash = goVendorHash;
           subPackages = [ "cmd/nivis" ];
           # Inject the canonical version into the binary (overrides the "dev"
           # default in cmd/nivis). -s -w strip debug info.
@@ -84,7 +89,7 @@
           pname = "nivis-fake-providers";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-TkxtYjR7jVEI5vamsOWfaDLA8x8eN00x9qA4Cj7GP8Q=";
+          vendorHash = goVendorHash;
           subPackages = [
             "cmd/provider-alpha"
             "cmd/provider-beta"
@@ -111,7 +116,7 @@
           pname = "nivistutor";
           inherit version;
           src = ./.;
-          vendorHash = "sha256-TkxtYjR7jVEI5vamsOWfaDLA8x8eN00x9qA4Cj7GP8Q=";
+          vendorHash = goVendorHash;
           subPackages = [
             "cmd/nivistutor"
             "cmd/provider-alpha"
@@ -130,6 +135,80 @@
             mainProgram = "nivistutor";
           };
         };
+      # `nix flake check` gates: the module builds, the whole test suite passes,
+      # coverage holds its floors, and the tree is gofmt-clean. These run in the
+      # build sandbox (no network, no writable $HOME), which is why the
+      # Nix-library tests (tests/run-nix-tests.sh, which needs `nix eval`) and the
+      # docs checks (which need mdbook) are NOT here: scripts/ship-change.sh runs
+      # those alongside `nix flake check`.
+      #
+      # A Go check builds nothing and installs nothing — the check IS the run.
+      mkGoCheck =
+        system:
+        { name, phase }:
+        let
+          pkgs = pkgsFor system;
+        in
+        pkgs.buildGoModule {
+          pname = name;
+          inherit version;
+          src = ./.;
+          vendorHash = goVendorHash;
+          buildPhase = ''
+            runHook preBuild
+            runHook postBuild
+          '';
+          doCheck = true;
+          checkPhase = ''
+            runHook preCheck
+            ${phase}
+            runHook postCheck
+          '';
+          installPhase = ''
+            runHook preInstall
+            touch $out
+            runHook postInstall
+          '';
+        };
+
+      mkChecks =
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        {
+          # The CLI and the fake providers actually compile.
+          build = mkCli system;
+          fake-providers = mkFakeProviders system;
+
+          # The whole Go suite. The e2e tests skip themselves when `nix` is not on
+          # PATH (it is not, in the sandbox); everything else runs.
+          go-tests = mkGoCheck system {
+            name = "nivis-go-tests";
+            phase = "go test ./...";
+          };
+
+          # Coverage floors — scripts/coverage.sh documents the ratchet and why
+          # the generated protobuf packages are excluded from the overall number.
+          coverage = mkGoCheck system {
+            name = "nivis-coverage";
+            phase = "bash scripts/coverage.sh";
+          };
+
+          # The tree is gofmt-clean.
+          gofmt = pkgs.runCommand "nivis-gofmt" { nativeBuildInputs = [ pkgs.go ]; } ''
+            cd ${./.}
+            export HOME=$TMPDIR
+            bad="$(gofmt -l cmd internal tests)"
+            if [ -n "$bad" ]; then
+              echo "gofmt: these files are not formatted:" >&2
+              echo "$bad" >&2
+              exit 1
+            fi
+            touch $out
+          '';
+        };
+
     in
     {
       # The public library, for `import`/`lib` consumers. Pure builtins.
@@ -195,6 +274,9 @@
           ec2-image = ec2NixosImage;
         }
       );
+
+      # `nix flake check` runs these: build, tests, coverage floors, gofmt.
+      checks = forAllSystems mkChecks;
 
       # CLI app: `nix run .#nivis -- …` (codegen: `nix run .#nivis -- gen …`).
       apps = forAllSystems (

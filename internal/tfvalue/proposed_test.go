@@ -65,9 +65,9 @@ func TestProposedMsgPack_MergesPriorIntoUnsetComputed(t *testing.T) {
 		}
 	}
 
-	assertKnownString("name", "web")        // config wins
-	assertKnownString("name_prefix", "")    // MERGED from prior — the fix
-	assertKnownString("id", "AROA123")      // pure computed carries prior
+	assertKnownString("name", "web")     // config wins
+	assertKnownString("name_prefix", "") // MERGED from prior — the fix
+	assertKnownString("id", "AROA123")   // pure computed carries prior
 	if attrs["desc"].IsKnown() == false || !attrs["desc"].IsNull() {
 		t.Fatalf("desc = %v, want known null (unsetting an optional attr plans a removal)", attrs["desc"])
 	}

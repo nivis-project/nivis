@@ -2,8 +2,14 @@
 # ship-change.sh <change-name> [commit-subject]
 #
 # Gated tail for shipping ONE implemented OpenSpec change:
-#   stage -> gate (nix flake check) -> archive -> commit -> push.
-# If the gate fails this aborts before archiving or committing.
+#   stage -> gate -> archive -> commit -> push.
+# If any gate fails this aborts before archiving or committing.
+#
+# The gate is three parts:
+#   1. `nix flake check`          build, `go test ./...`, coverage floors, gofmt
+#   2. tests/run-nix-tests.sh     the Nix-library tests (needs `nix eval`, so it
+#                                 cannot run inside the flake's build sandbox)
+#   3. tests/check-docs-ssot.sh   docs single-source-of-truth + coverage gate
 #
 # The change may live in a central OpenSpec store (openspec/config.yaml's
 # `store:` key) rather than in this repo. When it does, the archive lands in the
@@ -41,8 +47,13 @@ fi
 echo "==> [1/5] stage working tree (so nix flake sees new files)"
 git add -A
 
-echo "==> [2/5] gate: nix flake check"
+echo "==> [2/5] gate"
+echo "--> nix flake check (build, tests, coverage floors, gofmt)"
 nix flake check
+echo "--> Nix-library tests"
+bash tests/run-nix-tests.sh
+echo "--> docs checks"
+bash tests/check-docs-ssot.sh
 
 echo "==> [3/5] archive OpenSpec change: ${CHANGE}"
 openspec archive "${CHANGE}" "${STORE_FLAG[@]}" --yes
