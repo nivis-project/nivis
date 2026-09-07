@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/nivis-project/nivis/internal/phase"
 	"github.com/nivis-project/nivis/internal/plan"
 	"github.com/nivis-project/nivis/internal/plugin"
+	"github.com/nivis-project/nivis/internal/providerlog"
 	"github.com/nivis-project/nivis/internal/refresh"
 	"github.com/nivis-project/nivis/internal/registry"
 	"github.com/nivis-project/nivis/internal/state"
@@ -35,6 +37,11 @@ var (
 	doBuild   bool
 	varFlags  []string
 	varFiles  []string
+	// providerLogLevel is the --provider-log-level value: which of a SPAWNED
+	// PROVIDER's log levels are surfaced as notes. It governs the providers'
+	// output, not Nivis's own diagnostics, which is why it is not called
+	// --log-level.
+	providerLogLevel string
 	// backendOverride, when set, replaces the backend the configuration declares
 	// for this run only. The one accepted value is "local" (see openStore).
 	backendOverride string
@@ -79,6 +86,8 @@ func main() {
 	root.PersistentFlags().StringArrayVar(&varFlags, "var", nil, "set a config variable: --var name=value (repeatable; highest precedence)")
 	root.PersistentFlags().StringArrayVar(&varFiles, "var-file", nil, "read config variables from a JSON file (repeatable; later files win)")
 	root.PersistentFlags().StringVar(&backendOverride, "backend", "", "override the state backend for this run (only: local)")
+	root.PersistentFlags().StringVar(&providerLogLevel, "provider-log-level", providerlog.DefaultLevel.String(),
+		"which spawned-provider log levels to surface as notes ("+strings.Join(providerlog.LevelNames(), "|")+"; trace prints them unabridged)")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
 	// --target completes to the resource ids in state.
@@ -113,8 +122,20 @@ func newLedger() (*ledger.Ledger, error) {
 // newManager builds a plugin manager with the registry resolver attached, so a
 // provider `source` that is a registry address (e.g. "hashicorp/aws") is
 // fetched, verified, and cached before spawn; a filesystem path is used directly.
-func newManager() *plugin.Manager {
-	return plugin.NewManager().WithResolver(registry.New(""))
+//
+// It also attaches the provider-log sink: whatever a spawned provider logs is
+// rendered as readable notes on w (the command's stderr, so the change list on
+// stdout stays unmixed and machine-readable). The returned sink's Summary
+// reports repeat counts at the end of the run.
+//
+// An unusable --provider-log-level is an error here, before anything is spawned.
+func newManager(w io.Writer) (*plugin.Manager, *providerlog.Sink, error) {
+	level, err := providerlog.ParseLevel(providerLogLevel)
+	if err != nil {
+		return nil, nil, err
+	}
+	sink := providerlog.NewSink(w, level, colorEnabled(w))
+	return plugin.NewManager().WithResolver(registry.New("")).WithProviderLog(sink, level), sink, nil
 }
 
 // graphFn is the phase-0 evaluation used to DISCOVER the configuration's backend.
@@ -247,8 +268,13 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := newManager()
+			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
 			defer mgr.Close()
+			// Repeat counts are reported once the run's output is complete.
+			defer notes.Summary()
 			l, err := newLedger()
 			if err != nil {
 				return err
@@ -295,8 +321,13 @@ func applyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := newManager()
+			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
 			defer mgr.Close()
+			// Repeat counts are reported once the run's output is complete.
+			defer notes.Summary()
 			l, err := newLedger()
 			if err != nil {
 				return err
@@ -356,8 +387,13 @@ func destroyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := newManager()
+			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
 			defer mgr.Close()
+			// Repeat counts are reported once the run's output is complete.
+			defer notes.Summary()
 			// Hold the state lock for the destroy (no-op on an unlockable store).
 			var res *destroy.Result
 			if err := withStateLock(cmd.OutOrStdout(), store, "destroy", func() error {
@@ -390,8 +426,13 @@ func refreshCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := newManager()
+			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
 			defer mgr.Close()
+			// Repeat counts are reported once the run's output is complete.
+			defer notes.Summary()
 			res, err := refresh.Run(cmd.Context(), g, mgr, store)
 			if err != nil {
 				return err

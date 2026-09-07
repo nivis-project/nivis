@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/nivis-project/nivis/internal/gen"
-	"github.com/nivis-project/nivis/internal/plugin"
 )
 
 // genCmd is `nivis gen`: generate typed Nix constructors from a provider's
@@ -34,8 +33,14 @@ func genCmd() *cobra.Command {
 			if identity == "" {
 				identity = providerIdentity(providerPath)
 			}
-			mgr := plugin.NewManager()
+			// `gen` spawns a provider too, so its log output is rendered the
+			// same way (a real provider is chatty during schema fetch).
+			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
 			defer mgr.Close()
+			defer notes.Summary()
 
 			// Codegen only fetches the schema (GetProviderSchema), which the
 			// plugin protocol allows BEFORE configure. Use the configure-free

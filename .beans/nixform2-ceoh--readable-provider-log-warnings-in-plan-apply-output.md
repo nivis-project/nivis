@@ -1,11 +1,11 @@
 ---
 # nixform2-ceoh
 title: Render provider log lines as readable warnings (not raw hclog) in plan/apply
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-08-31T22:04:31Z
-updated_at: 2026-09-02T10:14:33Z
+updated_at: 2026-09-07T18:57:46Z
 parent: nixform2-kovh
 ---
 

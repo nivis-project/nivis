@@ -27,8 +27,12 @@ func outputCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mgr := newManager()
+			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
 			defer mgr.Close()
+			defer notes.Summary()
 			l, err := newLedger()
 			if err != nil {
 				return err

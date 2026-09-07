@@ -106,6 +106,58 @@ Three phases, not one: phase 1 applies A (nothing else is ready); re-evaluating
 with `A.value` known unlocks B; re-evaluating with `B.endpoint` known unlocks C.
 The loop halts at a fixpoint once nothing new resolves.
 
+### Provider notes
+
+Providers log about their own internals while they work. Nivis surfaces what they
+say as **provider notes** — one line each, next to (never inside) the change
+list:
+
+```
+provider note aws_amplify_app.description: unable to require attribute replacement (detail: ForceNew: No changes for description)
+```
+
+Read that as: while planning an `aws_amplify_app`, the provider mentioned
+something about the `description` attribute. **A note is not a failure.** The
+`detail:` part is the provider's own explanation of *why* it said something — in
+this example, the AWS SDK considered forcing a replacement of `description` and
+decided against it, because nothing changed. Providers report that as an "error"
+field internally; Nivis renders it as a detail precisely so it does not read as
+one. If a run actually fails you get an `error:` line and a non-zero exit status,
+not a note.
+
+A note that recurs — many providers log the same internal remark once per
+resource — is printed once, and the end of the run reports the rest:
+
+```
+provider note aws_amplify_app.description: unable to require attribute replacement (11 further occurrence(s) not shown)
+```
+
+Notes go to **stderr**, while the change list goes to stdout, so
+`nivis plan > plan.txt` keeps the change list unmixed.
+
+To see more or less of this, use `--provider-log-level`:
+
+| Value | What you get |
+|--------------------|--------------------------------------------------------|
+| `off`              | nothing from providers at all                          |
+| `error`            | only provider errors — no notes                        |
+| `warn` *(default)* | provider warnings as notes                             |
+| `info`, `debug`    | progressively more, still rendered as notes            |
+| `trace`            | the provider's entries **unabridged**, fields included |
+
+`trace` is the setting for debugging a provider or filing a provider bug report:
+it restores the request ids, caller sites and RPC names that a note deliberately
+drops. Expect a lot of output — providers are verbose at that level.
+
+The flag governs what **you see**. It is separate from `TF_LOG`, which the
+provider process inherits from your environment and which governs how much the
+provider *emits*: setting `TF_LOG=trace` cannot flood a run whose
+`--provider-log-level` is `warn`.
+
+Note that a `plan` of a stack that is not yet in state reports creates without
+contacting the provider, so it produces no provider notes. Notes appear from
+`apply` onward, and on a re-plan of a stack that already has state.
+
 ## 4. Inspect the round trip
 
 ```sh

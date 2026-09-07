@@ -8,6 +8,22 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `--provider-log-level` selects how much of a spawned provider's logging you
+  see: `off`, `error`, `warn` (the default), `info`, `debug`, or `trace`, which
+  prints the provider's entries unabridged for debugging. It governs what you
+  see; `TF_LOG` in your environment still governs what the provider emits, so it
+  can no longer flood a run.
+
+### Changed
+- Provider log lines are rendered as one readable note each instead of raw
+  provider telemetry, repeats are collapsed, and `--provider-log-level` restores
+  the full entries for debugging. A note names the resource type and attribute it
+  concerns, and a provider's internal `error` field appears as a subordinate
+  `detail:` rather than as an error — a benign provider warning no longer reads
+  as a failed run. The same note repeated once per resource is printed once, with
+  the remaining occurrences counted at the end of the run.
+
 ## [0.5.0] - 2026-09-07
 
 ### Added

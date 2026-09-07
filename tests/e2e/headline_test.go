@@ -46,7 +46,7 @@ func requireNix(t *testing.T) {
 func buildBinaries(t *testing.T, root string) {
 	t.Helper()
 	dir := t.TempDir()
-	for _, pkg := range []string{"provider-alpha", "provider-beta", "provider-epsilon"} {
+	for _, pkg := range []string{"provider-alpha", "provider-beta", "provider-epsilon", "provider-zeta"} {
 		cmd := exec.Command("go", "build", "-o", filepath.Join(dir, pkg), "./cmd/"+pkg)
 		cmd.Dir = root
 		if out, err := cmd.CombinedOutput(); err != nil {

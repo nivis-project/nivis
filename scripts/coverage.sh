@@ -42,8 +42,9 @@ fi
 #   internal/fakeprovider*                  the fake provider substrate itself
 EXCLUDE_RE='^(internal/tfplugin[56]|cmd/provider-|internal/fakeprovider)'
 
-# OVERALL floor, over everything not excluded. Target: 70. (Sandbox: 67.0%.)
-OVERALL_FLOOR=67
+# OVERALL floor, over everything not excluded. Target: 70 — nearly there:
+# 69.6% on a machine with nix, 68.x in the sandbox where tests/e2e skips.
+OVERALL_FLOOR=68
 
 # CORE packages: the executor's contract and engine. Target: 80.
 CORE_FLOOR=79
@@ -62,7 +63,7 @@ declare -A EXCEPTIONS=(
   [internal/phase]=73
   [internal/registry]=35
   [internal/provider/v5]=46
-  [cmd/nivis]=38
+  [cmd/nivis]=40
   [cmd/nivistutor]=40
 )
 

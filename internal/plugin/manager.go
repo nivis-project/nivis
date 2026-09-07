@@ -10,6 +10,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"sync"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/nivis-project/nivis/internal/provider"
 	v5 "github.com/nivis-project/nivis/internal/provider/v5"
 	v6 "github.com/nivis-project/nivis/internal/provider/v6"
+	"github.com/nivis-project/nivis/internal/providerlog"
 	"github.com/nivis-project/nivis/internal/tfplugin5"
 	"github.com/nivis-project/nivis/internal/tfplugin6"
 )
@@ -69,6 +71,13 @@ type Manager struct {
 	mu       sync.Mutex
 	clients  map[string]*entry
 	resolver Resolver
+	// logSink renders spawned providers' log entries as readable notes. nil
+	// discards them (a caller that wants no provider output at all, e.g. a test).
+	logSink *providerlog.Sink
+	// logLevel selects which entry levels reach the sink; entries below it are
+	// dropped by hclog before they are formatted, and go-plugin skips preparing
+	// them at all, which is what keeps a trace-happy provider cheap.
+	logLevel providerlog.Level
 }
 
 type entry struct {
@@ -84,7 +93,22 @@ type Resolver interface {
 }
 
 // NewManager returns an empty manager (no resolver: sources used verbatim).
-func NewManager() *Manager { return &Manager{clients: map[string]*entry{}} }
+func NewManager() *Manager {
+	return &Manager{clients: map[string]*entry{}, logLevel: providerlog.DefaultLevel}
+}
+
+// WithProviderLog sets the sink that renders spawned providers' log entries and
+// the level at which they are surfaced, returning the manager for chaining. A
+// nil sink discards provider logs entirely.
+//
+// This is the ONLY route by which a provider's log output can reach a user:
+// go-plugin's ClientConfig.Stderr defaults to io.Discard, so the logger installed
+// here is the single interception point (see internal/providerlog).
+func (m *Manager) WithProviderLog(sink *providerlog.Sink, level providerlog.Level) *Manager {
+	m.logSink = sink
+	m.logLevel = level
+	return m
+}
 
 // WithResolver sets the provider-source resolver (e.g. the registry client) and
 // returns the manager for chaining.
@@ -166,10 +190,22 @@ func (m *Manager) dispense(identity, path string) (cl provider.Client, c *goplug
 		Cmd:              exec.Command(path),
 		AllowedProtocols: []goplugin.Protocol{goplugin.ProtocolGRPC},
 		Managed:          false,
-		// Quiet by default: real providers (e.g. AWS) emit enormous TRACE/DEBUG
-		// output during schema fetch that would flood the executor's stderr.
-		// Warnings and errors still surface.
-		Logger: hclog.New(&hclog.LoggerOptions{Name: "provider", Level: hclog.Warn}),
+		// Provider log output goes through the renderer, never to a terminal raw.
+		// hclog is used as a SERIALIZER here (JSONFormat) whose Output is the
+		// sink: level filtering stays at the source, so a provider emitting
+		// enormous TRACE/DEBUG during schema fetch costs nothing, while what does
+		// pass the filter is rendered as a readable note rather than printed as
+		// the provider's internal telemetry.
+		//
+		// Stderr is left at its io.Discard default deliberately: go-plugin writes
+		// every raw line there before any levelling, so pointing it anywhere else
+		// would reintroduce exactly the unrendered output this replaces.
+		Logger: hclog.New(&hclog.LoggerOptions{
+			Name:       "provider",
+			Level:      m.logLevel.HCLog(),
+			JSONFormat: true,
+			Output:     m.logWriter(identity),
+		}),
 	})
 
 	rpcClient, err := c.Client()
@@ -214,4 +250,15 @@ func (m *Manager) Close() {
 		e.client.Kill()
 	}
 	m.clients = map[string]*entry{}
+}
+
+// logWriter is the hclog Output for one spawned provider: the sink's writer for
+// this identity, or a discard when no sink is configured. The identity comes from
+// the manager rather than the entry, because an entry's @module is the provider's
+// own inner module (e.g. sdk.helper_schema), not the provider itself.
+func (m *Manager) logWriter(identity string) io.Writer {
+	if m.logSink == nil {
+		return io.Discard
+	}
+	return m.logSink.Writer(identity)
 }

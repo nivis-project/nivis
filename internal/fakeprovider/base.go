@@ -20,6 +20,10 @@ type Server struct {
 	dataSources   map[string]Resource
 	counter       *Counter
 	requireConfig bool // when true, ConfigureProvider rejects an empty/null config
+	// planLog, when set, is called at the start of every PlanResourceChange for
+	// a fake whose purpose is emitting provider LOG output (not diagnostics)
+	// while a resource is planned. See cmd/provider-zeta.
+	planLog func(typeName string)
 }
 
 // New builds a Server from a list of Resources, seeding the deterministic
@@ -39,6 +43,16 @@ func (s *Server) WithDataSources(ds ...Resource) *Server {
 	for _, d := range ds {
 		s.dataSources[d.TypeName] = d
 	}
+	return s
+}
+
+// WithPlanLogEmitter installs a func called at the start of every
+// PlanResourceChange. It exists so a fake can write provider LOG lines to its
+// stderr at a deterministic point in a run — the substrate for proving the
+// executor renders provider logs readably. Log output is not a diagnostic: it
+// travels the plugin transport's stderr channel, not the RPC response.
+func (s *Server) WithPlanLogEmitter(emit func(typeName string)) *Server {
+	s.planLog = emit
 	return s
 }
 
@@ -132,6 +146,9 @@ func (s *Server) ValidateResourceConfig(_ context.Context, req *tfprotov6.Valida
 }
 
 func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResourceChangeRequest) (*tfprotov6.PlanResourceChangeResponse, error) {
+	if s.planLog != nil {
+		s.planLog(req.TypeName)
+	}
 	r, d := s.lookup(req.TypeName)
 	if d != nil {
 		return &tfprotov6.PlanResourceChangeResponse{Diagnostics: []*tfprotov6.Diagnostic{d}}, nil

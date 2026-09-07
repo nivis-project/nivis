@@ -94,6 +94,7 @@
             "cmd/provider-alpha"
             "cmd/provider-beta"
             "cmd/provider-epsilon"
+            "cmd/provider-zeta"
           ];
           ldflags = [
             "-s"
@@ -238,6 +239,10 @@
         # --to-remote` -> `apply` sequence. Fake resources; used by the bootstrap
         # e2e and by docs/REMOTE-STATE.md.
         bootstrapState = import ./nix/example/bootstrap-state.nix { inherit nivis; };
+        # The log-emitting fake (provider-zeta), for the provider-notes e2e:
+        # `--var count=N` declares N resources, so the note collapse is
+        # exercisable. See docs/GETTING-STARTED.md ("Provider notes").
+        providerLog = import ./nix/example/provider-log.nix { inherit nivis; };
         # A real-provider example (AWS S3 bucket) — drive with `nivis ... --attr
         # nivis.aws`; creates a real resource (see nix/example/aws.nix).
         aws = import ./nix/example/aws.nix { inherit nivis; };
