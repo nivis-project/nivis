@@ -45,9 +45,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the packages' descriptor `init` and the full `go test ./...` suite.
 
 ### Security
-- Bumped `google.golang.org/grpc` 1.79.3 -> 1.82.1 (GHSA-hrxh-6v49-42gf: xDS RBAC
-  authorization bypass + HTTP/2 Rapid Reset DoS) and `golang.org/x/net` 0.48.0 ->
-  0.55.0 (GHSA-5cv4-jp36-h3mw: HTML-parser DoS), clearing both Dependabot alerts.
+- Bumped `google.golang.org/grpc` 1.79.3 -> **1.83.1** and `golang.org/x/net`
+  0.48.0 -> 0.55.0, clearing every open Dependabot alert. Three advisories in
+  total: GHSA-hrxh-6v49-42gf (xDS RBAC authorization bypass + HTTP/2 Rapid Reset
+  DoS) and GHSA-5cv4-jp36-h3mw (HTML-parser DoS), plus a later high-severity grpc
+  advisory covering everything up to and including 1.83.0 — so the intermediate
+  1.82.1 this section originally landed on was still in range and is now
+  superseded.
   Real exposure was low — Nivis speaks gRPC only to locally spawned provider
   binaries (no xDS/RBAC, no network-facing server) and never parses HTML (`x/net`
   is a transitive dep the module doesn't import — `go mod why` reports it unused).

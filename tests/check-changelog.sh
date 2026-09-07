@@ -11,10 +11,18 @@
 # wording; it ensures the call was made and a declared entry is present before a
 # release rolls [Unreleased] into a version.
 #
-# Changes archived BEFORE this convention (by date) are exempt. Hermetic: reads
-# files only. Exits non-zero on a violation.
+# Changes archived BEFORE this convention (by date) are exempt. Reads files only.
+# Exits non-zero on a violation.
+#
+# The changes live in a central OpenSpec store shared with other projects;
+# tests/lib/openspec-scope.sh resolves that root and filters to the capabilities
+# this repository owns (CHANGELOG.md is this repository's, so another project's
+# change is not ours to annotate). Where the store is unreachable (CI), this gate
+# says so rather than reporting a vacuous pass.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=tests/lib/openspec-scope.sh
+source tests/lib/openspec-scope.sh
 
 # Archives dated on/before this predate the convention and are exempt.
 CUTOFF="2026-06-18"
@@ -23,6 +31,12 @@ fail=0
 checked=0
 
 echo "== changelog-update gate =="
+
+root="$(openspec_root)"
+if [ -z "$root" ]; then
+  openspec_unreachable_notice
+  exit 0
+fi
 
 # normalize: drop markdown markup (* _ ` # -) and collapse all whitespace to
 # single spaces, lowercased. Makes the substring check tolerant of bold/code
@@ -38,9 +52,16 @@ normalize() { tr -d '*_`#' | tr '\n' ' ' | tr -s ' ' | tr '[:upper:]' '[:lower:]
 # not "still pending release".
 changelog_body="$(normalize < CHANGELOG.md)"
 
+skipped=0
 shopt -s nullglob
-for p in openspec/changes/archive/*/proposal.md; do
-  dir="$(basename "$(dirname "$p")")"
+for p in "$root"/openspec/changes/archive/*/proposal.md; do
+  changedir="$(dirname "$p")"
+  dir="$(basename "$changedir")"
+  # Another project's change in the shared store: not ours to annotate.
+  if ! change_is_ours "$changedir"; then
+    skipped=$((skipped + 1))
+    continue
+  fi
   # exempt pre-convention archives by date prefix (YYYY-MM-DD-...)
   if [[ "$dir" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})- ]]; then
     date="${BASH_REMATCH[1]}"
@@ -79,5 +100,6 @@ done
 
 if [ "$fail" -eq 0 ]; then
   echo "   ok: all $checked post-cutoff archived change(s) declare a changelog status"
+  [ "$skipped" -gt 0 ] && echo "       ($skipped archived change(s) in the shared store belong to other projects)"
 fi
 exit "$fail"

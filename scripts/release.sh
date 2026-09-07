@@ -92,4 +92,12 @@ fi
 git tag -a "$tag" -m "$msg"
 git push origin "$tag"
 
+# 5. Push the branch too. Without this the tag exists on GitHub but the release
+# commit is not on main, so the default branch shows a stale VERSION/CHANGELOG.
+if command -v jj >/dev/null 2>&1 && [ -d .jj ]; then
+  jj git push --bookmark main
+else
+  git push origin HEAD:main
+fi
+
 echo "done: pushed ${tag}. The release workflow will build and publish it."

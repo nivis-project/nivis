@@ -9,10 +9,17 @@
 # human or an agent) makes the call per the rubric in docs/DOCS-GATE.md; this
 # guarantees the call was made and written down, never silently skipped.
 #
-# Hermetic: reads files only, no network. Exits non-zero on any change missing
-# the note (excluding pre-gate changes, which are exempt by date).
+# Reads files only, no network. Exits non-zero on any change missing the note
+# (excluding pre-gate changes, which are exempt by date).
+#
+# The changes live in a central OpenSpec store shared with other projects;
+# tests/lib/openspec-scope.sh resolves that root and filters to the capabilities
+# this repository owns. Where the store is unreachable (CI), this gate says so
+# rather than reporting a vacuous pass.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=tests/lib/openspec-scope.sh
+source tests/lib/openspec-scope.sh
 
 # Changes archived on or before this date predate the gate and are exempt. New
 # changes (active, or archived after this date) must carry the note.
@@ -23,15 +30,29 @@ checked=0
 
 echo "== documentation-coverage gate =="
 
+root="$(openspec_root)"
+if [ -z "$root" ]; then
+  openspec_unreachable_notice
+  exit 0
+fi
+
 # Collect proposal.md files for active changes and archived changes.
-#   active:   openspec/changes/<id>/proposal.md
-#   archived: openspec/changes/archive/<YYYY-MM-DD-id>/proposal.md
+#   active:   <root>/openspec/changes/<id>/proposal.md
+#   archived: <root>/openspec/changes/archive/<YYYY-MM-DD-id>/proposal.md
 shopt -s nullglob
-proposals=(openspec/changes/*/proposal.md openspec/changes/archive/*/proposal.md)
+proposals=("$root"/openspec/changes/*/proposal.md "$root"/openspec/changes/archive/*/proposal.md)
 shopt -u nullglob
 
+skipped=0
 for p in "${proposals[@]}"; do
-  dir="$(basename "$(dirname "$p")")"
+  changedir="$(dirname "$p")"
+  dir="$(basename "$changedir")"
+
+  # Another project's change in the shared store: not ours to annotate.
+  if ! change_is_ours "$changedir"; then
+    skipped=$((skipped + 1))
+    continue
+  fi
 
   # Exempt pre-gate archived changes by their date prefix (YYYY-MM-DD-...).
   if [[ "$dir" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})- ]]; then
@@ -53,6 +74,7 @@ done
 
 if [ "$fail" -eq 0 ]; then
   echo "   ok: all $checked in-scope change(s) record a 'Docs impact:' decision"
+  [ "$skipped" -gt 0 ] && echo "       ($skipped change(s) in the shared store belong to other projects)"
 fi
 
 exit "$fail"
