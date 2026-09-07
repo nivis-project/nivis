@@ -6,6 +6,11 @@
 // uses (PutObject, GetObject, DeleteObject, HEAD) over an httptest server, backed
 // by a map. No network, no credentials, no real AWS. Path-style addressing
 // (/<bucket>/<key>), which the s3Store uses when an endpoint is set.
+//
+// New accepts any bucket name; NewWithBuckets models bucket EXISTENCE, so a
+// request to an unknown bucket answers NoSuchBucket (and DenyBucket answers
+// AccessDenied) — the conditions the state backend must tell apart from a
+// missing state object.
 package fakes3
 
 import (
@@ -24,13 +29,54 @@ type Server struct {
 	mu   sync.Mutex
 	objs map[string][]byte // "<bucket>/<key>" -> bytes
 	sse  map[string]string // "<bucket>/<key>" -> x-amz-server-side-encryption header
+	// buckets, when non-nil, is the set of buckets that EXIST: a request to any
+	// other bucket answers 404 NoSuchBucket, as real S3 does. A nil map accepts
+	// any bucket (the historical behaviour, for tests that do not care).
+	buckets map[string]bool
+	// denied is the set of buckets that answer 403 AccessDenied, so a test can
+	// distinguish a permission failure from a missing bucket.
+	denied map[string]bool
 }
 
-// New starts a fake S3 server. Call Close to stop it.
+// New starts a fake S3 server that accepts any bucket name. Call Close to stop it.
 func New() *Server {
 	s := &Server{objs: map[string][]byte{}, sse: map[string]string{}}
 	s.ts = httptest.NewServer(http.HandlerFunc(s.handle))
 	return s
+}
+
+// NewWithBuckets starts a fake S3 server that knows ONLY the named buckets: a
+// request to any other bucket answers 404 NoSuchBucket, the way real S3 does.
+// Pass no names for a server where no bucket exists yet (the state-bootstrap
+// case, where the bucket is created during the run).
+func NewWithBuckets(buckets ...string) *Server {
+	s := &Server{objs: map[string][]byte{}, sse: map[string]string{}, buckets: map[string]bool{}}
+	for _, b := range buckets {
+		s.buckets[b] = true
+	}
+	s.ts = httptest.NewServer(http.HandlerFunc(s.handle))
+	return s
+}
+
+// CreateBucket makes a bucket exist from now on, modelling a bucket that the run
+// itself creates. It is a no-op on a server that accepts any bucket.
+func (s *Server) CreateBucket(bucket string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.buckets != nil {
+		s.buckets[bucket] = true
+	}
+}
+
+// DenyBucket makes every request to bucket answer 403 AccessDenied, so a test can
+// assert that a permission failure is NOT reported as a missing bucket.
+func (s *Server) DenyBucket(bucket string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.denied == nil {
+		s.denied = map[string]bool{}
+	}
+	s.denied[bucket] = true
 }
 
 // URL is the endpoint to pass to the s3 backend (the BaseEndpoint override).
@@ -63,6 +109,21 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := bucket + "/" + key
+
+	// A denied bucket answers AccessDenied whether or not it exists; an unknown
+	// bucket answers NoSuchBucket. Both precede any object handling.
+	s.mu.Lock()
+	denied := s.denied[bucket]
+	missing := s.buckets != nil && !s.buckets[bucket]
+	s.mu.Unlock()
+	if denied {
+		writeAccessDenied(w, bucket)
+		return
+	}
+	if missing {
+		writeNoSuchBucket(w, bucket)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodPut:
@@ -141,4 +202,24 @@ func writeNoSuchKey(w http.ResponseWriter, key string) {
 	_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?>`+
 		`<Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message>`+
 		`<Key>`+key+`</Key></Error>`)
+}
+
+// writeNoSuchBucket returns the S3 NoSuchBucket error, which the store must treat
+// as a missing state LOCATION (an actionable error), never as an empty document.
+func writeNoSuchBucket(w http.ResponseWriter, bucket string) {
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?>`+
+		`<Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist</Message>`+
+		`<BucketName>`+bucket+`</BucketName></Error>`)
+}
+
+// writeAccessDenied returns the S3 AccessDenied error, so a permission failure is
+// distinguishable from a missing bucket or a missing object.
+func writeAccessDenied(w http.ResponseWriter, bucket string) {
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusForbidden)
+	_, _ = io.WriteString(w, `<?xml version="1.0" encoding="UTF-8"?>`+
+		`<Error><Code>AccessDenied</Code><Message>Access Denied</Message>`+
+		`<BucketName>`+bucket+`</BucketName></Error>`)
 }

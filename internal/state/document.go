@@ -5,12 +5,20 @@ package state
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
 // The canonical state-document format and its (de)serialization, shared by every
 // Store backend (local file, S3, ...) so whole-state read/replace and the on-disk
 // shape are identical across backends.
+
+// ErrInvalidDocument marks bytes that are not a parseable state document. It is a
+// sentinel so a caller can tell "the content here is not a Nivis state document"
+// apart from "the backend could not be read at all" — the migration guard needs
+// that distinction to refuse overwriting unrecognized content while still failing
+// loudly on a genuine backend error.
+var ErrInvalidDocument = errors.New("invalid state document")
 
 // parseDocument decodes state-document bytes leniently: empty input is a fresh
 // empty document, and a nil resources map is normalized to an empty one. Used for
@@ -21,7 +29,7 @@ func parseDocument(data []byte) (document, error) {
 		return doc, nil
 	}
 	if err := json.Unmarshal(data, &doc); err != nil {
-		return doc, fmt.Errorf("invalid state document: %w", err)
+		return doc, fmt.Errorf("%w: %v", ErrInvalidDocument, err)
 	}
 	if doc.Resources == nil {
 		doc.Resources = map[string]ResourceState{}
@@ -35,7 +43,7 @@ func parseDocument(data []byte) (document, error) {
 func parseDocumentStrict(data []byte) (document, error) {
 	var doc document
 	if err := json.Unmarshal(data, &doc); err != nil {
-		return doc, fmt.Errorf("state: restore: input is not a valid state document: %w", err)
+		return doc, fmt.Errorf("state: restore: input is not a valid state document (%w): %v", ErrInvalidDocument, err)
 	}
 	if doc.Resources == nil {
 		doc.Resources = map[string]ResourceState{}

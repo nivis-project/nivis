@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"io"
 
 	"github.com/spf13/cobra"
 )
@@ -19,7 +20,7 @@ func stateIDs(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellC
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	store, err := openStore(context.Background())
+	store, err := openStore(context.Background(), io.Discard)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

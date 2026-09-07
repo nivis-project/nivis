@@ -154,6 +154,11 @@
         # with `AWS_PROFILE=… nivis … --attr nivis.remoteState`. See
         # docs/TUTORIAL-REMOTE-STATE.md.
         remoteState = import ./nix/example/remote-state.nix { inherit nivis; };
+        # The self-managed-state-bucket bootstrap: an s3 backend whose location
+        # comes from variables, for the `apply --backend=local` -> `state migrate
+        # --to-remote` -> `apply` sequence. Fake resources; used by the bootstrap
+        # e2e and by docs/REMOTE-STATE.md.
+        bootstrapState = import ./nix/example/bootstrap-state.nix { inherit nivis; };
         # A real-provider example (AWS S3 bucket) — drive with `nivis ... --attr
         # nivis.aws`; creates a real resource (see nix/example/aws.nix).
         aws = import ./nix/example/aws.nix { inherit nivis; };

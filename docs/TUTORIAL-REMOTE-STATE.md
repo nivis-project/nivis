@@ -148,8 +148,10 @@ aws s3 rm s3://your-state-bucket/nivis-tutorial/remote-state/app.json.lock 2>/de
 - State is **Nivis's own format**: it is not a Terraform/OpenTofu `tfstate` file
   and the two are not interchangeable.
 - Every write to the state object requests **server-side encryption** (AES256).
-- To migrate an existing local state into S3, use `nivis state pull --out
-  state.json` with the local config, then switch the config to the s3 backend and
-  `nivis state push --in state.json --force`.
+- To move an existing local state into S3, declare the backend and run `nivis
+  state migrate --to-remote` (and `--from-remote` to bring it back). It copies the
+  document, verifies it at the destination, and only then removes the source.
+- If the bucket is one this configuration creates itself, bootstrap it with `nivis
+  apply --backend=local`, then `nivis state migrate --to-remote`.
 
 See [Remote state (the S3 backend)](REMOTE-STATE.md) for the full reference.

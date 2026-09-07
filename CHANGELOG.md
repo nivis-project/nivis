@@ -8,6 +8,28 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `nivis state migrate --to-remote` / `--from-remote` moves the whole state
+  document between your local state file and the backend your configuration
+  declares. It locks both sides, copies, verifies the destination by reading it
+  back, and only then removes the source document — so a failure never loses
+  state and an interrupted migration is finished by re-running it. A destination
+  holding different resources (or content that is not a Nivis state document) is
+  refused unless you pass `--force`.
+- `--backend=local` makes a single run use the local state file even when the
+  configuration declares a remote backend, announcing itself when it does. It is
+  the first step of the self-managed state bucket bootstrap: `nivis apply
+  --backend=local`, then `nivis state migrate --to-remote`, after which ordinary
+  runs use the declared backend. That sequence now works end to end and is
+  documented in docs/REMOTE-STATE.md.
+
+### Fixed
+- A missing state **bucket** is now an actionable error naming the bucket, the
+  region, and the bootstrap sequence, instead of an opaque S3 failure. Previously
+  an `apply` against a not-yet-existing bucket died in the state lock with a raw
+  SDK error. A missing state **object** still reads as an empty stack, as before;
+  a permission failure keeps reporting its own cause.
+
 ### Changed
 - Finished the `wearetechnative` -> `nivis-project` move for the references the
   0.4.7/0.4.8 renames missed: the docs-site GitHub links in `book.toml`

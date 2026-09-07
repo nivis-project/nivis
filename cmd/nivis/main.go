@@ -35,7 +35,14 @@ var (
 	doBuild   bool
 	varFlags  []string
 	varFiles  []string
+	// backendOverride, when set, replaces the backend the configuration declares
+	// for this run only. The one accepted value is "local" (see openStore).
+	backendOverride string
 )
+
+// backendLocal is the only accepted --backend value: use the local file store at
+// --state even when the configuration declares a remote backend.
+const backendLocal = "local"
 
 func main() {
 	var showVersion bool
@@ -71,6 +78,7 @@ func main() {
 	root.PersistentFlags().BoolVar(&doBuild, "build", true, "realise Nix build outputs (drv leaves) referenced by resources (false = assume already built)")
 	root.PersistentFlags().StringArrayVar(&varFlags, "var", nil, "set a config variable: --var name=value (repeatable; highest precedence)")
 	root.PersistentFlags().StringArrayVar(&varFiles, "var-file", nil, "read config variables from a JSON file (repeatable; later files win)")
+	root.PersistentFlags().StringVar(&backendOverride, "backend", "", "override the state backend for this run (only: local)")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
 
 	// --target completes to the resource ids in state.
@@ -109,6 +117,11 @@ func newManager() *plugin.Manager {
 	return plugin.NewManager().WithResolver(registry.New(""))
 }
 
+// graphFn is the phase-0 evaluation used to DISCOVER the configuration's backend.
+// It is a variable so a test can supply a graph without running a Nix evaluator;
+// production code always uses phase0Graph.
+var graphFn = phase0Graph
+
 // phase0Graph evaluates the plan once (empty ledger) and ingests it, for the
 // destroy/refresh engines which need the resource set + providers.
 func phase0Graph(ctx context.Context) (*ir.Graph, error) {
@@ -136,13 +149,66 @@ func phase0Graph(ctx context.Context) (*ir.Graph, error) {
 // store is the correct default when no backend is declared. Commands that must
 // evaluate the config (plan/apply/destroy/refresh) surface that eval error
 // themselves; here a failed eval simply means "no remote backend discovered".
-func openStore(ctx context.Context) (state.Store, error) {
-	g, err := phase0Graph(ctx)
+//
+// --backend=local overrides the declared backend for this run: the local file
+// store is opened even when the config declares a remote one, and the override is
+// announced on w so a run's state location is never ambiguous. It exists so a
+// config can be applied before its declared backend exists (a self-managed state
+// bucket) and so both sides of a migration are addressable. It changes nothing
+// about the configuration and affects no later run.
+func openStore(ctx context.Context, w io.Writer) (state.Store, error) {
+	if err := validateBackendOverride(); err != nil {
+		return nil, err
+	}
+	g, err := graphFn(ctx)
 	if err != nil {
 		// Could not evaluate the config to learn the backend: default to local.
 		return state.Open(statePath)
 	}
+	if backendOverride == backendLocal {
+		if declared := backendType(g.Backend); declared != "" && declared != backendLocal {
+			fmt.Fprintf(w, "Using local state at %s (--backend=local overrides the %s backend this configuration declares).\n",
+				statePath, declared)
+		}
+		return state.Open(statePath)
+	}
 	return state.OpenBackend(g.Backend, statePath)
+}
+
+// validateBackendOverride rejects an unknown --backend value, naming what is
+// accepted, rather than silently ignoring it.
+func validateBackendOverride() error {
+	switch backendOverride {
+	case "", backendLocal:
+		return nil
+	default:
+		return fmt.Errorf("unsupported --backend %q (the only accepted value is %q, which uses the local state file at --state)",
+			backendOverride, backendLocal)
+	}
+}
+
+// backendType reports the declared backend's type ("" when no backend is declared).
+func backendType(backend map[string]interface{}) string {
+	if len(backend) == 0 {
+		return ""
+	}
+	t, _ := backend["type"].(string)
+	return t
+}
+
+// backendLocation describes where a backend keeps state, for messages that name
+// the two sides of a migration. A nil/local backend is the local file at path.
+func backendLocation(backend map[string]interface{}, path string) string {
+	switch backendType(backend) {
+	case "", backendLocal:
+		return "the local state file " + path
+	case "s3":
+		bucket, _ := backend["bucket"].(string)
+		key, _ := backend["key"].(string)
+		return fmt.Sprintf("s3://%s/%s", bucket, key)
+	default:
+		return backendType(backend) + " backend"
+	}
 }
 
 // withStateLock runs fn while holding the backend's advisory state lock, for a
@@ -177,7 +243,7 @@ func planCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Plan each resource against its prior state via the provider, so an
 			// unchanged resource reports no change (not a blanket "~").
-			store, err := openStore(cmd.Context())
+			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
 			if err != nil {
 				return err
 			}
@@ -225,7 +291,7 @@ func applyCmd() *cobra.Command {
 		Use:   "apply",
 		Short: "Resolve and apply the configuration to a fixpoint",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			store, err := openStore(cmd.Context())
+			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
 			if err != nil {
 				return err
 			}
@@ -286,7 +352,7 @@ func destroyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := openStore(cmd.Context())
+			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
 			if err != nil {
 				return err
 			}
@@ -320,7 +386,7 @@ func refreshCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := openStore(cmd.Context())
+			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
 			if err != nil {
 				return err
 			}
@@ -343,7 +409,7 @@ func stateCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List resource ids in state",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			store, err := openStore(cmd.Context())
+			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
 			if err != nil {
 				return err
 			}
@@ -369,7 +435,7 @@ func stateCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: stateIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openStore(cmd.Context())
+			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
 			if err != nil {
 				return err
 			}
@@ -394,7 +460,7 @@ func stateCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: stateIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openStore(cmd.Context())
+			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
 			if err != nil {
 				return err
 			}
@@ -411,7 +477,7 @@ func stateCmd() *cobra.Command {
 		},
 	})
 
-	c.AddCommand(pullCmd(), pushCmd())
+	c.AddCommand(pullCmd(), pushCmd(), migrateCmd())
 
 	return c
 }

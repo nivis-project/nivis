@@ -31,6 +31,7 @@ type s3Store struct {
 	client *s3.Client
 	bucket string
 	key    string
+	region string // carried only so a missing-bucket error can name it
 }
 
 // s3API is the subset of the S3 client the store uses, so tests can substitute a
@@ -54,11 +55,13 @@ func newS3Store(ctx context.Context, bucket, key, region, endpoint string) (*s3S
 			o.UsePathStyle = true // test servers and most S3-compatibles want path-style
 		}
 	})
-	return &s3Store{client: client, bucket: bucket, key: key}, nil
+	return &s3Store{client: client, bucket: bucket, key: key, region: region}, nil
 }
 
 // readDoc loads the state document from the S3 object. A missing object (NoSuchKey
-// / 404) is a fresh, empty document, not an error.
+// / 404) is a fresh, empty document, not an error. A missing BUCKET is not: it is
+// the state location being unreachable, which must never read as empty state (see
+// missingBucket).
 func (s *s3Store) readDoc(ctx context.Context) (document, error) {
 	doc := document{Resources: map[string]ResourceState{}}
 	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
@@ -66,6 +69,9 @@ func (s *s3Store) readDoc(ctx context.Context) (document, error) {
 		Key:    aws.String(s.key),
 	})
 	if err != nil {
+		if mb := s.missingBucket(err); mb != nil {
+			return doc, mb
+		}
 		if isNotFound(err) {
 			return doc, nil
 		}
@@ -100,6 +106,9 @@ func (s *s3Store) writeDoc(ctx context.Context, doc document) error {
 		ContentType:          aws.String("application/json"),
 	})
 	if err != nil {
+		if mb := s.missingBucket(err); mb != nil {
+			return mb
+		}
 		return fmt.Errorf("state: s3: put %s/%s: %w", s.bucket, s.key, err)
 	}
 	return nil
@@ -188,6 +197,9 @@ func (s *s3Store) Lock(info LockInfo) (string, error) {
 		ContentType:          aws.String("application/json"),
 	})
 	if err != nil {
+		if mb := s.missingBucket(err); mb != nil {
+			return "", mb
+		}
 		if isPreconditionFailed(err) {
 			holder, herr := s.readLock(ctx)
 			if herr != nil {
@@ -234,6 +246,9 @@ func (s *s3Store) readLock(ctx context.Context) (LockInfo, error) {
 		Key:    aws.String(s.lockKey()),
 	})
 	if err != nil {
+		if mb := s.missingBucket(err); mb != nil {
+			return li, mb
+		}
 		return li, err
 	}
 	defer out.Body.Close()
@@ -254,6 +269,9 @@ func (s *s3Store) deleteLock(ctx context.Context) error {
 		Key:    aws.String(s.lockKey()),
 	})
 	if err != nil {
+		if mb := s.missingBucket(err); mb != nil {
+			return mb
+		}
 		return fmt.Errorf("state: s3: delete lock %s/%s: %w", s.bucket, s.lockKey(), err)
 	}
 	return nil
@@ -272,8 +290,9 @@ func isPreconditionFailed(err error) bool {
 	return false
 }
 
-// isNotFound reports whether an S3 error means the object/bucket-key is absent
-// (NoSuchKey or a 404), which the store treats as an empty document.
+// isNotFound reports whether an S3 error means the OBJECT is absent (NoSuchKey or
+// a bare 404), which the store treats as an empty document. It deliberately does
+// NOT cover a missing bucket: see isMissingBucket.
 func isNotFound(err error) bool {
 	var nsk *types.NoSuchKey
 	if errors.As(err, &nsk) {
@@ -289,6 +308,56 @@ func isNotFound(err error) bool {
 		case "NoSuchKey", "NotFound", "404":
 			return true
 		}
+	}
+	return false
+}
+
+// MissingBucketError reports that the configured state bucket does not exist.
+//
+// This is deliberately NOT an empty state document. "The state document does not
+// exist yet" and "the state location cannot be reached" are different inputs to a
+// plan or apply: treating the second as the first would present an apply with
+// empty prior state and re-create infrastructure that already exists. The message
+// therefore names the location and gives the bootstrap sequence for a
+// configuration that creates its own state bucket.
+type MissingBucketError struct {
+	Bucket string
+	Region string
+}
+
+func (e *MissingBucketError) Error() string {
+	return fmt.Sprintf("state bucket %q does not exist in %s: the state LOCATION is missing, not just "+
+		"the state document, so this is not treated as an empty state (that would re-create "+
+		"resources you already own).\n"+
+		"  If this configuration creates that bucket, bootstrap it with:\n"+
+		"      nivis apply --backend=local\n"+
+		"      nivis state migrate --to-remote\n"+
+		"  Otherwise correct backend.bucket / backend.region in your configuration.",
+		e.Bucket, e.Region)
+}
+
+// missingBucket returns a *MissingBucketError naming this store's location when
+// err means the bucket does not exist, and nil otherwise. Every S3 call path runs
+// its error through this before any other classification.
+func (s *s3Store) missingBucket(err error) error {
+	if isMissingBucket(err) {
+		return &MissingBucketError{Bucket: s.bucket, Region: s.region}
+	}
+	return nil
+}
+
+// isMissingBucket reports whether an S3 error means the BUCKET does not exist. It
+// matches the typed SDK shape and the wire error code, and nothing else: a
+// permission failure (AccessDenied) or any other error keeps surfacing its own
+// cause rather than being reported as a missing bucket.
+func isMissingBucket(err error) bool {
+	var nsb *types.NoSuchBucket
+	if errors.As(err, &nsb) {
+		return true
+	}
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) && apiErr.ErrorCode() == "NoSuchBucket" {
+		return true
 	}
 	return false
 }
