@@ -212,3 +212,103 @@ func TestApplyWithBuildDisabledDoesNotBuild(t *testing.T) {
 		t.Errorf("--build=false should report no build:\n%s", out)
 	}
 }
+
+// A plan of a configuration that builds an artifact used to fail outright:
+//
+//	error: encode config: attr "label": expected string, got map[string]interface {}
+//
+// because the build leaf reached the provider's config encoder unsubstituted.
+// Apply worked, so the failure only showed on a re-plan of an applied stack —
+// which is how it survived (nixform2-hytv).
+func TestPlanSucceedsOnAConfigThatBuilds(t *testing.T) {
+	requireNix(t)
+	root := repoRoot(t)
+	buildBinaries(t, root)
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+
+	bin := buildNivis(t, root)
+	statePath := filepath.Join(t.TempDir(), "nivis.state.json")
+	token := probeToken(t, "planfix")
+
+	run := func(t *testing.T, args ...string) (string, error) {
+		t.Helper()
+		full := append([]string{}, args...)
+		full = append(full, "--attr", "nivis.buildProbe", "--state", statePath, "--var", "probe_token="+token)
+		cmd := exec.Command(bin, full...)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "NO_COLOR=1")
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+
+	// Apply first: a plan reaches the provider only for a resource in state.
+	if out, err := run(t, "apply"); err != nil {
+		t.Fatalf("apply: %v\n%s", err, out)
+	}
+
+	out, err := run(t, "plan")
+	if err != nil {
+		t.Fatalf("plan on a config with a __build leaf should succeed: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "expected string, got map") {
+		t.Errorf("the unsubstituted-leaf failure is back:\n%s", out)
+	}
+	// Same verdict the apply reached: the stack is converged, so a no-op.
+	if !strings.Contains(out, "= alpha.alpha_token.probe") {
+		t.Errorf("plan should report the applied resource as a no-op:\n%s", out)
+	}
+
+	// The datasource in that config also carries a __build leaf, on the separate
+	// ReadDataSource path. `output` exercises it a third time.
+	if out, err := run(t, "output"); err != nil {
+		t.Fatalf("output (datasource read with a __build leaf): %v\n%s", err, out)
+	}
+}
+
+// A plan must BUILD nothing. Written so it cannot pass vacuously: the probe it
+// plans was never applied in this run, so its output path starts invalid and the
+// assertion is that it is STILL invalid after the plan.
+func TestPlanBuildsNothing(t *testing.T) {
+	requireNix(t)
+	root := repoRoot(t)
+	buildBinaries(t, root)
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+
+	bin := buildNivis(t, root)
+	statePath := filepath.Join(t.TempDir(), "nivis.state.json")
+
+	runWith := func(t *testing.T, token string, args ...string) (string, error) {
+		t.Helper()
+		full := append([]string{}, args...)
+		full = append(full, "--attr", "nivis.buildProbe", "--state", statePath, "--var", "probe_token="+token)
+		cmd := exec.Command(bin, full...)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "NO_COLOR=1")
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+
+	// Seed state with one token so the resource is planned against the provider…
+	applied := probeToken(t, "seed")
+	if out, err := runWith(t, applied, "apply"); err != nil {
+		t.Fatalf("seed apply: %v\n%s", err, out)
+	}
+
+	// …then plan with a DIFFERENT token, whose probe has never been built.
+	fresh := probeToken(t, "fresh")
+	freshOut, _ := buildLeafFor(t, root, fresh)
+	if storePathValid(freshOut) {
+		t.Fatalf("the fresh probe %s is already built; this test would prove nothing", freshOut)
+	}
+
+	out, err := runWith(t, fresh, "plan")
+	if err != nil {
+		t.Fatalf("plan: %v\n%s", err, out)
+	}
+	if storePathValid(freshOut) {
+		t.Errorf("plan BUILT the probe: %s\n%s", freshOut, out)
+	}
+	if strings.Contains(out, "Building") {
+		t.Errorf("plan reported a build:\n%s", out)
+	}
+}

@@ -170,10 +170,21 @@ it:
 } }
 ```
 
-Both are needed, and neither substitutes for the other. `nivis` **evaluates** (it
-does not build), so before a resource is applied the executor **realises** the
-leaf's derivation — building the output, or substituting it if the store prefers —
-and substitutes the concrete `path` into the provider config.
+Both are needed, and neither substitutes for the other, and the executor does two
+distinct things with them:
+
+- **Substituting** `path` into the config happens for **every** config handed to a
+  provider — a plan, an apply, and a datasource read alike. It is a pure rewrite,
+  performed once where configs are resolved, so no operation can hand a provider
+  a raw leaf (a provider's encoder expects the value the leaf stands for).
+- **Realising** the leaf's derivation — building the output, or substituting it if
+  the store prefers — happens only when a resource is **applied**, per resource,
+  as it becomes ready. `nivis` evaluates; it does not build until it applies.
+
+So a plan on a configuration that builds an artifact reports its diff without
+building anything: a plan compares a path, and whether the artifact exists yet
+does not change the comparison. A datasource carrying a build leaf is likewise
+substituted and never built — it reads existing infrastructure.
 
 The derivation is what makes the output *producible*. An output path names a
 result, not a recipe: realising an output path can reuse a path that is already

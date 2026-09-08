@@ -26,3 +26,12 @@ Deferred from `nixform2-ebon` / OpenSpec change `realise-build-leaves-from-drv`,
 - `plan` reports which derivations an apply would build, or reports nothing when there are none.
 - `plan` still performs no build and no state mutation.
 - Covered by an e2e over `nivis.buildProbe`, which has a never-built leaf by construction.
+
+## Now cheap
+
+`substitute-build-leaves-at-resolve` added `graph.ResolveResult.BuildOutputs`: a
+per-node list of the build outputs a config referenced, with each one's output
+path and derivation path. That is exactly the data a `plan`-time "will build N
+derivation(s)" line needs — `plan` already computes it, and deciding which ones
+are not yet valid is one store check per entry. The report was deliberately left
+unused by that change to keep it a patch release.

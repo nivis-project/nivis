@@ -72,12 +72,12 @@ type Driver struct {
 // reuse an existing path or fetch a substitute, but it cannot build one. Drv is
 // empty for a leaf emitted by a Nix library predating that field, which can
 // therefore only be substituted (see nixRealiser).
-type Build struct {
-	// Path is the output path, possibly a file inside the derivation's output.
-	Path string
-	// Drv is the derivation path, or "" for a legacy leaf.
-	Drv string
-}
+//
+// It is the graph package's type: SUBSTITUTING a leaf with its path happens
+// there, where configs are resolved and every consumer sees the result, while
+// BUILDING is an effect that belongs only to this package's apply path. The
+// resolve pass reports what it substituted so this package knows what to build.
+type Build = graph.BuildOutput
 
 // Realiser builds Nix store paths referenced by __build leaves in resource
 // config. Realise must leave the build's output path valid in the store,
@@ -185,7 +185,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 					return nil, fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
 				}
 			} else {
-				outs, op, err = d.applyOne(ctx, g, node, res.Configs[id])
+				outs, op, err = d.applyOne(ctx, g, node, res.Configs[id], res.BuildOutputs[id])
 				if err != nil {
 					return nil, fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
 				}
@@ -457,7 +457,7 @@ func (d *Driver) readOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode
 // it (encoding unresolved refs as unknown), and applies the implied operation:
 // create (no prior), update in place, or replace (destroy the prior resource
 // then create). Returns the computed outputs.
-func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}) (map[string]interface{}, plan.Op, error) {
+func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}, builds []Build) (map[string]interface{}, plan.Op, error) {
 	prov, ok := g.Providers[node.Resource.Provider]
 	if !ok {
 		return nil, plan.OpCreate, fmt.Errorf("provider %q not declared", node.Resource.Provider)
@@ -471,13 +471,14 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		return nil, plan.OpCreate, err
 	}
 
-	// Realise any __build leaves in this resource's config (Nix build outputs the
-	// provider must read) and substitute the concrete path. Done per resource, as
-	// it becomes ready, so only builds reachable this phase run — and a build that
-	// depends on an earlier resource's output is realised in the later phase once
-	// the config re-evaluates. `nivis` evaluates (not builds), so without this the
-	// provider would see an unbuilt store path. `--no-build` skips it.
-	if err := d.realiseBuilds(ctx, node.Resource.ID, resolvedCfg); err != nil {
+	// Realise the build outputs this resource's config referenced (Nix build
+	// outputs the provider must read). The paths are already substituted into the
+	// config by the resolve pass; what remains is the EFFECT of building them, and
+	// it belongs here alone: per resource, as it becomes ready, so only builds
+	// reachable this phase run — and a build that depends on an earlier resource's
+	// output is realised in the later phase once the config re-evaluates.
+	// `--no-build` skips it.
+	if err := d.realiseBuilds(ctx, node.Resource.ID, builds); err != nil {
 		return nil, plan.OpCreate, err
 	}
 
@@ -529,52 +530,17 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	}
 }
 
-// realiseBuilds walks a resolved config tree, replacing every __build leaf
-// ({"__build":{"path":...}}) with its concrete store path after ensuring the path
-// is built (via d.Realiser, unless NoBuild). It mutates maps/slices in place.
-func (d *Driver) realiseBuilds(ctx context.Context, owner string, cfg map[string]interface{}) error {
-	for k, v := range cfg {
-		nv, err := d.realiseValue(ctx, owner, v)
-		if err != nil {
+// realiseBuilds realises the build outputs a node's config referenced, in the
+// order the resolve pass reported them.
+func (d *Driver) realiseBuilds(ctx context.Context, owner string, builds []Build) error {
+	for _, b := range builds {
+		if err := d.realiseBuild(ctx, owner, b); err != nil {
 			return err
 		}
-		cfg[k] = nv
 	}
 	return nil
 }
 
-func (d *Driver) realiseValue(ctx context.Context, owner string, v interface{}) (interface{}, error) {
-	switch t := v.(type) {
-	case map[string]interface{}:
-		if b, ok := buildLeaf(t); ok {
-			if err := d.realiseBuild(ctx, owner, b); err != nil {
-				return nil, err
-			}
-			return b.Path, nil // substitute the __build leaf with its path string
-		}
-		for k, child := range t {
-			nv, err := d.realiseValue(ctx, owner, child)
-			if err != nil {
-				return nil, err
-			}
-			t[k] = nv
-		}
-		return t, nil
-	case []interface{}:
-		for i, child := range t {
-			nv, err := d.realiseValue(ctx, owner, child)
-			if err != nil {
-				return nil, err
-			}
-			t[i] = nv
-		}
-		return t, nil
-	default:
-		return v, nil
-	}
-}
-
-// buildPath returns the path of a {"__build":{"path":...}} leaf, or false.
 // realiseBuild ensures one __build leaf's output path exists before the provider
 // is handed it: it realises the DERIVATION (which builds, or substitutes if the
 // store prefers), reports progress around a build that may take minutes, and
@@ -617,21 +583,6 @@ func (d *Driver) progressf(format string, a ...interface{}) {
 		return
 	}
 	fmt.Fprintf(d.Progress, format, a...)
-}
-
-// buildLeaf reads a __build leaf: its output path and, when the emitting Nix
-// library was new enough to record it, the derivation that produces it.
-func buildLeaf(m map[string]interface{}) (Build, bool) {
-	raw, ok := m["__build"].(map[string]interface{})
-	if !ok {
-		return Build{}, false
-	}
-	p, ok := raw["path"].(string)
-	if !ok || p == "" {
-		return Build{}, false
-	}
-	drv, _ := raw["drv"].(string)
-	return Build{Path: p, Drv: drv}, true
 }
 
 // storeName is the readable part of a store path: /nix/store/<hash>-<name> ->

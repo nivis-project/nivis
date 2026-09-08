@@ -48,44 +48,24 @@ type stubError struct{ s string }
 
 func (e *stubError) Error() string { return e.s }
 
-// leaf builds a __build leaf carrying an output path and (optionally) a drv.
-func leaf(path, drv string) map[string]interface{} {
-	b := map[string]interface{}{"path": path}
-	if drv != "" {
-		b["drv"] = drv
-	}
-	return map[string]interface{}{"__build": b}
-}
+// builds is the list the resolve pass would have reported for a node.
+func builds(bs ...Build) []Build { return bs }
 
-// __build leaves are replaced by their path, at any depth, and each one's
-// DERIVATION is what gets realised when the leaf carries one.
-func TestRealiseBuildsSubstitutes(t *testing.T) {
+// The realiser is handed each reported build, and its DERIVATION is what gets
+// realised when the leaf carried one.
+func TestRealiseBuildsRealisesEachReportedBuild(t *testing.T) {
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "img", "x.vhd")
 	pkgPath := filepath.Join(dir, "pkg")
 
 	sr := &stubRealiser{}
 	d := &Driver{Realiser: sr}
-	cfg := map[string]interface{}{
-		"source": leaf(imgPath, "/nix/store/ddd-img.drv"),
-		"nested": []interface{}{
-			map[string]interface{}{"inner": leaf(pkgPath, "/nix/store/eee-pkg.drv")},
-		},
-		"plain": "untouched",
-	}
-	if err := d.realiseBuilds(context.Background(), "r", cfg); err != nil {
+	list := builds(
+		Build{Path: imgPath, Drv: "/nix/store/ddd-img.drv"},
+		Build{Path: pkgPath, Drv: "/nix/store/eee-pkg.drv"},
+	)
+	if err := d.realiseBuilds(context.Background(), "r", list); err != nil {
 		t.Fatal(err)
-	}
-
-	if cfg["source"] != imgPath {
-		t.Errorf("source not substituted: %#v", cfg["source"])
-	}
-	inner := cfg["nested"].([]interface{})[0].(map[string]interface{})["inner"]
-	if inner != pkgPath {
-		t.Errorf("nested leaf not substituted: %#v", inner)
-	}
-	if cfg["plain"] != "untouched" {
-		t.Errorf("plain value changed: %#v", cfg["plain"])
 	}
 
 	want := []Build{
@@ -97,6 +77,19 @@ func TestRealiseBuildsSubstitutes(t *testing.T) {
 	sortBuilds(want)
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("realised = %v, want %v", got, want)
+	}
+}
+
+// Nothing reported means nothing realised: a config with no build outputs costs
+// no subprocesses.
+func TestRealiseBuildsWithNothingReported(t *testing.T) {
+	sr := &stubRealiser{}
+	d := &Driver{Realiser: sr}
+	if err := d.realiseBuilds(context.Background(), "r", nil); err != nil {
+		t.Fatal(err)
+	}
+	if len(sr.realised) != 0 {
+		t.Errorf("realised %v for a node with no builds", sr.realised)
 	}
 }
 
@@ -143,15 +136,12 @@ func TestRealiseBuildsSkipsAnAlreadyBuiltPath(t *testing.T) {
 
 	sr := &stubRealiser{}
 	d := &Driver{Realiser: sr}
-	cfg := map[string]interface{}{"source": leaf(path, "/nix/store/ddd.drv")}
-	if err := d.realiseBuilds(context.Background(), "r", cfg); err != nil {
+	list := builds(Build{Path: path, Drv: "/nix/store/ddd.drv"})
+	if err := d.realiseBuilds(context.Background(), "r", list); err != nil {
 		t.Fatal(err)
 	}
 	if len(sr.realised) != 0 {
 		t.Errorf("an existing path should not be realised; realised=%v", sr.realised)
-	}
-	if cfg["source"] != path {
-		t.Errorf("path should still be substituted: %#v", cfg["source"])
 	}
 }
 
@@ -160,12 +150,9 @@ func TestRealiseBuildsNoBuildSkips(t *testing.T) {
 	sr := &stubRealiser{}
 	var progress bytes.Buffer
 	d := &Driver{Realiser: sr, NoBuild: true, Progress: &progress}
-	cfg := map[string]interface{}{"source": leaf("/nix/store/aaa-img/x.vhd", "/nix/store/bbb.drv")}
-	if err := d.realiseBuilds(context.Background(), "r", cfg); err != nil {
+	list := builds(Build{Path: "/nix/store/aaa-img/x.vhd", Drv: "/nix/store/bbb.drv"})
+	if err := d.realiseBuilds(context.Background(), "r", list); err != nil {
 		t.Fatal(err)
-	}
-	if cfg["source"] != "/nix/store/aaa-img/x.vhd" {
-		t.Errorf("source should still be substituted with --no-build; got %#v", cfg["source"])
 	}
 	if len(sr.realised) != 0 {
 		t.Errorf("--no-build must not realise; realised=%v", sr.realised)
@@ -179,8 +166,8 @@ func TestRealiseBuildsNoBuildSkips(t *testing.T) {
 func TestRealiseBuildsFailureSurfaces(t *testing.T) {
 	sr := &stubRealiser{failOn: "/nix/store/aaa-img/x.vhd"}
 	d := &Driver{Realiser: sr}
-	cfg := map[string]interface{}{"source": leaf("/nix/store/aaa-img/x.vhd", "/nix/store/bbb.drv")}
-	err := d.realiseBuilds(context.Background(), "r", cfg)
+	list := builds(Build{Path: "/nix/store/aaa-img/x.vhd", Drv: "/nix/store/bbb.drv"})
+	err := d.realiseBuilds(context.Background(), "r", list)
 	if err == nil {
 		t.Fatal("expected a realise error")
 	}
@@ -197,8 +184,8 @@ func TestRealiseBuildsVerifiesThePathAfterwards(t *testing.T) {
 
 	sr := &stubRealiser{dontCreate: true}
 	d := &Driver{Realiser: sr}
-	cfg := map[string]interface{}{"source": leaf(path, "/nix/store/bbb-img.drv")}
-	err := d.realiseBuilds(context.Background(), "r", cfg)
+	list := builds(Build{Path: path, Drv: "/nix/store/bbb-img.drv"})
+	err := d.realiseBuilds(context.Background(), "r", list)
 	if err == nil {
 		t.Fatal("expected an error when the build did not produce the path")
 	}
@@ -217,8 +204,8 @@ func TestRealiseBuildsReportsProgress(t *testing.T) {
 
 	var progress bytes.Buffer
 	d := &Driver{Realiser: &stubRealiser{}, Progress: &progress}
-	cfg := map[string]interface{}{"source": leaf(path, "/nix/store/bbb-img.drv")}
-	if err := d.realiseBuilds(context.Background(), "owner.res.x", cfg); err != nil {
+	list := builds(Build{Path: path, Drv: "/nix/store/bbb-img.drv"})
+	if err := d.realiseBuilds(context.Background(), "owner.res.x", list); err != nil {
 		t.Fatal(err)
 	}
 	// The label is the store-path name for a real /nix/store path (see
@@ -236,33 +223,9 @@ func TestRealiseBuildsWithoutProgressWriter(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x")
 	d := &Driver{Realiser: &stubRealiser{}}
-	cfg := map[string]interface{}{"source": leaf(path, "/nix/store/bbb.drv")}
-	if err := d.realiseBuilds(context.Background(), "r", cfg); err != nil {
+	list := builds(Build{Path: path, Drv: "/nix/store/bbb.drv"})
+	if err := d.realiseBuilds(context.Background(), "r", list); err != nil {
 		t.Fatal(err)
-	}
-}
-
-// Reading a leaf: both shapes, and non-leaves left alone.
-func TestBuildLeafParsing(t *testing.T) {
-	got, ok := buildLeaf(leaf("/nix/store/aaa-img/x.vhd", "/nix/store/bbb.drv"))
-	if !ok || got.Path != "/nix/store/aaa-img/x.vhd" || got.Drv != "/nix/store/bbb.drv" {
-		t.Errorf("modern leaf = (%+v, %v)", got, ok)
-	}
-	got, ok = buildLeaf(leaf("/nix/store/aaa-img", ""))
-	if !ok || got.Path != "/nix/store/aaa-img" || got.Drv != "" {
-		t.Errorf("legacy leaf = (%+v, %v)", got, ok)
-	}
-	for _, notALeaf := range []map[string]interface{}{
-		{"other": "value"},
-		{"__build": "not an object"},
-		{"__build": map[string]interface{}{}},                    // no path
-		{"__build": map[string]interface{}{"path": ""}},          // empty path
-		{"__build": map[string]interface{}{"path": 42}},          // wrong type
-		{"__build": map[string]interface{}{"drv": "/nix/x.drv"}}, // drv without path
-	} {
-		if _, ok := buildLeaf(notALeaf); ok {
-			t.Errorf("%v should not read as a build leaf", notALeaf)
-		}
 	}
 }
 

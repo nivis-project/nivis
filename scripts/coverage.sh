@@ -43,11 +43,11 @@ fi
 EXCLUDE_RE='^(internal/tfplugin[56]|cmd/provider-|internal/fakeprovider)'
 
 # OVERALL floor, over everything not excluded. Target: 70 — nearly there:
-# 69.6% on a machine with nix, 68.x in the sandbox where tests/e2e skips.
-OVERALL_FLOOR=68
+# 69.8% on a machine with nix, 69.4% in the sandbox where tests/e2e skips.
+OVERALL_FLOOR=69
 
 # CORE packages: the executor's contract and engine. Target: 80.
-CORE_FLOOR=79
+CORE_FLOOR=79 # internal/graph is at 82.0, ir 79.4, plan 95, state 85.9, tfcodec 87.9
 CORE_PKGS='internal/ir internal/state internal/graph internal/plan internal/tfcodec'
 
 # Everything else that is not excluded and not core.
@@ -57,10 +57,10 @@ OTHER_FLOOR=65
 # own baseline so they cannot regress while the rest is pulled up.
 declare -A EXCEPTIONS=(
   # A core package, but a big slice of the phase driver is only exercised by
-  # tests/e2e, which skips in the sandbox: 74.6% there vs 81.8% with nix on PATH.
+  # tests/e2e, which skips in the sandbox: 77.2% there vs 81.4% with nix on PATH.
   # Floored at the sandbox baseline; it already clears the 80% core target when
   # the e2e tests actually run.
-  [internal/phase]=74
+  [internal/phase]=77
   [internal/registry]=35
   [internal/provider/v5]=46
   [cmd/nivis]=40

@@ -8,6 +8,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- `nivis plan` no longer fails with `expected string, got map[string]interface {}`
+  on a configuration that builds an artifact (a `drv`/`__build` leaf). The build
+  output's path is now substituted for every config the executor hands a provider
+  — a plan, an apply, and a datasource read — while building still happens only
+  during an apply, so a plan reports its diff without building anything. A
+  datasource whose config references a built artifact works too, in `plan`,
+  `apply` and `output`.
+
 ## [0.6.0] - 2026-09-08
 
 ### Added

@@ -18,6 +18,7 @@ ledger:
 let
   inherit (nivis)
     mkResource
+    mkData
     toIR
     mkVars
     drv
@@ -39,6 +40,19 @@ let
       "echo built-by-nivis > $out"
     ];
   };
+  # A DATASOURCE carrying a `__build` leaf too. Datasource configs travel a
+  # different executor path than resource configs (ReadDataSource, called during
+  # plan, apply AND outputs resolution), and that path had the same defect: the
+  # leaf reached the provider unsubstituted. A datasource is substituted but
+  # never built — it reads existing infrastructure.
+  lookup = mkData {
+    provider = "alpha";
+    type = "alpha_lookup";
+    name = "probe";
+    config = {
+      query = drv probe;
+    };
+  };
 in
 toIR {
   providers = {
@@ -47,6 +61,7 @@ toIR {
       config = { };
     };
   };
+  dataSources = [ lookup ];
   resources = [
     (mkResource {
       provider = "alpha";
