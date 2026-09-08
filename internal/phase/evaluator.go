@@ -74,18 +74,57 @@ func (n NixEval) Eval(ctx context.Context, l *ledger.Ledger) ([]byte, error) {
 	return out, nil
 }
 
-// nixRealiser is the default Realiser: it builds a store path with
-// `nix-store --realise`, which is a no-op if the path is already valid and
-// otherwise builds the derivation (downloading from a substituter or building
-// locally). It is how `nivis` builds the __build outputs a resource needs.
+// nixRealiser is the default Realiser: it makes a __build leaf's output path
+// exist by realising the DERIVATION that produces it.
+//
+// The distinction is the whole point. `nix-store --realise <outputPath>` can
+// reuse a path that is already valid, or fetch it from a substituter — but it
+// cannot BUILD it, because an output path names a result and is not a recipe:
+//
+//	$ nix-store --realise /nix/store/<hash>-never-built
+//	don't know how to build these paths:
+//	  /nix/store/<hash>-never-built
+//	error: path '...' is required, but there is no substituter that can build it
+//
+// Realising the derivation builds it (or substitutes, if the store prefers).
+// A leaf with no derivation path comes from a Nix library predating that field;
+// for it the old output-path realise is the only option, and when that fails the
+// error says why, because the remedy is to update the library rather than
+// anything about the user's config.
 type nixRealiser struct{}
 
-func (nixRealiser) Realise(ctx context.Context, storePath string) error {
-	cmd := exec.CommandContext(ctx, "nix-store", "--realise", storePath)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("nix-store --realise %s: %w\n%s", storePath, err, cleanNixStderr(string(out)))
+func (nixRealiser) Realise(ctx context.Context, b Build) error {
+	target, buildable := realiseTarget(b)
+	out, err := run(ctx, "nix-store", "--realise", target)
+	if err == nil {
+		return nil
 	}
-	return nil
+	if buildable {
+		return fmt.Errorf("nix-store --realise %s (the derivation for %s): %w\n%s",
+			target, b.Path, err, cleanNixStderr(out))
+	}
+	return fmt.Errorf("nix-store --realise %s: %w\n%s\n"+
+		"  This __build leaf carries no derivation path, so it can only be substituted, never built:\n"+
+		"  an output path names a result, not a recipe. The Nix library that produced this IR predates\n"+
+		"  buildable realisation — update your `nivis` flake input (or pre-build the path).",
+		target, err, cleanNixStderr(out))
+}
+
+// realiseTarget picks what to hand `nix-store --realise` for a build: the
+// DERIVATION when the leaf carries one, which can actually be built, otherwise
+// the output root, which can only be reused or substituted. buildable reports
+// which case it is, so a failure can explain itself.
+func realiseTarget(b Build) (target string, buildable bool) {
+	if b.Drv != "" {
+		return b.Drv, true
+	}
+	return storeRoot(b.Path), false
+}
+
+// run executes a command and returns its combined output.
+func run(ctx context.Context, name string, args ...string) (string, error) {
+	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	return string(out), err
 }
 
 // cleanNixStderr keeps the actionable lines from nix's stderr (the `error:` and

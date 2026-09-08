@@ -14,7 +14,7 @@ machine runs a tiny web server, and you verify the running instance answers
 The shape:
 
 ```
-nix build  ──►  NixOS amazon image (a .vhd, nginx baked in)
+nivis apply ──►  NixOS amazon image (a .vhd, nginx baked in)   ← built by the run
                       │
    Nivis ── aws_iam_role + policy (vmimport)      the VM-import service role
          ── aws_s3_bucket + aws_s3_object         the .vhd uploaded to S3
@@ -232,9 +232,17 @@ nivis apply     # build the image, upload (~2 GB), import, register, launch
 ```
 
 Because `source` is a `drv` (`__build`) leaf, **`nivis apply` builds the image
-itself** before uploading it: no separate `nix build` step. The image build is
-the heavy part (it uses the Nix binary cache, ≈2 GB); everything after is pure
-AWS. (Pass `--build=false` to skip realising if you've pre-built.)
+itself** before uploading it: no separate `nix build` step. The leaf carries the
+image's derivation, which is what lets the run build it rather than only fetch a
+prebuilt copy — so this works on a machine where the image has never been built
+and is in no binary cache.
+
+The image build is the heavy part (≈2 GB, mostly from the Nix binary cache) and
+it happens inside the apply: `nivis` reports `Building nixos-image-…` when it
+starts and `Built …` when it finishes, so a long silence is not a hang. Note that
+the state lock is held for the whole run, build included, so on a shared remote
+backend a first build blocks other runs against that state. (Pass `--build=false`
+to skip realising if you have pre-built, e.g. with `nix build .#ec2-image`.)
 
 A real run of this pipeline (verified against AWS) resolves across four phases:
 the AWS chain can't all happen at once:

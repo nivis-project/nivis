@@ -15,8 +15,12 @@ package phase
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/nivis-project/nivis/internal/apply"
 	"github.com/nivis-project/nivis/internal/graph"
@@ -54,14 +58,33 @@ type Driver struct {
 	// __build leaf. nil uses the default (nix-store --realise). The seam lets
 	// tests inject a stub.
 	Realiser Realiser
+	// Progress, if set, receives a line when a build starts and when it finishes.
+	// A realise can take many minutes (an OS image is routine) and produces no
+	// output of its own until it ends, which is indistinguishable from a hang.
+	// nil discards.
+	Progress io.Writer
+}
+
+// Build identifies one __build leaf: the OUTPUT path a provider must be given,
+// and the DERIVATION that produces it.
+//
+// Both matter. An output path names a result, not a recipe: realising it can
+// reuse an existing path or fetch a substitute, but it cannot build one. Drv is
+// empty for a leaf emitted by a Nix library predating that field, which can
+// therefore only be substituted (see nixRealiser).
+type Build struct {
+	// Path is the output path, possibly a file inside the derivation's output.
+	Path string
+	// Drv is the derivation path, or "" for a legacy leaf.
+	Drv string
 }
 
 // Realiser builds Nix store paths referenced by __build leaves in resource
-// config. Realise is given the absolute store path of a build output; it must
-// ensure that path is valid (built) in the store, building the derivation if
-// necessary. internal/plugin's nix realiser satisfies this.
+// config. Realise must leave the build's output path valid in the store,
+// building the derivation when one is given. internal/phase's nix realiser
+// satisfies this.
 type Realiser interface {
-	Realise(ctx context.Context, storePath string) error
+	Realise(ctx context.Context, b Build) error
 }
 
 // priorState returns the prior state for an in-state resource. By default it
@@ -523,17 +546,11 @@ func (d *Driver) realiseBuilds(ctx context.Context, owner string, cfg map[string
 func (d *Driver) realiseValue(ctx context.Context, owner string, v interface{}) (interface{}, error) {
 	switch t := v.(type) {
 	case map[string]interface{}:
-		if path, ok := buildPath(t); ok {
-			if !d.NoBuild {
-				r := d.Realiser
-				if r == nil {
-					r = nixRealiser{}
-				}
-				if err := r.Realise(ctx, storeRoot(path)); err != nil {
-					return nil, fmt.Errorf("realise build for %q (%s): %w", owner, path, err)
-				}
+		if b, ok := buildLeaf(t); ok {
+			if err := d.realiseBuild(ctx, owner, b); err != nil {
+				return nil, err
 			}
-			return path, nil // substitute the __build leaf with its path string
+			return b.Path, nil // substitute the __build leaf with its path string
 		}
 		for k, child := range t {
 			nv, err := d.realiseValue(ctx, owner, child)
@@ -558,13 +575,73 @@ func (d *Driver) realiseValue(ctx context.Context, owner string, v interface{}) 
 }
 
 // buildPath returns the path of a {"__build":{"path":...}} leaf, or false.
-func buildPath(m map[string]interface{}) (string, bool) {
-	b, ok := m["__build"].(map[string]interface{})
-	if !ok {
-		return "", false
+// realiseBuild ensures one __build leaf's output path exists before the provider
+// is handed it: it realises the DERIVATION (which builds, or substitutes if the
+// store prefers), reports progress around a build that may take minutes, and
+// verifies afterwards that the recorded path really is there.
+//
+// An already-present path is left alone, so a built stack costs no subprocesses.
+func (d *Driver) realiseBuild(ctx context.Context, owner string, b Build) error {
+	if d.NoBuild {
+		return nil // --no-build: use the path as-is (the provider errors if absent)
 	}
-	p, ok := b["path"].(string)
-	return p, ok && p != ""
+	if _, err := os.Stat(b.Path); err == nil {
+		return nil // already built
+	}
+
+	r := d.Realiser
+	if r == nil {
+		r = nixRealiser{}
+	}
+	d.progressf("Building %s for %s...\n", storeName(b.Path), owner)
+	start := time.Now()
+	if err := r.Realise(ctx, b); err != nil {
+		return fmt.Errorf("realise build for %q (%s): %w", owner, b.Path, err)
+	}
+	d.progressf("Built %s (%s).\n", storeName(b.Path), time.Since(start).Round(time.Second))
+
+	// Building a derivation guarantees THAT derivation's outputs exist, not that
+	// they match a path recorded elsewhere. Without this check a mismatch reaches
+	// the provider as a bare "no such file or directory".
+	if _, err := os.Stat(b.Path); err != nil {
+		return fmt.Errorf("realise build for %q: the build succeeded but %s is still missing "+
+			"(derivation %s produced different outputs than the config recorded): %w",
+			owner, b.Path, b.Drv, err)
+	}
+	return nil
+}
+
+// progressf writes a progress line, if the driver was given somewhere to put it.
+func (d *Driver) progressf(format string, a ...interface{}) {
+	if d.Progress == nil {
+		return
+	}
+	fmt.Fprintf(d.Progress, format, a...)
+}
+
+// buildLeaf reads a __build leaf: its output path and, when the emitting Nix
+// library was new enough to record it, the derivation that produces it.
+func buildLeaf(m map[string]interface{}) (Build, bool) {
+	raw, ok := m["__build"].(map[string]interface{})
+	if !ok {
+		return Build{}, false
+	}
+	p, ok := raw["path"].(string)
+	if !ok || p == "" {
+		return Build{}, false
+	}
+	drv, _ := raw["drv"].(string)
+	return Build{Path: p, Drv: drv}, true
+}
+
+// storeName is the readable part of a store path: /nix/store/<hash>-<name> ->
+// <name>, for progress lines that name what is building.
+func storeName(path string) string {
+	base := filepath.Base(storeRoot(path))
+	if i := strings.IndexByte(base, '-'); i >= 0 && i+1 < len(base) {
+		return base[i+1:]
+	}
+	return base
 }
 
 // storeRoot reduces /nix/store/<hash>-<name>/sub/file to the store root

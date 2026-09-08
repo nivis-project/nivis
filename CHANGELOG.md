@@ -42,6 +42,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   documented in docs/REMOTE-STATE.md.
 
 ### Fixed
+- `nivis apply` now **builds** a `drv`/`__build` derivation that is not already in
+  the store or a binary cache, instead of failing with "no substituter that can
+  build it", and reports `Building …` / `Built …` while it works. A `__build` leaf
+  previously carried only the derivation's output path, which names a result and
+  is not a recipe: it could be reused or substituted, never built. The leaf now
+  carries the derivation too. This is what the EC2/NixOS tutorial's "no separate
+  `nix build` step" always claimed, and it makes a config that creates its own
+  image applicable in one run.
 - A missing state **bucket** is now an actionable error naming the bucket, the
   region, and the bootstrap sequence, instead of an opaque S3 failure. Previously
   an `apply` against a not-yet-existing bucket died in the state lock with a raw

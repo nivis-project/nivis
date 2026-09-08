@@ -279,7 +279,13 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			d := &phase.Driver{Eval: evaluator(), Manager: mgr, Store: store, Ledger: l, NoRefresh: !doRefresh, NoBuild: !doBuild}
+			d := &phase.Driver{
+				Eval: evaluator(), Manager: mgr, Store: store, Ledger: l,
+				NoRefresh: !doRefresh, NoBuild: !doBuild,
+				// Build progress goes to stderr, beside provider notes, so the
+				// change list on stdout stays unmixed.
+				Progress: cmd.ErrOrStderr(),
+			}
 
 			items, err := d.PlanReport(cmd.Context())
 			if err != nil {
@@ -340,6 +346,7 @@ func applyCmd() *cobra.Command {
 				LedgerPath: statePath + ".ledger",
 				NoRefresh:  !doRefresh,
 				NoBuild:    !doBuild,
+				Progress:   cmd.ErrOrStderr(),
 			}
 			// Hold the state lock for the whole apply (no-op on an unlockable store).
 			var res *phase.Result

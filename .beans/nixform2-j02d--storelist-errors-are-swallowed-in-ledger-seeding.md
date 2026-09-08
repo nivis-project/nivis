@@ -7,7 +7,8 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-09-07T16:41:11Z
-updated_at: 2026-09-07T16:41:11Z
+updated_at: 2026-09-07T20:03:36Z
+parent: nixform2-kovh
 ---
 
 Found while implementing `nixform2-ebx5` (state migration between backends), OpenSpec change `state-migrate-between-backends`.

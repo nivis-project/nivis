@@ -239,6 +239,11 @@
         # --to-remote` -> `apply` sequence. Fake resources; used by the bootstrap
         # e2e and by docs/REMOTE-STATE.md.
         bootstrapState = import ./nix/example/bootstrap-state.nix { inherit nivis; };
+        # A __build leaf over a never-built derivation, for the build-realisation
+        # e2e: `--var probe_token=<unique>` makes the derivation new every run, so
+        # the test cannot decay into "the path was already there". See
+        # nix/example/build-probe.nix.
+        buildProbe = import ./nix/example/build-probe.nix { inherit nivis; };
         # The log-emitting fake (provider-zeta), for the provider-notes e2e:
         # `--var count=N` declares N resources, so the note collapse is
         # exercisable. See docs/GETTING-STARTED.md ("Provider notes").

@@ -149,14 +149,31 @@ let
     in
     ok && caught && caughtEmpty;
 
-  # P8. drv produces a __build leaf carrying the store path; it survives resolve
-  # unchanged (a known value, not ledger-dependent) and creates no edge.
+  # P8. drv produces a __build leaf carrying BOTH the output path and the
+  # derivation that produces it (the output path alone cannot be built); it
+  # survives resolve unchanged (a known value, not ledger-dependent) and creates
+  # no edge.
   P8 =
     let
-      fakeDrv = { outPath = "/nix/store/abc-img"; passthru.filePath = "x.vhd"; };
+      fakeDrv = {
+        outPath = "/nix/store/abc-img";
+        drvPath = "/nix/store/def-img.drv";
+        passthru.filePath = "x.vhd";
+      };
       leaf = nivis.drv fakeDrv;
-      onlyPath = builtins.attrNames leaf == [ "__build" ] && builtins.attrNames leaf.__build == [ "path" ];
+      onlyPath =
+        builtins.attrNames leaf == [ "__build" ]
+        && builtins.attrNames leaf.__build == [
+          "drv"
+          "path"
+        ];
       goodPath = leaf.__build.path == "/nix/store/abc-img/x.vhd";
+      goodDrv = leaf.__build.drv == "/nix/store/def-img.drv";
+      # drvFile names an inner file while keeping the enclosing derivation.
+      fileLeaf = nivis.drvFile fakeDrv "sub/other.raw";
+      goodFile =
+        fileLeaf.__build.path == "/nix/store/abc-img/sub/other.raw"
+        && fileLeaf.__build.drv == "/nix/store/def-img.drv";
       survives = (nivis.resolve { outputs = { }; } leaf) == leaf; # passes through
       # a __build in a resource config produces no edge (it's not a dependency)
       bres = mkResource { provider = "aws"; type = "t"; name = "n"; config = { src = leaf; }; };
@@ -164,7 +181,7 @@ let
       noEdge = irB.edges == [ ];
       encoded = (builtins.head irB.resources).config.src == leaf; # wire shape unchanged
     in
-    onlyPath && goodPath && survives && noEdge && encoded;
+    onlyPath && goodPath && goodDrv && goodFile && survives && noEdge && encoded;
 
   # P9. mkVars resolves declared variables against injected ledger.vars: a set
   # value wins, an unset one falls back to its default, a required (no-default)

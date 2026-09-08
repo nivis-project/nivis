@@ -57,10 +57,10 @@ OTHER_FLOOR=65
 # own baseline so they cannot regress while the rest is pulled up.
 declare -A EXCEPTIONS=(
   # A core package, but a big slice of the phase driver is only exercised by
-  # tests/e2e, which skips in the sandbox: 73.9% there vs 81.7% with nix on PATH.
+  # tests/e2e, which skips in the sandbox: 74.6% there vs 81.8% with nix on PATH.
   # Floored at the sandbox baseline; it already clears the 80% core target when
   # the e2e tests actually run.
-  [internal/phase]=73
+  [internal/phase]=74
   [internal/registry]=35
   [internal/provider/v5]=46
   [cmd/nivis]=40

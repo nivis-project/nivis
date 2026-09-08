@@ -17,22 +17,49 @@ rec {
   isBuild = v: builtins.isAttrs v && v ? __build;
   isMarker = v: isRef v || isDerived v || isSensitiveRef v;
 
-  # buildLeaf :: store-path-string -> __build leaf. The executor realises this
-  # path (builds the derivation) before apply, then substitutes it into the
-  # provider config. Unlike __ref/__derived, a __build leaf is a KNOWN value (its
-  # path exists at evaluation); only the file needs building, so it passes through
-  # `resolve` unchanged.
-  buildLeaf = path: { __build = { inherit path; }; };
+  # buildLeaf :: { path, drv } -> __build leaf. `path` is the output path the
+  # provider must be given; `drv` is the DERIVATION that produces it, which is
+  # what lets the executor build the output rather than only substitute it.
+  #
+  # Both are needed. An output path names a result, not a recipe: `nix-store
+  # --realise <outputPath>` can reuse an existing path or fetch a substitute, but
+  # it cannot build one, and the derivation is not recoverable from the output
+  # path (the hashes are unrelated, and a store cannot name the deriver of a path
+  # that is not yet valid). Carrying it is free: obtaining "${d}" already
+  # instantiates the same derivation during evaluation.
+  #
+  # A __build leaf is a KNOWN value in the sense that it does NOT depend on the
+  # outputs ledger, so it passes through `resolve` unchanged. That is not the same
+  # as its path existing: evaluation fixes the path STRING, while the artifact it
+  # names may never have been built.
+  buildLeaf =
+    { path, drv }:
+    {
+      __build = {
+        inherit path;
+        drv = drv;
+      };
+    };
 
   # drv :: derivation -> __build leaf. Marks a config value as the output of a Nix
   # build (e.g. aws_s3_object.source = drv image). If the derivation has
   # passthru.filePath (an artifact inside its output, like a NixOS image's .vhd),
   # that file is used; otherwise the output root. For an explicit sub-path use
   # `drvFile d "rel/path"`.
-  drv = d: buildLeaf (if d ? passthru && d.passthru ? filePath then "${d}/${d.passthru.filePath}" else "${d}");
+  drv =
+    d:
+    buildLeaf {
+      path = if d ? passthru && d.passthru ? filePath then "${d}/${d.passthru.filePath}" else "${d}";
+      drv = d.drvPath;
+    };
 
   # drvFile :: derivation -> relative-path -> __build leaf for "${d}/<path>".
-  drvFile = d: file: buildLeaf "${d}/${file}";
+  drvFile =
+    d: file:
+    buildLeaf {
+      path = "${d}/${file}";
+      drv = d.drvPath;
+    };
 
   # inputsOf :: marker -> list of "<id>.<attr>" input keys it depends on.
   # For a __ref, that is the single "<resource>.<path-dotted>"; for a __derived,

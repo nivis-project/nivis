@@ -323,7 +323,7 @@
       }
     },
     "configTree": {
-      "description": "An attribute tree. Leaves are concrete JSON scalars, a __ref, a __derived, or a __sensitiveRef. Objects/arrays nest configTrees. An object carrying a reserved marker key (__ref/__derived/__sensitiveRef) is dispatched to that exact subschema via if/then, so a malformed marker reports a precise error (e.g. 'path is a required property') rather than a generic 'no branch matched'.",
+      "description": "An attribute tree. Leaves are concrete JSON scalars, a __ref, a __derived, a __sensitiveRef, or a __build. Objects/arrays nest configTrees. An object carrying a reserved marker key (__ref/__derived/__sensitiveRef/__build) is dispatched to that exact subschema via if/then, so a malformed marker reports a precise error (e.g. 'path is a required property') rather than a generic 'no branch matched'.",
       "if": {
         "type": "object",
         "required": [
@@ -354,32 +354,70 @@
             "$ref": "#/$defs/sensitiveRef"
           },
           "else": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              },
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/configTree"
+            "if": {
+              "type": "object",
+              "required": [
+                "__build"
+              ]
+            },
+            "then": {
+              "$ref": "#/$defs/build"
+            },
+            "else": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/configTree"
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/configTree"
+                  }
                 }
-              },
-              {
-                "type": "object",
-                "additionalProperties": {
-                  "$ref": "#/$defs/configTree"
-                }
-              }
-            ]
+              ]
+            }
+          }
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "required": [
+        "__build"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "__build": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Absolute store path of the build OUTPUT the provider must be given (the inner file when the author asked for one). Known at evaluation as a string; the artifact it names need not exist yet."
+            },
+            "drv": {
+              "type": "string",
+              "pattern": "\\.drv$",
+              "description": "Store path of the DERIVATION that produces 'path'. This is what lets the executor build the output rather than only substitute it: an output path names a result, not a recipe, and the derivation is not recoverable from it. Optional for compatibility with IR emitted by a Nix library predating this field, which can only be substituted, not built."
+            }
           }
         }
       }

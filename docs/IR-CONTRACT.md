@@ -159,21 +159,46 @@ mechanism that forces N>2 phases for chained Nix-mediated dependencies.
 ## Build outputs (`__build`)
 
 A config leaf that is the **output of a Nix build** (e.g. a resource `source`
-that is a built disk image) is a `__build` leaf carrying its store path:
+that is a built disk image) is a `__build` leaf carrying two store paths — the
+build **output** the provider must be given, and the **derivation** that produces
+it:
 
 ```jsonc
-{ "__build": { "path": "/nix/store/<hash>-<name>/<file>" } }   // a Nix build output
+{ "__build": {
+    "path": "/nix/store/<hash>-<name>/<file>",   // the output the provider reads
+    "drv":  "/nix/store/<hash>-<name>.drv"       // the derivation that produces it
+} }
 ```
 
-Unlike `__ref`/`__derived`, a `__build` leaf is a **known** value: its path is
-fixed at evaluation. But `nivis` *evaluates* (it does not build), so before a
-resource is applied the executor **realises** each `__build` path it references
-(building the derivation if the store path is not yet valid) and substitutes the
-concrete path into the provider config. This is done per resource as it becomes
-ready, so a build whose derivation depends on an earlier resource's apply-time
-output is realised in a later phase: the build participates in the phased
-fixpoint. A `__build` leaf is not an edge and not unknown-pending; authors emit it
-with the `drv` helper (`source = drv image`).
+Both are needed, and neither substitutes for the other. `nivis` **evaluates** (it
+does not build), so before a resource is applied the executor **realises** the
+leaf's derivation — building the output, or substituting it if the store prefers —
+and substitutes the concrete `path` into the provider config.
+
+The derivation is what makes the output *producible*. An output path names a
+result, not a recipe: realising an output path can reuse a path that is already
+valid or fetch one from a substituter, but it cannot build one, and the derivation
+is not recoverable from it (the hashes are unrelated, and a store cannot report the
+deriver of a path that is not yet valid). A leaf carrying only `path` is therefore
+substitute-only; it remains **valid IR** for compatibility with a Nix library
+predating the field, and the executor says so when such a leaf cannot be realised.
+
+Realising happens per resource as it becomes ready, so a build whose derivation
+depends on an earlier resource's apply-time output is realised in a later phase:
+the build participates in the phased fixpoint. That case is also why building from
+the derivation is required rather than convenient — there, the derivation does not
+exist until the earlier resource is applied, so the author cannot pre-build the
+path, and substitution can never satisfy it.
+
+Unlike `__ref`/`__derived`, a `__build` leaf is a **known** value in one specific
+sense: it does not depend on the outputs ledger, so it passes through resolution
+unchanged and is neither an edge nor unknown-pending. That is *not* the same as its
+path existing. Evaluation fixes the path **string**; for a derivation that has
+never been built, the artifact it names does not exist at all. Conflating the two
+is what makes an output-path-only leaf look sufficient when it is not.
+
+Authors emit it with the `drv` helper (`source = drv image`), or `drvFile` for a
+file inside the output.
 
 ## Sensitive values across the boundary
 

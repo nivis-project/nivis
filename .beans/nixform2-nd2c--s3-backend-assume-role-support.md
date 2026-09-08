@@ -5,7 +5,8 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-09-02T13:03:06Z
-updated_at: 2026-09-02T13:03:06Z
+updated_at: 2026-09-07T20:03:31Z
+parent: nixform2-kovh
 ---
 
 The S3 state backend resolves credentials only via the AWS SDK default chain
