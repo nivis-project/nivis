@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-08
+
 ### Fixed
 - `nivis plan` no longer fails with `expected string, got map[string]interface {}`
   on a configuration that builds an artifact (a `drv`/`__build` leaf). The build
@@ -287,7 +289,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/nivis-project/nivis/releases/tag/v0.6.1
 [0.6.0]: https://github.com/nivis-project/nivis/releases/tag/v0.6.0
 [0.5.0]: https://github.com/nivis-project/nivis/releases/tag/v0.5.0
 [0.4.8]: https://github.com/nivis-project/nivis/releases/tag/v0.4.8
