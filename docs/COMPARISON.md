@@ -1,4 +1,4 @@
-<!-- last-verified: 2026-06-16 -->
+<!-- last-verified: 2026-09-08 -->
 <!-- This page compares Nivis to other tools using facts about THOSE tools that
      change over time (their versions, features, licenses). It is checked for
      freshness by tests/check-comparison-fresh.sh: update the `last-verified`
@@ -28,7 +28,7 @@ and the others are mature.
 | **Nivis** | Terraform/OpenTofu provider resources as **first-class Nix values**, driven by a thin Go executor that spawns **unmodified** provider binaries. Nix is the config; the provider does the work. |
 | **OpenTofu** / Terraform | The provider ecosystem and engine. HCL config, its own state, a huge provider registry. Mature, ubiquitous. |
 | **Terranix** | Generates **HCL/JSON** from Nix, then hands it to Terraform/OpenTofu to run. Nix as an HCL *generator*. |
-| **NixOps 4** | Nix-native deployment orchestrator (the NixOps line, reworked around a resource/provider model). Nix-centric, NixOS-deployment heritage. |
+| **NixOps 4** | Nix-native deployment **platform**: its own resource-provider interface that anyone can implement, in Rust, LGPL-2.1. Outputs feed back into Nix, and the graph topology may be computed from them. Terraform-provider compatibility is **in progress** (the `tfproto` branch). |
 | **Pulumi** | Real programming languages (TS, Python, Go, …) for IaC. Reuses Terraform providers by **compiling** them into per-provider plugins via its bridge. |
 | **AWS CDK** | Real languages that **synthesize CloudFormation**. AWS-first; CDKTF variant synthesizes Terraform. |
 | **CloudFormation** | AWS's native, declarative, AWS-only IaC service. Managed state, deep AWS integration. |
@@ -56,11 +56,24 @@ Three choices, none of which the others combine:
    honest Nix-shaped thing (re-eval to a fixpoint) rather than pretending to have
    promises. Terranix has no round trip at all: it generates HCL once and stops.
 
-The closest neighbor by *intent* is Terranix (Nix + the Terraform provider
-ecosystem); the closest by *mechanism for reusing providers* is Pulumi (both ride
-Terraform providers). Nivis sits between them and matches neither: Nix-native
-like Terranix, provider-reusing like Pulumi, but generating HCL like neither and
-linking providers like neither.
+   **This one is not exclusive to Nivis.** NixOps 4 does it too: its manual
+   documents output→input dependencies *and* "structural dependencies", where the
+   graph topology itself is computed from a resource's outputs
+   (`lib.optionalAttrs (members.selector.outputs.value == "enabled") { … }`), and
+   its integration tests on `main` exercise exactly that. Treat the round trip as
+   the reason Nivis exists, not as a moat.
+
+The closest neighbor by *intent* — and, for the `tfproto` branch, by *mechanism*
+too — is **NixOps 4**: the same "one model of the world instead of IaC islands"
+premise, Nix-native, with provider binaries driven directly. Pulumi rides the
+same providers but *compiles* them; Terranix shares the language but not the
+ambition (it generates HCL once and stops).
+
+What is left, honestly, is **scope and licensing**. NixOps 4 is a platform whose
+Terraform support is one provider kind among many, still in progress, under
+LGPL-2.1. In Nivis the coupling is the entire product — every OpenTofu provider
+works on day one because we spawn the unmodified binary — and the code is
+Apache-2.0, which matters if you intend to build on it.
 
 ## Feature comparison
 
@@ -73,15 +86,15 @@ Legend: ✅ yes · ⚠️ partial / with caveats · ❌ no · n/a not applicable
 | Feature | Nivis | OpenTofu/TF | Terranix | NixOps 4 | Pulumi | CDK | CloudFormation |
 | --- | :--: | :--: | :--: | :--: | :--: | :--: | :--: |
 | Config language | Nix | HCL | Nix → HCL | Nix | TS/Py/Go/… | TS/Py/… | YAML/JSON |
-| Reuses Terraform/OpenTofu providers | ✅ (spawn) | ✅ (native) | ✅ (via TF) | ⚠️ | ✅ (bridge) | ⚠️ (CDKTF) | ❌ |
+| Reuses Terraform/OpenTofu providers | ✅ (spawn) | ✅ (native) | ✅ (via TF) | ⚠️ (in progress) | ✅ (bridge) | ⚠️ (CDKTF) | ❌ |
 | Multi-cloud / any provider | ✅ | ✅ | ✅ | ⚠️ | ✅ | ⚠️ | ❌ (AWS) |
 | Plan / preview before apply | ✅ | ✅ | ✅ (via TF) | ⚠️ | ✅ | ✅ | ✅ (change sets) |
 | Apply / update / replace / destroy | ✅ | ✅ | ✅ (via TF) | ✅ | ✅ | ✅ | ✅ |
 | State management | ✅ (local) | ✅ | ✅ (TF) | ✅ | ✅ | n/a (CFN) | ✅ (managed) |
-| Outputs feed back into config (round trip) | ✅ (phased re-eval) | ⚠️ (HCL refs, no host-lang feedback) | ❌ | ⚠️ | ✅ (`Output<T>`) | ⚠️ | ⚠️ |
+| Outputs feed back into config (round trip) | ✅ (phased re-eval) | ⚠️ (HCL refs, no host-lang feedback) | ❌ | ✅ (incl. structural deps) | ✅ (`Output<T>`) | ⚠️ | ⚠️ |
 | Typed/validated config | ✅ (Nix + schema codegen) | ✅ | ✅ (Nix) | ✅ | ✅ (host lang) | ✅ | ⚠️ |
 | Modules / composition | ✅ (Nix modules) | ✅ | ✅ (Nix) | ✅ | ✅ | ✅ | ⚠️ (nested stacks) |
-| Mix OS build + cloud in one expr | ✅ (NixOS image → AMI) | ❌ | ❌ | ⚠️ | ❌ | ❌ | ❌ |
+| Mix OS build + cloud in one expr | ✅ (NixOS image → AMI) | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 
 </div>
 
@@ -113,6 +126,7 @@ This is where Nivis is youngest. Honest status:
 | **OpenTofu** | MPL-2.0 (the open fork created after Terraform's BUSL relicense). |
 | **Terraform** | **BUSL-1.1** (source-available) since v1.6. |
 | **Terranix** | Open source (MIT); generates HCL for whichever engine you run. |
+| **NixOps 4** | **LGPL-2.1** — copyleft, unlike the permissive licences elsewhere in this table. |
 | **Pulumi** | Apache-2.0 core; Pulumi Cloud is a commercial service. |
 | **CDK / CloudFormation** | CDK Apache-2.0; CloudFormation is an AWS service. |
 
@@ -140,7 +154,12 @@ date at the top of this file:
 - OpenTofu: <https://opentofu.org> · license & registry
 - Terraform: <https://developer.hashicorp.com/terraform> · BUSL relicense notes
 - Terranix: <https://terranix.org>
-- NixOps: <https://github.com/NixOS/nixops>
+- NixOps 4: <https://github.com/nixops4/nixops4> — `doc/manual/src/index.md`
+  ("In progress: Terraform resource provider compatibility"),
+  `doc/manual/src/concept/resource.md` (output→input and structural
+  dependencies), `rust/nixops4-resources-terraform/README.md` and the `tfproto`
+  branch, `test/integration-test-nixops4-with-local/flake/flake.nix` (the
+  structural-dependency cases), and its `LICENSE` (LGPL-2.1).
 - Pulumi & the Terraform bridge: <https://www.pulumi.com/docs/> · <https://github.com/pulumi/pulumi-terraform-bridge>
 - AWS CDK / CDKTF: <https://docs.aws.amazon.com/cdk/> · <https://developer.hashicorp.com/terraform/cdktf>
 - AWS CloudFormation: <https://docs.aws.amazon.com/cloudformation/>
