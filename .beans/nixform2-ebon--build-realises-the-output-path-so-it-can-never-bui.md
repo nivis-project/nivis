@@ -1,11 +1,11 @@
 ---
 # nixform2-ebon
 title: __build realises the output path, so it can never build an unsubstitutable derivation
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-09-08T12:00:18Z
-updated_at: 2026-09-08T12:39:33Z
+updated_at: 2026-09-08T13:04:09Z
 parent: nixform2-kovh
 ---
 
@@ -58,3 +58,79 @@ The AWS provider needs no hash, so `nivis-demos`' EC2 demo has no `hashFile` and
 ## Context
 
 Found while applying the Vaultwarden EC2 demo in `nivis-demos`, whose whole claim is "the machine is a derivation, in one apply". Pre-building the image works around it but disproves the claim, so the demo is blocked on this.
+
+## Summary of Changes
+
+Shipped as OpenSpec change `realise-build-leaves-from-drv` (archived:
+`openspec/changes/archive/2026-09-08-realise-build-leaves-from-drv/` in the
+`nivis` store). Commit `6e16a97e`.
+
+**The mechanism, proven from both sides** before writing any code, against a
+derivation whose name had never existed anywhere:
+
+```
+nix-store --realise <OUTPUT PATH>   don't know how to build these paths / no substituter   ✗
+nix-store --realise <DRV PATH>      building '…drv'… → output valid, content correct       ✓
+```
+
+**Why the fix is forced, not chosen.** I checked whether the executor could
+recover the derivation itself and avoid touching the frozen IR:
+
+```
+after a plain `nix eval`:  the .drv IS in the store   (evaluation instantiates it)
+nix-store --query --deriver <invalid outPath>
+  ▶ error: path '…' is not valid                      ← deriver mapping exists only for VALID paths
+```
+
+The store holds the recipe but cannot be asked which recipe makes an unbuilt
+path, and the hashes are unrelated by construction. The leaf must carry it — and
+doing so is free, since obtaining `"${d}"` already instantiates the same
+derivation during evaluation.
+
+**What was built**
+
+- `nix/lib/ref.nix`: `buildLeaf` takes `{ path, drv }`; `drv`/`drvFile` pass
+  `d.drvPath`. The comment claiming the leaf's "path exists at evaluation" is
+  corrected — evaluation fixes the path STRING; the artifact may not exist. That
+  false premise is why an output-path-only leaf looked sufficient.
+- `internal/phase`: the `Realiser` seam takes a `Build{Path, Drv}`; the nix
+  realiser realises the DERIVATION when present and the output root otherwise;
+  `realiseTarget` makes that choice a pure, unit-tested function.
+- Already-present paths are skipped (no subprocess on a built stack); the path is
+  verified after building; `Building …` / `Built …` is reported (a realise is
+  silent, and silence during a 2 GB image build is indistinguishable from a hang);
+  a legacy leaf that cannot be substituted explains that the Nix library predates
+  the field, because consumers pin that library to a tag while installing the CLI
+  separately.
+- `docs/ir-schema.json`: **the schema never modelled this leaf at all.**
+  `configTree` dispatched on `__ref`/`__derived`/`__sensitiveRef`, so a `__build`
+  leaf validated only accidentally, as a generic object, and a malformed one
+  produced "no branch matched". It now has a `build` `$def` and dispatch branch
+  like the others, with `path` required and `drv` optional for compatibility —
+  plus valid fixtures for both shapes and an invalid one proving a malformed leaf
+  reports precisely.
+
+**Acceptance criteria**
+
+- One-run apply of a never-cached derivation: done —
+  `tests/e2e/build_realise_test.go` `TestApplyBuildsANeverBuiltDerivation`.
+- The IR contract documents the field: done, plus the corrected premise.
+- A test covers the unsubstitutable case: done, and it **cannot decay**. The probe
+  is named uniquely per run (a bare `builtins.derivation`, no nixpkgs, builds in
+  milliseconds), the test asserts the path is invalid *before* it runs anything,
+  and it reads the leaf out of the evaluated config rather than duplicating the
+  derivation. I also verified it FAILS without the fix, reproducing this bean's
+  error — the previous proof used a stub realiser, and the original change's
+  `tasks.md` said so.
+- `infra` can drop `hashFile` when its provider stops requiring the hash: now
+  unblocked, not required.
+
+**Concrete confirmation on the documented path**: `nivis.ec2`'s
+`aws_s3_object.source` leaf now carries the NixOS image's derivation path, and
+that image's output path is **not valid** on this machine — so before this change
+an apply here would have failed exactly as reported, and now it builds.
+
+**Deferred, with reasoning** (design Decision 5), each filed: `nixform2-854m`
+(the state lock is held across the build), `nixform2-h54w` (GC-root the realised
+output), `nixform2-x93m` (select one output of a multi-output derivation),
+`nixform2-kjsh` (`plan` should say what an apply will build).
