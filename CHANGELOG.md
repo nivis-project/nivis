@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-08
+
 ### Added
 - `--provider-log-level` selects how much of a spawned provider's logging you
   see: `off`, `error`, `warn` (the default), `info`, `debug`, or `trace`, which
@@ -276,7 +278,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/nivis-project/nivis/releases/tag/v0.6.0
 [0.5.0]: https://github.com/nivis-project/nivis/releases/tag/v0.5.0
 [0.4.8]: https://github.com/nivis-project/nivis/releases/tag/v0.4.8
 [0.4.7]: https://github.com/nivis-project/nivis/releases/tag/v0.4.7
