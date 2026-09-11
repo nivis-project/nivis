@@ -22,13 +22,23 @@ import (
 
 // withGraph makes the configuration appear to declare the given backend for the
 // duration of the test.
+//
+// It clears the run caches on both sides. Before, because a graph another test
+// evaluated would otherwise still be memoized and this test's swapped graphFn
+// would never be consulted; after, so this test's graph does not leak into the
+// next. Production never needs this — a process runs one command — but the tests
+// share one (see resetRunCache).
 func withGraph(t *testing.T, backend map[string]interface{}) {
 	t.Helper()
+	resetRunCache()
 	old := graphFn
 	graphFn = func(context.Context) (*ir.Graph, error) {
 		return &ir.Graph{Backend: backend}, nil
 	}
-	t.Cleanup(func() { graphFn = old })
+	t.Cleanup(func() {
+		graphFn = old
+		resetRunCache()
+	})
 }
 
 // withState points the package-global --state path at a temp file, seeded with the

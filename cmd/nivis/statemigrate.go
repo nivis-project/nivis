@@ -51,7 +51,7 @@ func migrateCmd() *cobra.Command {
 					"and the declared backend at once, and the direction flags choose which is the source")
 			}
 
-			g, err := graphFn(cmd.Context())
+			g, err := configGraph(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("evaluating the configuration to find the declared backend: %w", err)
 			}

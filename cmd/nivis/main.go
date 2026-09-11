@@ -101,9 +101,11 @@ func main() {
 	}
 }
 
-// evaluator builds a real Nix evaluator from the flags.
-func evaluator() phase.NixEval {
-	return phase.NixEval{FlakeRef: flakeRef, Attr: attr, WorkDir: ""}
+// evaluator returns the run's Nix evaluator: the shared, memoizing one, so that
+// every consumer evaluating with the same ledger shares a single `nix eval`
+// (see evalcache.go).
+func evaluator() phase.NixEvaluator {
+	return runEval()
 }
 
 // newLedger builds a phase-0 ledger with the resolved configuration variables
@@ -141,10 +143,14 @@ func newManager(w io.Writer) (*plugin.Manager, *providerlog.Sink, error) {
 // graphFn is the phase-0 evaluation used to DISCOVER the configuration's backend.
 // It is a variable so a test can supply a graph without running a Nix evaluator;
 // production code always uses phase0Graph.
+//
+// Call configGraph, not this: configGraph memoizes the result for the run, so the
+// several consumers of the phase-0 graph share one evaluation (see evalcache.go).
 var graphFn = phase0Graph
 
 // phase0Graph evaluates the plan once (empty ledger) and ingests it, for the
-// destroy/refresh engines which need the resource set + providers.
+// destroy/refresh engines which need the resource set + providers. Its evaluation
+// goes through the run's shared evaluator, so it costs nothing beyond the first.
 func phase0Graph(ctx context.Context) (*ir.Graph, error) {
 	l, err := newLedger()
 	if err != nil {
@@ -181,7 +187,7 @@ func openStore(ctx context.Context, w io.Writer) (state.Store, error) {
 	if err := validateBackendOverride(); err != nil {
 		return nil, err
 	}
-	g, err := graphFn(ctx)
+	g, err := configGraph(ctx)
 	if err != nil {
 		// Could not evaluate the config to learn the backend: default to local.
 		return state.Open(statePath)
@@ -386,7 +392,7 @@ func destroyCmd() *cobra.Command {
 		Use:   "destroy",
 		Short: "Destroy applied resources in reverse dependency order",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			g, err := phase0Graph(cmd.Context())
+			g, err := configGraph(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -425,7 +431,7 @@ func refreshCmd() *cobra.Command {
 		Use:   "refresh",
 		Short: "Reconcile state with the providers (ReadResource), no changes",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			g, err := phase0Graph(cmd.Context())
+			g, err := configGraph(cmd.Context())
 			if err != nil {
 				return err
 			}

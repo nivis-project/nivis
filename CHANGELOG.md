@@ -8,6 +8,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Commands no longer evaluate your configuration twice before doing any work.
+  `apply`, `destroy`, `refresh` and `state migrate` each ran a full `nix eval`
+  to discover the state backend and then evaluated again for the work itself,
+  so every run began with a duplicate evaluation's worth of silence. A run now
+  evaluates once per distinct phase, and because evaluation is impure, a run
+  also now sees one consistent snapshot of the configuration rather than
+  several independently obtained ones.
+
 ## [0.6.1] - 2026-09-08
 
 ### Fixed

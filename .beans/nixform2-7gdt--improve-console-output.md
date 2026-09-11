@@ -1,11 +1,11 @@
 ---
 # nixform2-7gdt
 title: improve console output
-status: draft
+status: todo
 type: task
 priority: normal
 created_at: 2026-09-08T14:46:52Z
-updated_at: 2026-09-08T14:47:07Z
+updated_at: 2026-09-11T14:15:56Z
 ---
 
 somwething like:
@@ -68,3 +68,42 @@ module.ami.aws_s3_object.image_upload: Still creating... [1m20s elapsed]
 module.ami.aws_s3_object.image_upload: Still creating... [1m30s elapsed]
 module.ami.aws_s3_object.image_upload: Still creating... [1m40s elapsed]
 module.ami.aws_s3_object.image_upload: Still creating... [1m50s elapsed]
+
+
+---
+
+## Exploration outcome (2026-09-11)
+
+OpenSpec change: **`stream-run-progress`** (store `nivis`) — proposal written.
+
+Scope: typed progress-event contract in `internal/phase|destroy|refresh`, a
+renderer in `cmd/nivis` that owns stderr (plain + live-TTY), incremental
+commit-as-completed output, a three-channel model (stdout result / stderr
+narrative / stderr ephemeral live region), `--log-level`, and `--color`.
+
+Out of scope, deliberately:
+- `--output=json` — the event model makes it cheap later, but it is a public
+  contract deserving its own change.
+- Re-rendering Nix's own events — **nixform2-flo8**. Needs a renderer that owns
+  the terminal first. Carries its own contract work (degrade-never-fail, golden
+  conformance fixtures, a compat-tiers-style nix version map), because
+  `--log-format internal-json` is not a stability-guaranteed interface.
+- CI matrix + release-watching to keep that version map current — **nixform2-lpqk**.
+
+`stream-run-progress` DOES wire raw Nix passthrough at `verbose`, though: it is a
+few lines, it kills the worst symptom immediately, and raw passthrough stays
+permanently as the floor beneath any prettier rendering. Raw output and the live
+region are mutually exclusive — they fight for the same cursor.
+
+Discovered work filed from this exploration:
+- **nixform2-01kd** — the config is evaluated one extra time per run
+  (`openStore` discards its graph). Should land BEFORE `stream-run-progress`,
+  or the new output narrates the bug.
+- **nixform2-6qr9** — phase boundaries measure dependency depth, not Nix round
+  trips. Decides whether the phase narrative in the output tells the real story.
+
+Key design note on the original complaint: Terraform's apply output is a flat
+interleaved wall because ~10 resources run concurrently, forcing an address
+prefix on every line and a `Still creating...` heartbeat per in-flight resource.
+Nivis applies one node at a time and has a phase hierarchy, so it does not
+inherit either problem — one live status line replaces N heartbeats.
