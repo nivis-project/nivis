@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-09-11T13:58:53Z
-updated_at: 2026-09-14T20:16:02Z
+updated_at: 2026-09-14T20:39:49Z
 ---
 
 Discovered while exploring nixform2-7gdt (improve console output).
@@ -163,3 +163,62 @@ user reads "Phase 2" as a Nix round trip when it may be plain dependency depth.
 The mismatch moved from a docstring to the screen.
 
 OpenSpec change: `resolve-tftf-within-a-phase`.
+
+
+---
+
+## Summary of Changes
+
+OpenSpec change: `resolve-tftf-within-a-phase`. `executor` modified (3
+requirements); no new capability.
+
+The phase loop now re-resolves readiness **within** a phase, against the IR it
+already holds, and applies anything that becomes ready. A phase therefore ends
+only when progress needs another Nix evaluation — which is what DESIGN D3 said
+all along.
+
+`internal/phase/driver.go`: the per-node body is extracted into `resolveOne`
+(apply or read, append to the ledger, emit the events) so the phase can call it
+from a readiness loop without duplicating bookkeeping. `graph.ResolveTFTF` was
+already a pure function of an IR and a ledger, so `internal/graph` is untouched.
+
+Re-using one ingested IR across the passes is safe: resolving a TF→TF reference
+substitutes a value into a config leaf and can neither add, remove nor re-point
+a resource. A node that needs the IR itself to differ carries a `__derived` leaf
+by definition, and still waits for the next evaluation.
+
+### Measured
+
+`nivis.ec2`, the AWS + NixOS example, carries ZERO `__derived` leaves: 8 plain
+references, 9 resources, longest chain `bucket -> snapshot -> ami -> instance`,
+depth 4. One evaluation of it costs 44.5s cold / 14.7s warm.
+
+    before:  4 phases  ~=  44.5 + 3 x 14.7  ~=  89s of evaluation per apply
+    after:   1 phase   ~=  44.5s
+
+About 44 seconds saved per apply on a nine-resource stack, growing with chain
+depth. Configurations that compute in Nix from an apply-time value keep their
+phases, correctly, and gain nothing.
+
+### The gate held
+
+All four `AppliedPhases` assertions are unchanged, including
+`tests/e2e/headline_test.go` — the milestone exit criterion. Its three phases
+survive because its chain is genuinely Nix-mediated (the evaluated IR carries
+four `__derived` leaves); the criterion holds for the right reason rather than
+by luck.
+
+New tests pin the behaviour so it cannot regress: a plain `__ref` chain resolves
+in one phase AND costs one evaluation (a counting evaluator), in dependency
+order; a resource -> datasource -> resource chain of plain references does the
+same; an unresolvable node is still reported as stuck.
+
+### Docs
+
+`internal/phase`'s package comment stated the old rule and now states D3's split
+explicitly. `docs/OUTPUT.md`'s claim that a phase boundary means a Nix round
+trip was aspirational when written for v0.7.0 and is now true. One sentence
+there DID overstate — the per-phase count is an opening figure now that a node
+can join a phase mid-flight — and was corrected.
+
+`docs/DESIGN.md` D3 needed no edit: the code moved to match it.

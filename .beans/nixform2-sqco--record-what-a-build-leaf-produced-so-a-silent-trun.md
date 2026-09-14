@@ -50,6 +50,12 @@ Verifying the remote object. That is provider specific, and the provider can
 already be told to do it: `aws_s3_object` accepts `checksum_algorithm`, which
 makes S3 validate each part server side.
 
+Comparing the recorded number against what a provider read back is nixform2-xqy1.
+This bean produces the expectation; that one spends it. Note that for the
+failure which prompted both, neither suffices: `aws_ebs_snapshot_import` does
+not expose the byte count it processed, so the only thing that closes it is a
+checksum at upload time.
+
 ## Todo
 
 - [ ] Record store path, size and hash for each `__build` leaf in the ledger

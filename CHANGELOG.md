@@ -8,6 +8,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- A dependency chain between resources no longer costs one Nix evaluation per
+  link. Only a value Nix must compute from an apply-time result forces another
+  phase, so an apply of a deep chain is faster and the phase count a run reports
+  is the number of round trips it actually made. On the bundled AWS + NixOS
+  example — nine resources, all wired by ordinary references — this is four
+  evaluations down to one, around 44 seconds per apply.
+
 ## [0.7.0] - 2026-09-14
 
 ### Added

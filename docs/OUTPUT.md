@@ -153,10 +153,21 @@ Phase 2  1 node
   + beta.beta_record.dns        42s   rec-17
 ```
 
-Each phase announces how many nodes are ready in it *before* running them. There
-is deliberately no total for the whole run: Nivis cannot know it in advance,
-because a later phase can reveal resources that phase 0 could not see. A count
-that looked authoritative would be a guess.
+A phase costs one Nix evaluation, so a phase boundary is a real round trip and
+nothing else. An ordinary reference from one resource to another — B's input is
+A's output — does **not** start a new phase, however long the chain: Nivis
+resolves those itself as each resource is applied, with no need to ask Nix
+again. Only a value Nix must *compute* from an apply-time result forces another
+phase. That is why a stack of nine AWS resources wired to each other can apply
+in a single phase, while a two-resource stack that builds a hostname in Nix
+takes two.
+
+Each phase announces how many nodes are ready when it starts. That figure can
+grow as the phase runs, because applying one resource can make another ready;
+it is an opening count, not a total. There is deliberately no total for the
+whole run either: Nivis cannot know it in advance, because a later phase can
+reveal resources that phase 0 could not see. A count that looked authoritative
+would be a guess.
 
 The markers are the same ones `plan` uses: `+` create, `~` update, `-/+` replace,
 `=` no change, `r` a datasource read.

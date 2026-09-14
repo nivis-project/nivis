@@ -3,13 +3,23 @@
 
 // Package phase drives resolution to a fixpoint across N phases (DESIGN D3, the
 // thesis). Each phase: re-evaluate Nix with the accumulated outputs ledger,
-// ingest the resulting IR, apply the resources that are now fully known, and
-// append their computed outputs. Repeat until no phase resolves a new value.
+// ingest the resulting IR, and apply everything that is or becomes fully known
+// — re-resolving within the phase as outputs land, since that needs no Nix.
+// Repeat until no phase resolves a new value.
 //
-// The phase count is driven by Nix-mediated (__derived) dependencies: a derived
-// value only becomes concrete after its inputs are in the ledger AND Nix is
-// re-evaluated, so each such hop needs its own phase. That is why a single apply
-// is insufficient and the loop is required.
+// The phase count is driven by Nix-mediated (__derived) dependencies ALONE, per
+// D3's split of the two reference flavours:
+//
+//   - TF->TF (a plain __ref from one resource to another) is resolved inside the
+//     executor during apply. It needs no re-evaluation, so however deep such a
+//     chain is, it resolves within a single phase.
+//   - *->Nix (a __derived leaf) is a value Nix must COMPUTE from an apply-time
+//     result. It only becomes concrete once its inputs are in the ledger AND Nix
+//     is evaluated again, so each such hop costs its own phase.
+//
+// That is why a single apply is insufficient and the loop is required — and why
+// the phase count a run reports is the number of times it genuinely had to go
+// back through Nix, not the depth of its dependency graph.
 package phase
 
 import (
@@ -169,67 +179,56 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 		}
 		lastGraph = g
 
-		// Resolve TF->TF refs against the ledger; FullyKnown = no unresolved ref
-		// AND no derived leaf remaining in this IR.
-		res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
-
-		// The nodes this phase will actually resolve. Counted before the phase
-		// runs so a renderer has an honest denominator FOR THE PHASE — the run's
-		// grand total is unknowable in advance, because a later phase can reveal
-		// resources phase 0 cannot see.
-		ready := 0
-		for _, id := range res.FullyKnown {
-			if !applied[id] {
-				ready++
-			}
-		}
-		if ready > 0 {
-			d.emit(progress.Event{Kind: progress.PhaseStart, Phase: phaseNum, Count: ready})
-		}
-
+		// Resolve TF->TF refs against the ledger and apply everything that is
+		// ready — repeatedly, because applying a node can make another one
+		// ready WITHOUT any need to evaluate Nix again.
+		//
+		// This is DESIGN D3's split. A TF->TF reference is "resolved inside the
+		// executor during apply; no re-eval needed"; only a *->Nix (derived)
+		// leaf "drives phase count". Re-resolving here is cheap — a walk over
+		// each node's refs against a map — while the alternative is a `nix
+		// eval` subprocess that resolves nothing.
+		//
+		// Re-using the SAME ingested IR across the passes is safe: resolving a
+		// TF->TF reference substitutes a value into a config leaf and can
+		// neither add, remove nor re-point a resource. A node that needs the IR
+		// itself to differ carries a derived leaf by definition, and still
+		// waits for the next evaluation.
 		progressed := false
 		var thisPhase []AppliedNode
-		for _, id := range res.FullyKnown {
-			if applied[id] {
-				continue
-			}
-			node := g.Nodes[id]
-			// A datasource is READ (never planned/applied/stored); a resource is
-			// applied. Both feed their outputs into the ledger so dependents
-			// resolve. They share this readiness loop, so a datasource whose
-			// config depends on a resource output reads in a later phase.
-			var outs map[string]interface{}
-			var op plan.Op
-			var err error
-			d.emit(progress.Event{
-				Kind: progress.NodeStart, ID: id, Type: node.Resource.Type,
-				IsData: node.Resource.IsData,
-			})
-			started := time.Now()
-			if node.Resource.IsData {
-				outs, err = d.readOne(ctx, g, node, res.Configs[id])
-				if err != nil {
-					err = fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
-				}
-			} else {
-				outs, op, err = d.applyOne(ctx, g, node, res.Configs[id], res.BuildOutputs[id])
-				if err != nil {
-					err = fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
+		announced := false
+		for {
+			res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
+
+			// What is ready right now and not yet done. Announced once per
+			// phase, on the first pass that has work: the figure a renderer
+			// shows is the phase's opening count, and the run's grand total
+			// stays unknowable in advance because a later phase can reveal
+			// resources this one cannot see.
+			var ready []string
+			for _, id := range res.FullyKnown {
+				if !applied[id] {
+					ready = append(ready, id)
 				}
 			}
-			d.emit(progress.Event{
-				Kind: progress.NodeDone, ID: id, Type: node.Resource.Type,
-				Op: op, IsData: node.Resource.IsData,
-				ResourceID: resourceIDOf(outs), Duration: time.Since(started), Err: err,
-			})
-			if err != nil {
-				return nil, err
+			if len(ready) == 0 {
+				break
 			}
-			d.Ledger.Append(id, outs)
-			applied[id] = true
-			appliedOrder = append(appliedOrder, id)
-			thisPhase = append(thisPhase, AppliedNode{ID: id, IsData: node.Resource.IsData, Op: op})
-			progressed = true
+			if !announced {
+				d.emit(progress.Event{Kind: progress.PhaseStart, Phase: phaseNum, Count: len(ready)})
+				announced = true
+			}
+
+			for _, id := range ready {
+				node, op, err := d.resolveOne(ctx, g, res, id, phaseNum)
+				if err != nil {
+					return nil, err
+				}
+				applied[id] = true
+				appliedOrder = append(appliedOrder, id)
+				thisPhase = append(thisPhase, AppliedNode{ID: id, IsData: node.Resource.IsData, Op: op})
+				progressed = true
+			}
 		}
 
 		if progressed {
@@ -769,4 +768,50 @@ func resourceIDOf(outs map[string]interface{}) string {
 	}
 	s, _ := v.(string)
 	return s
+}
+
+// resolveOne applies a resource or reads a datasource, appends its outputs to
+// the ledger, and reports it. It is the body of one readiness pass, extracted so
+// the phase loop can run it repeatedly without duplicating the bookkeeping.
+//
+// A datasource is READ (never planned/applied/stored); a resource is applied.
+// Both feed their outputs into the ledger so dependents resolve, which is why
+// they share one readiness list.
+func (d *Driver) resolveOne(
+	ctx context.Context, g *ir.Graph, res graph.ResolveResult, id string, phaseNum int,
+) (*ir.ResourceNode, plan.Op, error) {
+	node := g.Nodes[id]
+
+	d.emit(progress.Event{
+		Kind: progress.NodeStart, ID: id, Type: node.Resource.Type,
+		IsData: node.Resource.IsData,
+	})
+	started := time.Now()
+
+	var outs map[string]interface{}
+	var op plan.Op
+	var err error
+	if node.Resource.IsData {
+		outs, err = d.readOne(ctx, g, node, res.Configs[id])
+		if err != nil {
+			err = fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
+		}
+	} else {
+		outs, op, err = d.applyOne(ctx, g, node, res.Configs[id], res.BuildOutputs[id])
+		if err != nil {
+			err = fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
+		}
+	}
+
+	d.emit(progress.Event{
+		Kind: progress.NodeDone, ID: id, Type: node.Resource.Type,
+		Op: op, IsData: node.Resource.IsData,
+		ResourceID: resourceIDOf(outs), Duration: time.Since(started), Err: err,
+	})
+	if err != nil {
+		return nil, op, err
+	}
+
+	d.Ledger.Append(id, outs)
+	return node, op, nil
 }
