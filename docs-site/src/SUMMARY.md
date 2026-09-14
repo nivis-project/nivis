@@ -7,6 +7,7 @@
 - [Real providers (AWS)](./real-providers.md)
   - [Tutorial: an S3 bucket](./TUTORIAL-AWS-S3.md)
   - [Tutorial: NixOS on EC2](./TUTORIAL-EC2-NIXOS.md)
+- [Reading output](./output.md)
 - [Variables](./variables.md)
 - [Datasources](./datasources.md)
 - [Remote state (S3)](./remote-state.md)

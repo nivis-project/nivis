@@ -5,9 +5,10 @@ package main
 
 import (
 	"context"
-	"io"
 
 	"github.com/spf13/cobra"
+
+	"github.com/nivis-project/nivis/internal/ui"
 )
 
 // stateIDs is a Cobra completion function suggesting the resource ids present in
@@ -20,7 +21,7 @@ func stateIDs(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellC
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	store, err := openStore(context.Background(), io.Discard)
+	store, err := openStore(context.Background(), ui.Discard())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

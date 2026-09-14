@@ -86,10 +86,15 @@ var (
 
 // runEval returns the run's shared evaluator. It is built lazily so that the
 // --flake and --attr flags are parsed before their values are captured.
-func runEval() phase.NixEvaluator {
+func runEval() phase.NixEvaluator { return runEvalTerm(phase.Terminal{}) }
+
+// runEvalTerm is runEval with a subprocess-terminal policy attached. The policy
+// belongs to the first caller to build the evaluator: within one run every
+// consumer shares the same renderer, so they agree on it.
+func runEvalTerm(term phase.Terminal) phase.NixEvaluator {
 	runEvalOnce.Do(func() {
 		runEvalV = &evalCache{
-			inner:    phase.NixEval{FlakeRef: flakeRef, Attr: attr, WorkDir: ""},
+			inner:    phase.NixEval{FlakeRef: flakeRef, Attr: attr, WorkDir: "", Term: term},
 			byLedger: map[string]evalResult{},
 		}
 	})

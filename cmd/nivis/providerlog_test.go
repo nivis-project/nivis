@@ -28,7 +28,7 @@ func withProviderLogLevel(t *testing.T, value string) {
 // design's decision 1 (fix noise by rendering, not by hiding).
 func TestProviderLogLevelDefault(t *testing.T) {
 	withProviderLogLevel(t, providerlog.DefaultLevel.String())
-	_, sink, err := newManager(&bytes.Buffer{})
+	_, sink, err := newManager(testRenderer(&bytes.Buffer{}))
 	if err != nil {
 		t.Fatalf("newManager: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestProviderLogLevelAccepted(t *testing.T) {
 	for _, name := range providerlog.LevelNames() {
 		for _, spelling := range []string{name, strings.ToUpper(name)} {
 			withProviderLogLevel(t, spelling)
-			if _, _, err := newManager(&bytes.Buffer{}); err != nil {
+			if _, _, err := newManager(testRenderer(&bytes.Buffer{})); err != nil {
 				t.Errorf("--provider-log-level=%s rejected: %v", spelling, err)
 			}
 		}
@@ -56,7 +56,7 @@ func TestProviderLogLevelAccepted(t *testing.T) {
 // the accepted set — never a silent fallback to the default.
 func TestProviderLogLevelUnknownIsRefused(t *testing.T) {
 	withProviderLogLevel(t, "verbose")
-	_, _, err := newManager(&bytes.Buffer{})
+	_, _, err := newManager(testRenderer(&bytes.Buffer{}))
 	if err == nil {
 		t.Fatal("an unknown --provider-log-level must be refused")
 	}
@@ -97,7 +97,7 @@ func TestProviderLogLevelIsAGlobalFlag(t *testing.T) {
 func TestNotesGoToTheGivenWriter(t *testing.T) {
 	withProviderLogLevel(t, "warn")
 	var notes bytes.Buffer
-	_, sink, err := newManager(&notes)
+	_, sink, err := newManager(testRenderer(&notes))
 	if err != nil {
 		t.Fatalf("newManager: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestNotesHonourNoColorForPipedOutput(t *testing.T) {
 	withProviderLogLevel(t, "warn")
 	t.Setenv("NO_COLOR", "1")
 	var notes bytes.Buffer
-	_, sink, err := newManager(&notes)
+	_, sink, err := newManager(testRenderer(&notes))
 	if err != nil {
 		t.Fatalf("newManager: %v", err)
 	}

@@ -8,6 +8,31 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Nivis now reports what it is doing **while it is doing it**. A run used to
+  print nothing until it was over; it now reports each resource as it completes,
+  with its duration, and shows a live status line on a terminal so a long Nix
+  build or provider call is visibly alive rather than indistinguishable from a
+  hang. `plan`, `apply`, `destroy` and `refresh` all report progress.
+- `--log-level` (`quiet|info|verbose|debug`, also settable as `NIVIS_LOG`)
+  controls how much of Nivis's own progress you see. It is separate from
+  `--provider-log-level`, which governs spawned providers. At the default level
+  a `plan`'s refresh names the resources that **drifted** and counts the rest,
+  instead of naming all of them.
+- `--color` (`auto|always|never`), alongside the existing `NO_COLOR` and its
+  counterpart `CLICOLOR_FORCE`. Colour is detected separately from cursor
+  support, so turning colour off does not turn off the progress display.
+- Nix's own build and evaluation output now reaches you at `--log-level verbose`
+  instead of being captured and discarded. See the new
+  [Reading Nivis output](docs/OUTPUT.md) for the channel, verbosity and colour
+  rules.
+
+### Changed
+- Progress and the state-lock messages are written to stderr, with stdout
+  carrying only the change list and the final summary. `nivis apply > result.txt`
+  produces the same bytes as before, and stdout no longer varies with verbosity
+  or with whether a terminal is attached.
+
 ### Fixed
 - Commands no longer evaluate your configuration twice before doing any work.
   `apply`, `destroy`, `refresh` and `state migrate` each ran a full `nix eval`

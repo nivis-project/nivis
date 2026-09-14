@@ -149,8 +149,11 @@ func TestApplyBuildsANeverBuiltDerivation(t *testing.T) {
 	}
 
 	// The build happened, and said so: a realise produces no output of its own,
-	// so silence would be indistinguishable from a hang.
-	for _, want := range []string{"Building", "nivis-build-probe", "Built"} {
+	// so silence would be indistinguishable from a hang. The wording belongs to
+	// the renderer (the driver reports only the fact), so this asserts that the
+	// start, the subject and the completion are all reported — not on any
+	// particular phrasing beyond that.
+	for _, want := range []string{"building", "nivis-build-probe", "built"} {
 		if !strings.Contains(string(applyOut), want) {
 			t.Errorf("apply output should report the build (%q):\n%s", want, applyOut)
 		}

@@ -158,6 +158,11 @@ Note that a `plan` of a stack that is not yet in state reports creates without
 contacting the provider, so it produces no provider notes. Notes appear from
 `apply` onward, and on a re-plan of a stack that already has state.
 
+`--provider-log-level` governs the **providers**. For Nivis's own progress
+reporting — how much it tells you while a long run is working, which channel
+each kind of output goes to, and the colour and terminal rules — see
+[Reading Nivis output](./OUTPUT.md).
+
 ## 4. Inspect the round trip
 
 ```sh

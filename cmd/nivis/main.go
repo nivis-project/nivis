@@ -9,7 +9,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/nivis-project/nivis/internal/refresh"
 	"github.com/nivis-project/nivis/internal/registry"
 	"github.com/nivis-project/nivis/internal/state"
+	"github.com/nivis-project/nivis/internal/ui"
 	"github.com/nivis-project/nivis/internal/vars"
 )
 
@@ -45,6 +45,12 @@ var (
 	// backendOverride, when set, replaces the backend the configuration declares
 	// for this run only. The one accepted value is "local" (see openStore).
 	backendOverride string
+	// logLevel is the --log-level value: how much of NIVIS'S OWN narrative is
+	// reported. Distinct from --provider-log-level, which governs the spawned
+	// providers. Empty means "not given": NIVIS_LOG, then the default.
+	logLevel string
+	// colorMode is the --color value (auto|always|never).
+	colorMode string
 )
 
 // backendLocal is the only accepted --backend value: use the local file store at
@@ -86,6 +92,11 @@ func main() {
 	root.PersistentFlags().StringArrayVar(&varFlags, "var", nil, "set a config variable: --var name=value (repeatable; highest precedence)")
 	root.PersistentFlags().StringArrayVar(&varFiles, "var-file", nil, "read config variables from a JSON file (repeatable; later files win)")
 	root.PersistentFlags().StringVar(&backendOverride, "backend", "", "override the state backend for this run (only: local)")
+	root.PersistentFlags().StringVar(&logLevel, "log-level", "",
+		"how much of Nivis's own progress to report ("+strings.Join(ui.LevelNames(), "|")+
+			"; default "+ui.DefaultLevel.String()+", or set NIVIS_LOG)")
+	root.PersistentFlags().StringVar(&colorMode, "color", "auto",
+		"colourise output ("+strings.Join(ui.ColorModeNames(), "|")+")")
 	root.PersistentFlags().StringVar(&providerLogLevel, "provider-log-level", providerlog.DefaultLevel.String(),
 		"which spawned-provider log levels to surface as notes ("+strings.Join(providerlog.LevelNames(), "|")+"; trace prints them unabridged)")
 	root.Flags().BoolVar(&showVersion, "version", false, "print version and exit")
@@ -131,13 +142,21 @@ func newLedger() (*ledger.Ledger, error) {
 // reports repeat counts at the end of the run.
 //
 // An unusable --provider-log-level is an error here, before anything is spawned.
-func newManager(w io.Writer) (*plugin.Manager, *providerlog.Sink, error) {
+func newManager(r ui.Renderer) (*plugin.Manager, *providerlog.Sink, error) {
 	level, err := providerlog.ParseLevel(providerLogLevel)
 	if err != nil {
 		return nil, nil, err
 	}
+	// The sink writes through the RENDERER's writer, never to the stream
+	// directly. A live region rewrites lines in place, and an independent
+	// writer emitting a note mid-redraw corrupts it with no way to recover,
+	// because the renderer's model of what is on screen is then wrong.
+	w := r.Writer()
 	sink := providerlog.NewSink(w, level, colorEnabled(w))
-	return plugin.NewManager().WithResolver(registry.New("")).WithProviderLog(sink, level), sink, nil
+	return plugin.NewManager().
+		WithResolver(registry.New("")).
+		WithProviderLog(sink, level).
+		WithObserver(r), sink, nil
 }
 
 // graphFn is the phase-0 evaluation used to DISCOVER the configuration's backend.
@@ -183,7 +202,7 @@ func phase0Graph(ctx context.Context) (*ir.Graph, error) {
 // config can be applied before its declared backend exists (a self-managed state
 // bucket) and so both sides of a migration are addressable. It changes nothing
 // about the configuration and affects no later run.
-func openStore(ctx context.Context, w io.Writer) (state.Store, error) {
+func openStore(ctx context.Context, r ui.Renderer) (state.Store, error) {
 	if err := validateBackendOverride(); err != nil {
 		return nil, err
 	}
@@ -194,7 +213,7 @@ func openStore(ctx context.Context, w io.Writer) (state.Store, error) {
 	}
 	if backendOverride == backendLocal {
 		if declared := backendType(g.Backend); declared != "" && declared != backendLocal {
-			fmt.Fprintf(w, "Using local state at %s (--backend=local overrides the %s backend this configuration declares).\n",
+			fmt.Fprintf(r.Writer(), "Using local state at %s (--backend=local overrides the %s backend this configuration declares).\n",
 				statePath, declared)
 		}
 		return state.Open(statePath)
@@ -243,7 +262,7 @@ func backendLocation(backend map[string]interface{}, path string) string {
 // local file store), it just runs fn (unlocked, as today). On a held lock the
 // acquire fails before fn runs (naming the holder). The lock is released after fn,
 // including on failure, so a failed run never leaves the state locked.
-func withStateLock(w io.Writer, store state.Store, operation string, fn func() error) error {
+func withStateLock(r ui.Renderer, store state.Store, operation string, fn func() error) error {
 	lk, ok := store.(state.Locker)
 	if !ok {
 		return fn()
@@ -252,12 +271,18 @@ func withStateLock(w io.Writer, store state.Store, operation string, fn func() e
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(w, "Acquired state lock.")
+	// Taking the lock reports what HAPPENED, not what resulted, so it belongs
+	// on the narrative channel — not in the machine-readable result on stdout,
+	// where it used to be printed.
+	note := func(format string, a ...interface{}) {
+		fmt.Fprintf(r.Writer(), format+"\n", a...)
+	}
+	note("Acquired state lock.")
 	defer func() {
 		if uerr := lk.Unlock(id); uerr != nil {
-			fmt.Fprintln(w, "warning: releasing state lock:", uerr)
+			note("warning: releasing state lock: %v", uerr)
 		} else {
-			fmt.Fprintln(w, "Released state lock.")
+			note("Released state lock.")
 		}
 	}()
 	return fn()
@@ -270,11 +295,22 @@ func planCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Plan each resource against its prior state via the provider, so an
 			// unchanged resource reports no change (not a blanket "~").
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			r, err := newRenderer(cmd.ErrOrStderr())
 			if err != nil {
 				return err
 			}
-			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			// The live display must be gone before the result or an error is
+			// printed, or that output lands on top of a spinner.
+			defer r.Close()
+			level, err := resolveLogLevel()
+			if err != nil {
+				return err
+			}
+			store, err := openStore(cmd.Context(), r)
+			if err != nil {
+				return err
+			}
+			mgr, notes, err := newManager(r)
 			if err != nil {
 				return err
 			}
@@ -286,17 +322,18 @@ func planCmd() *cobra.Command {
 				return err
 			}
 			d := &phase.Driver{
-				Eval: evaluator(), Manager: mgr, Store: store, Ledger: l,
+				Eval: evalWith(terminalFor(r, level)), Manager: mgr, Store: store, Ledger: l,
 				NoRefresh: !doRefresh, NoBuild: !doBuild,
-				// Build progress goes to stderr, beside provider notes, so the
-				// change list on stdout stays unmixed.
-				Progress: cmd.ErrOrStderr(),
+				Observer: r,
+				Term:     terminalFor(r, level),
 			}
 
 			items, err := d.PlanReport(cmd.Context())
 			if err != nil {
 				return err
 			}
+			// The narrative is complete; tear the region down before the result.
+			r.Close()
 			out := newOutput(cmd.OutOrStdout())
 			changes := 0
 			for _, it := range items {
@@ -329,11 +366,20 @@ func applyCmd() *cobra.Command {
 		Use:   "apply",
 		Short: "Resolve and apply the configuration to a fixpoint",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			r, err := newRenderer(cmd.ErrOrStderr())
 			if err != nil {
 				return err
 			}
-			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			defer r.Close()
+			level, err := resolveLogLevel()
+			if err != nil {
+				return err
+			}
+			store, err := openStore(cmd.Context(), r)
+			if err != nil {
+				return err
+			}
+			mgr, notes, err := newManager(r)
 			if err != nil {
 				return err
 			}
@@ -345,24 +391,27 @@ func applyCmd() *cobra.Command {
 				return err
 			}
 			d := &phase.Driver{
-				Eval:       evaluator(),
+				Eval:       evalWith(terminalFor(r, level)),
 				Manager:    mgr,
 				Store:      store,
 				Ledger:     l,
 				LedgerPath: statePath + ".ledger",
 				NoRefresh:  !doRefresh,
 				NoBuild:    !doBuild,
-				Progress:   cmd.ErrOrStderr(),
+				Observer:   r,
+				Term:       terminalFor(r, level),
 			}
 			// Hold the state lock for the whole apply (no-op on an unlockable store).
 			var res *phase.Result
-			if err := withStateLock(cmd.OutOrStdout(), store, "apply", func() error {
-				r, runErr := d.Run(cmd.Context())
-				res = r
+			if err := withStateLock(r, store, "apply", func() error {
+				out, runErr := d.Run(cmd.Context())
+				res = out
 				return runErr
 			}); err != nil {
 				return err
 			}
+			// The narrative is complete; tear the region down before the result.
+			r.Close()
 			out := newOutput(cmd.OutOrStdout())
 			out.printf("Applied %d resource(s) across %d phase(s):\n\n", len(res.Applied), res.AppliedPhases)
 			for i, group := range res.Phases {
@@ -392,15 +441,20 @@ func destroyCmd() *cobra.Command {
 		Use:   "destroy",
 		Short: "Destroy applied resources in reverse dependency order",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			r, err := newRenderer(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
+			defer r.Close()
 			g, err := configGraph(cmd.Context())
 			if err != nil {
 				return err
 			}
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			store, err := openStore(cmd.Context(), r)
 			if err != nil {
 				return err
 			}
-			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			mgr, notes, err := newManager(r)
 			if err != nil {
 				return err
 			}
@@ -409,13 +463,16 @@ func destroyCmd() *cobra.Command {
 			defer notes.Summary()
 			// Hold the state lock for the destroy (no-op on an unlockable store).
 			var res *destroy.Result
-			if err := withStateLock(cmd.OutOrStdout(), store, "destroy", func() error {
-				r, runErr := destroy.Run(cmd.Context(), g, mgr, store, destroy.Options{Target: target})
-				res = r
+			if err := withStateLock(r, store, "destroy", func() error {
+				out, runErr := destroy.Run(cmd.Context(), g, mgr, store,
+					destroy.Options{Target: target, Observer: r})
+				res = out
 				return runErr
 			}); err != nil {
 				return err
 			}
+			// The narrative is complete; tear the region down before the result.
+			r.Close()
 			out := newOutput(cmd.OutOrStdout())
 			out.printf("Destroyed %d resource(s):\n", len(res.Destroyed))
 			for _, id := range res.Destroyed {
@@ -431,26 +488,42 @@ func refreshCmd() *cobra.Command {
 		Use:   "refresh",
 		Short: "Reconcile state with the providers (ReadResource), no changes",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			r, err := newRenderer(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
+			defer r.Close()
 			g, err := configGraph(cmd.Context())
 			if err != nil {
 				return err
 			}
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			store, err := openStore(cmd.Context(), r)
 			if err != nil {
 				return err
 			}
-			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			mgr, notes, err := newManager(r)
 			if err != nil {
 				return err
 			}
 			defer mgr.Close()
 			// Repeat counts are reported once the run's output is complete.
 			defer notes.Summary()
-			res, err := refresh.Run(cmd.Context(), g, mgr, store)
+			res, err := refresh.Run(cmd.Context(), g, mgr, store, refresh.Options{Observer: r})
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Refreshed %d resource(s).\n", len(res.Refreshed))
+			// The narrative is complete; tear the region down before the result.
+			r.Close()
+			// The result reports what CHANGED, not merely what happened: the
+			// count says how many were read, the named list says which drifted.
+			out := newOutput(cmd.OutOrStdout())
+			out.printf("Refreshed %d resource(s).\n", len(res.Refreshed))
+			if len(res.Drifted) > 0 {
+				out.printf("%d drifted:\n", len(res.Drifted))
+				for _, id := range res.Drifted {
+					out.update(id, "")
+				}
+			}
 			return nil
 		},
 	}
@@ -463,7 +536,12 @@ func stateCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List resource ids in state",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			rend, err := rendererFor(cmd)
+			if err != nil {
+				return err
+			}
+			defer rend.Close()
+			store, err := openStore(cmd.Context(), rend)
 			if err != nil {
 				return err
 			}
@@ -489,7 +567,12 @@ func stateCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: stateIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			rend, err := rendererFor(cmd)
+			if err != nil {
+				return err
+			}
+			defer rend.Close()
+			store, err := openStore(cmd.Context(), rend)
 			if err != nil {
 				return err
 			}
@@ -514,7 +597,12 @@ func stateCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: stateIDs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			rend, err := rendererFor(cmd)
+			if err != nil {
+				return err
+			}
+			defer rend.Close()
+			store, err := openStore(cmd.Context(), rend)
 			if err != nil {
 				return err
 			}

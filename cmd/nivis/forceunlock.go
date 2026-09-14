@@ -24,7 +24,12 @@ func forceUnlockCmd() *cobra.Command {
 		Short: "Remove a stuck state lock (after a crashed run)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			force = force || yes
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			rend, err := rendererFor(cmd)
+			if err != nil {
+				return err
+			}
+			defer rend.Close()
+			store, err := openStore(cmd.Context(), rend)
 			if err != nil {
 				return err
 			}

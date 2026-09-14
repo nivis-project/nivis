@@ -18,6 +18,7 @@ import (
 
 	"github.com/nivis-project/nivis/internal/ir"
 	"github.com/nivis-project/nivis/internal/ledger"
+	"github.com/nivis-project/nivis/internal/ui"
 )
 
 // countingEval records how many times it was asked to evaluate, and what it
@@ -180,7 +181,7 @@ func TestUnevaluableConfigStillFallsBackToLocalStore(t *testing.T) {
 	statePath = t.TempDir() + "/nivis.state.json"
 	t.Cleanup(func() { statePath = "./nivis.state.json" })
 
-	store, err := openStore(context.Background(), &writerSink{})
+	store, err := openStore(context.Background(), ui.Discard())
 	if err != nil {
 		t.Fatalf("openStore fell through to an error; it must fall back to local: %v", err)
 	}
@@ -202,7 +203,7 @@ func TestConsumerThatNeedsTheConfigStillSeesTheError(t *testing.T) {
 
 	ctx := context.Background()
 	// openStore tolerates it...
-	if _, err := openStore(ctx, &writerSink{}); err != nil {
+	if _, err := openStore(ctx, ui.Discard()); err != nil {
 		t.Fatalf("openStore must tolerate the failure, got: %v", err)
 	}
 	// ...and configGraph, which destroy/refresh use and cannot proceed without,
@@ -211,11 +212,6 @@ func TestConsumerThatNeedsTheConfigStillSeesTheError(t *testing.T) {
 		t.Errorf("configGraph error = %v, want %v", err, want)
 	}
 }
-
-// writerSink discards the announcement openStore may write.
-type writerSink struct{}
-
-func (*writerSink) Write(p []byte) (int, error) { return len(p), nil }
 
 // Guard the assumption the cache key rests on: an ir.Graph ingested from the
 // minimal IR is usable, so a test asserting counts is not accidentally asserting

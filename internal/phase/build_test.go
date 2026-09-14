@@ -7,13 +7,14 @@ package phase
 // what is already built, verifying the result, and reporting progress.
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/nivis-project/nivis/internal/progress"
 )
 
 // stubRealiser records the builds it was asked for and, like a real build,
@@ -148,8 +149,8 @@ func TestRealiseBuildsSkipsAnAlreadyBuiltPath(t *testing.T) {
 // --no-build substitutes the path but does NOT realise.
 func TestRealiseBuildsNoBuildSkips(t *testing.T) {
 	sr := &stubRealiser{}
-	var progress bytes.Buffer
-	d := &Driver{Realiser: sr, NoBuild: true, Progress: &progress}
+	rec := &recorder{}
+	d := &Driver{Realiser: sr, NoBuild: true, Observer: rec}
 	list := builds(Build{Path: "/nix/store/aaa-img/x.vhd", Drv: "/nix/store/bbb.drv"})
 	if err := d.realiseBuilds(context.Background(), "r", list); err != nil {
 		t.Fatal(err)
@@ -157,8 +158,8 @@ func TestRealiseBuildsNoBuildSkips(t *testing.T) {
 	if len(sr.realised) != 0 {
 		t.Errorf("--no-build must not realise; realised=%v", sr.realised)
 	}
-	if progress.Len() != 0 {
-		t.Errorf("--no-build must report no build; got %q", progress.String())
+	if n := len(rec.events); n != 0 {
+		t.Errorf("--no-build must report no build; got %d event(s): %+v", n, rec.events)
 	}
 }
 
@@ -198,28 +199,62 @@ func TestRealiseBuildsVerifiesThePathAfterwards(t *testing.T) {
 
 // A build reports that it started and that it finished: a realise produces no
 // output of its own, and silence is indistinguishable from a hang.
+//
+// The driver reports FACTS — what is building, for which resource, how long it
+// took. It does not compose the sentence; that is the renderer's job, so this
+// asserts on the event fields and not on any wording.
 func TestRealiseBuildsReportsProgress(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "abcdef0123456789-nixos-image", "disk.vhd")
 
-	var progress bytes.Buffer
-	d := &Driver{Realiser: &stubRealiser{}, Progress: &progress}
+	rec := &recorder{}
+	d := &Driver{Realiser: &stubRealiser{}, Observer: rec}
 	list := builds(Build{Path: path, Drv: "/nix/store/bbb-img.drv"})
 	if err := d.realiseBuilds(context.Background(), "owner.res.x", list); err != nil {
 		t.Fatal(err)
 	}
+
+	if len(rec.events) != 2 {
+		t.Fatalf("want a start and a done event, got %d: %+v", len(rec.events), rec.events)
+	}
+	start, done := rec.events[0], rec.events[1]
+	if start.Kind != progress.BuildStart || done.Kind != progress.BuildDone {
+		t.Fatalf("want BuildStart then BuildDone, got %v then %v", start.Kind, done.Kind)
+	}
 	// The label is the store-path name for a real /nix/store path (see
 	// TestStoreName); for this temp path it is the file's own name.
-	out := progress.String()
-	for _, want := range []string{"Building", "disk.vhd", "owner.res.x", "Built"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("progress output lacks %q:\n%s", want, out)
-		}
+	if start.Name != "disk.vhd" || start.Owner != "owner.res.x" {
+		t.Errorf("start should name what is building and for whom; got name=%q owner=%q",
+			start.Name, start.Owner)
+	}
+	if done.Err != nil {
+		t.Errorf("done carries an error for a successful build: %v", done.Err)
+	}
+	if done.Name != start.Name || done.Owner != start.Owner {
+		t.Errorf("done should identify the same build; got name=%q owner=%q", done.Name, done.Owner)
 	}
 }
 
-// A nil Progress writer discards rather than panicking.
-func TestRealiseBuildsWithoutProgressWriter(t *testing.T) {
+// A failed build is reported too, with the error, so a renderer can show a build
+// that ended badly rather than one that simply never finished.
+func TestRealiseBuildsReportsFailure(t *testing.T) {
+	rec := &recorder{}
+	d := &Driver{Realiser: &stubRealiser{failOn: "/nix/store/aaa-img/x.vhd"}, Observer: rec}
+	list := builds(Build{Path: "/nix/store/aaa-img/x.vhd", Drv: "/nix/store/bbb.drv"})
+	if err := d.realiseBuilds(context.Background(), "r", list); err == nil {
+		t.Fatal("expected a realise error")
+	}
+	if len(rec.events) != 2 {
+		t.Fatalf("want a start and a done event, got %d: %+v", len(rec.events), rec.events)
+	}
+	if done := rec.events[1]; done.Kind != progress.BuildDone || done.Err == nil {
+		t.Errorf("the done event must carry the failure; got %+v", done)
+	}
+}
+
+// A nil Observer discards rather than panicking: a Driver built without one must
+// behave exactly as it did before progress events existed.
+func TestRealiseBuildsWithoutObserver(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x")
 	d := &Driver{Realiser: &stubRealiser{}}
@@ -228,6 +263,11 @@ func TestRealiseBuildsWithoutProgressWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// recorder collects emitted events for assertions.
+type recorder struct{ events []progress.Event }
+
+func (r *recorder) Emit(e progress.Event) { r.events = append(r.events, e) }
 
 func TestStoreRoot(t *testing.T) {
 	cases := map[string]string{

@@ -1,11 +1,12 @@
 ---
 # nixform2-7gdt
 title: improve console output
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-09-08T14:46:52Z
-updated_at: 2026-09-11T14:15:56Z
+updated_at: 2026-09-14T10:58:01Z
+parent: nixform2-kovh
 ---
 
 somwething like:
@@ -107,3 +108,67 @@ interleaved wall because ~10 resources run concurrently, forcing an address
 prefix on every line and a `Still creating...` heartbeat per in-flight resource.
 Nivis applies one node at a time and has a phase hierarchy, so it does not
 inherit either problem — one live status line replaces N heartbeats.
+
+
+---
+
+## Summary of Changes
+
+OpenSpec change: `stream-run-progress`. New capability `run-progress`; `cli` and
+`executor` modified.
+
+**The event contract.** New `internal/progress`: the engines emit FACTS (a
+single `Event` struct with a `Kind`) and never presentation text. `Driver.Progress
+io.Writer` is gone — it baked sentences into the engine, so verbosity, colour and
+alternate renderings had nowhere to live. `progress.Emit` tolerates a nil
+observer, so an engine built without one behaves exactly as before.
+
+**Who emits.** `internal/phase` (evaluation, phase boundaries with their node
+count, each node with its resolved op and duration, each build),
+`internal/destroy`, `internal/refresh`, and `internal/plugin` (provider spawn,
+emitted BEFORE resolving the source, because resolving is the slow half).
+
+**The renderer.** New `internal/ui`: `plain` (one line per transition) and `live`
+(committed scrollback above, an ephemeral region below, repainted on a ticker).
+It is the sole owner of stderr. Three channels: stdout = the result, unchanged
+and byte-identical regardless of terminal or verbosity; stderr = the narrative;
+stderr-on-a-terminal = the live region, never in a pipe. The state-lock messages
+moved from stdout to the narrative.
+
+**Flags.** `--log-level` (`quiet|info|verbose|debug`, or `NIVIS_LOG`, flag wins)
+and `--color` (`auto|always|never`, with `CLICOLOR_FORCE` beside `NO_COLOR`).
+Cursor capability is probed SEPARATELY from colour, so `--color=never` leaves the
+progress display on and forcing colour into a pipe does not turn it on.
+
+**Nix output.** `nix eval` and `nix-store --realise` stderr is teed rather than
+discarded, reaching the user at `verbose`. Raw passthrough and the live region
+are mutually exclusive by construction — the level that enables one disables the
+other — and a test asserts no level enables both.
+
+### Three findings worth recording
+
+1. **Drift could not use `reflect.DeepEqual`.** A provider read decodes the
+   resource at its FULL schema, so a converged resource returns attributes the
+   stored state never had, as nil. `DeepEqual` called that drift, which would
+   have marked every resource in a stack as drifted and made the whole
+   "3 of 40 drifted" summary a lie. Fixed with `state.Drifted`, found by a test
+   on a deliberately converged fixture.
+2. **The live renderer repainted per event** in its first form, defeating the
+   ticker — 501 repaints for 500 events. Only a committed line now repaints
+   synchronously.
+3. **`providerlog` needed no change at all.** The renderer hands out a managed
+   writer, so the sink keeps its shape and its whole existing suite passes
+   untouched — a stronger guarantee than rewriting it.
+
+### Deviations from the plan
+
+- Task 2.5's refresh discriminator is an explicit `Refresh` field on the event,
+  not inferred. The first attempt used a heuristic and was fragile.
+- Task 4.1 required no `providerlog` source change (see above).
+
+Coverage: `internal/ui` 91.3%, `internal/progress` 100%, `internal/phase` 81.6%,
+total 70.6%. Docs: new `docs/OUTPUT.md`, on the site and linked from
+GETTING-STARTED.
+
+Follow-ups remain open: `nixform2-flo8` (re-render Nix events, now unblocked),
+`nixform2-lpqk`, `nixform2-6qr9`, `nixform2-p72l`.

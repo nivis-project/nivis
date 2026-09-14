@@ -4,9 +4,11 @@
 package phase
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,6 +37,45 @@ type NixEval struct {
 	FlakeRef string // e.g. "." or "/path/to/repo"
 	Attr     string // e.g. "nivis.plan"
 	WorkDir  string // dir to run nix in (so a relative flake ref resolves)
+	// Term controls how this subprocess reaches the user's terminal.
+	Term Terminal
+}
+
+// Terminal carries how a subprocess Nivis runs should interact with the user's
+// terminal.
+//
+// Nix produces a perfectly good progress display of its own, and capturing it
+// into a buffer that is only read on failure means a build of an
+// operating-system image shows nothing for minutes. But Nix's display and a
+// live region both drive the cursor, so they can never both be active: hence
+// Suspend, which hands the terminal over for the subprocess's duration.
+type Terminal struct {
+	// Stderr, if set, receives the subprocess's own stderr AS IT RUNS. The
+	// stderr is still captured in full regardless, because the error path
+	// depends on having all of it (see cleanNixStderr); this is a tee, not a
+	// redirect. nil means capture only, as before.
+	Stderr io.Writer
+	// Suspend, if set, runs fn with the caller's terminal display released.
+	// nil runs fn directly.
+	Suspend func(fn func() error) error
+}
+
+// suspend runs fn with the terminal released, or directly when there is nothing
+// to release.
+func (t Terminal) suspend(fn func() error) error {
+	if t.Suspend == nil {
+		return fn()
+	}
+	return t.Suspend(fn)
+}
+
+// tee returns the writer a subprocess's stderr should be copied to alongside
+// buf: both, when passthrough is on, and just buf otherwise.
+func (t Terminal) tee(buf io.Writer) io.Writer {
+	if t.Stderr == nil {
+		return buf
+	}
+	return io.MultiWriter(buf, t.Stderr)
 }
 
 func (n NixEval) Eval(ctx context.Context, l *ledger.Ledger) ([]byte, error) {
@@ -63,15 +104,26 @@ func (n NixEval) Eval(ctx context.Context, l *ledger.Ledger) ([]byte, error) {
 		"--json", "--impure",
 	)
 	cmd.Dir = n.WorkDir
-	out, err := cmd.Output()
-	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+
+	// Capture stderr in full AND, when passthrough is on, stream it to the user
+	// as it arrives. Both matter: the error path below needs the complete text
+	// to extract the actionable lines from, and a user watching a slow
+	// evaluation needs to see that it is alive.
+	var stderr bytes.Buffer
+	cmd.Stderr = n.Term.tee(&stderr)
+
+	// cmd.Output() cannot be used once Stderr is set (it refuses, to protect its
+	// own capture), so stdout is captured explicitly.
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err = n.Term.suspend(cmd.Run); err != nil {
+		if _, ok := err.(*exec.ExitError); ok {
 			return nil, fmt.Errorf("nix evaluation of %s#%s failed:\n%s",
-				n.FlakeRef, n.Attr, cleanNixStderr(string(ee.Stderr)))
+				n.FlakeRef, n.Attr, cleanNixStderr(stderr.String()))
 		}
 		return nil, fmt.Errorf("running nix eval: %w", err)
 	}
-	return out, nil
+	return stdout.Bytes(), nil
 }
 
 // nixRealiser is the default Realiser: it makes a __build leaf's output path
@@ -91,11 +143,11 @@ func (n NixEval) Eval(ctx context.Context, l *ledger.Ledger) ([]byte, error) {
 // for it the old output-path realise is the only option, and when that fails the
 // error says why, because the remedy is to update the library rather than
 // anything about the user's config.
-type nixRealiser struct{}
+type nixRealiser struct{ term Terminal }
 
-func (nixRealiser) Realise(ctx context.Context, b Build) error {
+func (r nixRealiser) Realise(ctx context.Context, b Build) error {
 	target, buildable := realiseTarget(b)
-	out, err := run(ctx, "nix-store", "--realise", target)
+	out, err := r.term.run(ctx, "nix-store", "--realise", target)
 	if err == nil {
 		return nil
 	}
@@ -122,9 +174,17 @@ func realiseTarget(b Build) (target string, buildable bool) {
 }
 
 // run executes a command and returns its combined output.
-func run(ctx context.Context, name string, args ...string) (string, error) {
-	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
-	return string(out), err
+// run executes a subprocess, capturing its combined output in full and — when
+// passthrough is on — streaming it to the user as it arrives. A realise of an
+// operating-system image takes minutes and is otherwise entirely silent.
+func (t Terminal) run(ctx context.Context, name string, args ...string) (string, error) {
+	var buf bytes.Buffer
+	cmd := exec.CommandContext(ctx, name, args...)
+	w := t.tee(&buf)
+	cmd.Stdout = w
+	cmd.Stderr = w
+	err := t.suspend(cmd.Run)
+	return buf.String(), err
 }
 
 // cleanNixStderr keeps the actionable lines from nix's stderr (the `error:` and

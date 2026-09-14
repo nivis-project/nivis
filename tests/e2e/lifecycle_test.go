@@ -50,7 +50,7 @@ func TestLifecycleRefreshThenDestroy(t *testing.T) {
 	g := phase0Graph(t, ctx, root)
 
 	// 3. Refresh: state must be unchanged (fake ReadResource echoes state).
-	if _, err := refresh.Run(ctx, g, mgr, st); err != nil {
+	if _, err := refresh.Run(ctx, g, mgr, st, refresh.Options{}); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 	after := snapshot(t, st)

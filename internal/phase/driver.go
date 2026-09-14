@@ -15,7 +15,6 @@ package phase
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,6 +26,7 @@ import (
 	"github.com/nivis-project/nivis/internal/ir"
 	"github.com/nivis-project/nivis/internal/ledger"
 	"github.com/nivis-project/nivis/internal/plan"
+	"github.com/nivis-project/nivis/internal/progress"
 	"github.com/nivis-project/nivis/internal/provider"
 	"github.com/nivis-project/nivis/internal/state"
 )
@@ -58,11 +58,19 @@ type Driver struct {
 	// __build leaf. nil uses the default (nix-store --realise). The seam lets
 	// tests inject a stub.
 	Realiser Realiser
-	// Progress, if set, receives a line when a build starts and when it finishes.
-	// A realise can take many minutes (an OS image is routine) and produces no
-	// output of its own until it ends, which is indistinguishable from a hang.
-	// nil discards.
-	Progress io.Writer
+	// Term controls how subprocesses this driver runs (a Nix realise) reach the
+	// user's terminal. Its zero value captures without passing through, which
+	// is the behaviour before progress reporting existed.
+	Term Terminal
+	// Observer, if set, receives progress events as the run proceeds: each
+	// evaluation, each phase, each node, each build. nil discards.
+	//
+	// The driver reports FACTS, never presentation text. A realise can take many
+	// minutes (an OS image is routine) and produces no output of its own until it
+	// ends, which is indistinguishable from a hang — but how that is shown, at
+	// what verbosity and in what colour, is the renderer's business, not the
+	// driver's. See internal/progress.
+	Observer progress.Observer
 }
 
 // Build identifies one __build leaf: the OUTPUT path a provider must be given,
@@ -151,7 +159,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 	for phaseNum := 0; phaseNum < maxPhases; phaseNum++ {
 		d.Ledger.Phase = phaseNum
 
-		irJSON, err := d.Eval.Eval(ctx, d.Ledger)
+		irJSON, err := d.evalPhase(ctx, phaseNum)
 		if err != nil {
 			return nil, fmt.Errorf("phase %d: eval: %w", phaseNum, err)
 		}
@@ -164,6 +172,20 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 		// Resolve TF->TF refs against the ledger; FullyKnown = no unresolved ref
 		// AND no derived leaf remaining in this IR.
 		res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
+
+		// The nodes this phase will actually resolve. Counted before the phase
+		// runs so a renderer has an honest denominator FOR THE PHASE — the run's
+		// grand total is unknowable in advance, because a later phase can reveal
+		// resources phase 0 cannot see.
+		ready := 0
+		for _, id := range res.FullyKnown {
+			if !applied[id] {
+				ready++
+			}
+		}
+		if ready > 0 {
+			d.emit(progress.Event{Kind: progress.PhaseStart, Phase: phaseNum, Count: ready})
+		}
 
 		progressed := false
 		var thisPhase []AppliedNode
@@ -179,16 +201,29 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 			var outs map[string]interface{}
 			var op plan.Op
 			var err error
+			d.emit(progress.Event{
+				Kind: progress.NodeStart, ID: id, Type: node.Resource.Type,
+				IsData: node.Resource.IsData,
+			})
+			started := time.Now()
 			if node.Resource.IsData {
 				outs, err = d.readOne(ctx, g, node, res.Configs[id])
 				if err != nil {
-					return nil, fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
+					err = fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
 				}
 			} else {
 				outs, op, err = d.applyOne(ctx, g, node, res.Configs[id], res.BuildOutputs[id])
 				if err != nil {
-					return nil, fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
+					err = fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
 				}
+			}
+			d.emit(progress.Event{
+				Kind: progress.NodeDone, ID: id, Type: node.Resource.Type,
+				Op: op, IsData: node.Resource.IsData,
+				ResourceID: resourceIDOf(outs), Duration: time.Since(started), Err: err,
+			})
+			if err != nil {
+				return nil, err
 			}
 			d.Ledger.Append(id, outs)
 			applied[id] = true
@@ -243,7 +278,7 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 			d.Ledger.Append(rs.ID, rs.Attrs)
 		}
 	}
-	irJSON, err := d.Eval.Eval(ctx, d.Ledger)
+	irJSON, err := d.evalPhase(ctx, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +358,22 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 			// Refresh prior state (unless --refresh=false): a drifted resource is
 			// planned against its real state; one deleted out-of-band reads empty
 			// and is reported as a create.
+			//
+			// This is the slow part of a plan — one provider round trip per
+			// resource in state — so it is reported per node. Whether the refresh
+			// found DRIFT is reported too, because that is the part worth seeing:
+			// at the default verbosity a renderer names the drifted ones and
+			// merely counts the rest.
+			d.emit(progress.Event{
+				Kind: progress.NodeStart, ID: id, Type: node.Resource.Type, Refresh: true,
+			})
+			started := time.Now()
 			prior, exists, err := d.priorState(ctx, client, rs, node, stored.Attrs)
+			drifted := err == nil && exists && state.Drifted(stored.Attrs, prior)
+			d.emit(progress.Event{
+				Kind: progress.NodeDone, ID: id, Type: node.Resource.Type, Refresh: true,
+				Drifted: drifted, Duration: time.Since(started), Err: err,
+			})
 			if err != nil {
 				return nil, err
 			}
@@ -557,14 +607,23 @@ func (d *Driver) realiseBuild(ctx context.Context, owner string, b Build) error 
 
 	r := d.Realiser
 	if r == nil {
-		r = nixRealiser{}
+		r = nixRealiser{term: d.Term}
 	}
-	d.progressf("Building %s for %s...\n", storeName(b.Path), owner)
+	name := storeName(b.Path)
+	d.emit(progress.Event{Kind: progress.BuildStart, Owner: owner, Name: name, Path: b.Path})
 	start := time.Now()
 	if err := r.Realise(ctx, b); err != nil {
-		return fmt.Errorf("realise build for %q (%s): %w", owner, b.Path, err)
+		err = fmt.Errorf("realise build for %q (%s): %w", owner, b.Path, err)
+		d.emit(progress.Event{
+			Kind: progress.BuildDone, Owner: owner, Name: name, Path: b.Path,
+			Duration: time.Since(start), Err: err,
+		})
+		return err
 	}
-	d.progressf("Built %s (%s).\n", storeName(b.Path), time.Since(start).Round(time.Second))
+	d.emit(progress.Event{
+		Kind: progress.BuildDone, Owner: owner, Name: name, Path: b.Path,
+		Duration: time.Since(start),
+	})
 
 	// Building a derivation guarantees THAT derivation's outputs exist, not that
 	// they match a path recorded elsewhere. Without this check a mismatch reaches
@@ -577,13 +636,8 @@ func (d *Driver) realiseBuild(ctx context.Context, owner string, b Build) error 
 	return nil
 }
 
-// progressf writes a progress line, if the driver was given somewhere to put it.
-func (d *Driver) progressf(format string, a ...interface{}) {
-	if d.Progress == nil {
-		return
-	}
-	fmt.Fprintf(d.Progress, format, a...)
-}
+// emit reports one event to the driver's observer (a no-op when it has none).
+func (d *Driver) emit(e progress.Event) { progress.Emit(d.Observer, e) }
 
 // storeName is the readable part of a store path: /nix/store/<hash>-<name> ->
 // <name>, for progress lines that name what is building.
@@ -688,4 +742,31 @@ func dedup(ss []string) []string {
 		}
 	}
 	return out
+}
+
+// evalPhase evaluates the configuration for one phase, bracketing it with events.
+// Evaluation is the single most expensive step of a phase and produces no output
+// of its own, so a run that does not report it looks stalled at the start.
+func (d *Driver) evalPhase(ctx context.Context, phaseNum int) ([]byte, error) {
+	d.emit(progress.Event{Kind: progress.EvalStart, Phase: phaseNum})
+	start := time.Now()
+	irJSON, err := d.Eval.Eval(ctx, d.Ledger)
+	d.emit(progress.Event{
+		Kind: progress.EvalDone, Phase: phaseNum,
+		Duration: time.Since(start), Err: err,
+	})
+	return irJSON, err
+}
+
+// resourceIDOf picks the provider-assigned id out of a node's computed outputs,
+// for reporting ("created, id=i-0a1b2c3d"). Not every resource has one, and a
+// datasource generally does not; an absent or non-string id yields "" and the
+// renderer simply omits it.
+func resourceIDOf(outs map[string]interface{}) string {
+	v, ok := outs["id"]
+	if !ok {
+		return ""
+	}
+	s, _ := v.(string)
+	return s
 }

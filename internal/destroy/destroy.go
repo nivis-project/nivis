@@ -9,10 +9,12 @@ package destroy
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/nivis-project/nivis/internal/graph"
 	"github.com/nivis-project/nivis/internal/ir"
 	"github.com/nivis-project/nivis/internal/plan"
+	"github.com/nivis-project/nivis/internal/progress"
 	"github.com/nivis-project/nivis/internal/provider"
 	"github.com/nivis-project/nivis/internal/state"
 )
@@ -26,6 +28,10 @@ type Manager interface {
 type Options struct {
 	// Target, if non-empty, restricts the destroy to a single resource id.
 	Target string
+	// Observer, if set, receives a progress event as each resource is destroyed.
+	// A destroy is a sequence of provider round trips with nothing to show for
+	// itself until the end; nil discards.
+	Observer progress.Observer
 }
 
 // Result reports what was destroyed.
@@ -62,12 +68,30 @@ func Run(ctx context.Context, g *ir.Graph, mgr Manager, store state.Store, opts 
 			return res, fmt.Errorf("destroy: %q has lifecycle.preventDestroy set; refusing to destroy", id)
 		}
 
+		progress.Emit(opts.Observer, progress.Event{
+			Kind: progress.NodeStart, ID: id, Type: node.Resource.Type,
+		})
+		started := time.Now()
 		if err := destroyOne(ctx, g, mgr, node, stored); err != nil {
-			return res, fmt.Errorf("destroy %q: %w", id, err)
+			err = fmt.Errorf("destroy %q: %w", id, err)
+			progress.Emit(opts.Observer, progress.Event{
+				Kind: progress.NodeDone, ID: id, Type: node.Resource.Type,
+				Duration: time.Since(started), Err: err,
+			})
+			return res, err
 		}
 		if err := store.Delete(id); err != nil {
-			return res, fmt.Errorf("destroy %q: remove state: %w", id, err)
+			err = fmt.Errorf("destroy %q: remove state: %w", id, err)
+			progress.Emit(opts.Observer, progress.Event{
+				Kind: progress.NodeDone, ID: id, Type: node.Resource.Type,
+				Duration: time.Since(started), Err: err,
+			})
+			return res, err
 		}
+		progress.Emit(opts.Observer, progress.Event{
+			Kind: progress.NodeDone, ID: id, Type: node.Resource.Type,
+			Duration: time.Since(started),
+		})
 		res.Destroyed = append(res.Destroyed, id)
 	}
 	return res, nil

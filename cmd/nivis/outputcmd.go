@@ -23,11 +23,16 @@ func outputCmd() *cobra.Command {
 		Short: "Print the stack's declared outputs (resolved from state)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openStore(cmd.Context(), cmd.OutOrStdout())
+			rend, err := rendererFor(cmd)
 			if err != nil {
 				return err
 			}
-			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			defer rend.Close()
+			store, err := openStore(cmd.Context(), rend)
+			if err != nil {
+				return err
+			}
+			mgr, notes, err := newManager(rend)
 			if err != nil {
 				return err
 			}

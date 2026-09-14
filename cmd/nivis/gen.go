@@ -35,7 +35,12 @@ func genCmd() *cobra.Command {
 			}
 			// `gen` spawns a provider too, so its log output is rendered the
 			// same way (a real provider is chatty during schema fetch).
-			mgr, notes, err := newManager(cmd.ErrOrStderr())
+			rend, err := rendererFor(cmd)
+			if err != nil {
+				return err
+			}
+			defer rend.Close()
+			mgr, notes, err := newManager(rend)
 			if err != nil {
 				return err
 			}

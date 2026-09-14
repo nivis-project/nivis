@@ -63,7 +63,7 @@ func TestRefreshNoChange(t *testing.T) {
 
 	mgr := plugin.NewManager()
 	defer mgr.Close()
-	res, err := refresh.Run(context.Background(), g, mgr, st)
+	res, err := refresh.Run(context.Background(), g, mgr, st, refresh.Options{})
 	if err != nil {
 		t.Fatalf("refresh: %v", err)
 	}

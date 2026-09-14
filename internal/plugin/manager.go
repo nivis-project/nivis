@@ -18,6 +18,7 @@ import (
 	goplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
+	"github.com/nivis-project/nivis/internal/progress"
 	"github.com/nivis-project/nivis/internal/provider"
 	v5 "github.com/nivis-project/nivis/internal/provider/v5"
 	v6 "github.com/nivis-project/nivis/internal/provider/v6"
@@ -74,6 +75,11 @@ type Manager struct {
 	// logSink renders spawned providers' log entries as readable notes. nil
 	// discards them (a caller that wants no provider output at all, e.g. a test).
 	logSink *providerlog.Sink
+	// observer, if set, receives a ProviderSpawn event when a provider process is
+	// actually started (not when a pooled one is reused). A first spawn can be
+	// slow — a registry-backed source is fetched and verified before it runs —
+	// and produces no output of its own. nil discards.
+	observer progress.Observer
 	// logLevel selects which entry levels reach the sink; entries below it are
 	// dropped by hclog before they are formatted, and go-plugin skips preparing
 	// them at all, which is what keeps a trace-happy provider cheap.
@@ -107,6 +113,12 @@ func NewManager() *Manager {
 func (m *Manager) WithProviderLog(sink *providerlog.Sink, level providerlog.Level) *Manager {
 	m.logSink = sink
 	m.logLevel = level
+	return m
+}
+
+// WithObserver sets the progress observer, returning the manager for chaining.
+func (m *Manager) WithObserver(obs progress.Observer) *Manager {
+	m.observer = obs
 	return m
 }
 
@@ -173,6 +185,13 @@ func (m *Manager) dispense(identity, path string) (cl provider.Client, c *goplug
 	if e, ok := m.clients[identity]; ok {
 		return e.provider, nil, true, nil
 	}
+
+	// A real spawn, not a pooled reuse: the early return above covers that case,
+	// so this fires at most once per identity. It is emitted BEFORE resolving,
+	// because resolving is the slow half — a registry-backed source is fetched
+	// and verified here — and reporting it afterwards would report the wait only
+	// once it was over.
+	progress.Emit(m.observer, progress.Event{Kind: progress.ProviderSpawn, Name: identity})
 
 	// Resolve the source to a local binary path (registry address -> fetched +
 	// verified + cached binary; a filesystem path passes through).
