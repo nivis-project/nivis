@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-14
+
 ### Added
 - Nivis now reports what it is doing **while it is doing it**. A run used to
   print nothing until it was over; it now reports each resource as it completes,
@@ -323,7 +325,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/nivis-project/nivis/releases/tag/v0.7.0
 [0.6.1]: https://github.com/nivis-project/nivis/releases/tag/v0.6.1
 [0.6.0]: https://github.com/nivis-project/nivis/releases/tag/v0.6.0
 [0.5.0]: https://github.com/nivis-project/nivis/releases/tag/v0.5.0
