@@ -1,13 +1,13 @@
 ---
 # nixform2-6qr9
 title: Phase boundaries measure dependency depth, not Nix round trips
-status: in-progress
+status: completed
 type: bug
 priority: normal
 tags:
     - discovered
 created_at: 2026-09-11T13:58:53Z
-updated_at: 2026-09-14T20:39:49Z
+updated_at: 2026-09-14T20:43:46Z
 ---
 
 Discovered while exploring nixform2-7gdt (improve console output).
