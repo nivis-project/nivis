@@ -5,6 +5,7 @@ package ui
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -311,5 +312,87 @@ func TestLiveEmitAfterCloseIsInert(t *testing.T) {
 	}
 	if got := strings.TrimPrefix(ft.String(), before); strings.Contains(got, "\x1b") {
 		t.Errorf("no cursor control should follow Close; got %q", got)
+	}
+}
+
+// A running build shows what it is building, how far along the whole realise
+// is, and its latest output line — the four things that tell you a long build
+// is alive rather than wedged.
+func TestLiveShowsBuildProgress(t *testing.T) {
+	l, ft := newTestLive(t)
+
+	l.Emit(progress.Event{Kind: progress.NodeStart, ID: "aws.aws_s3_object.image"})
+	l.Emit(progress.Event{
+		Kind: progress.BuildStart, Owner: "aws.aws_s3_object.image",
+		Name: "nixos-image", Path: "/nix/store/h-nixos-image",
+	})
+	l.Emit(progress.Event{
+		Kind: progress.BuildProgress, Owner: "aws.aws_s3_object.image",
+		Name: "nixos-image", Path: "/nix/store/h-nixos-image",
+		Derivation: "stage-image", Done: 2, Expected: 4,
+		LastLine: "creating disk image (2048 MiB)",
+	})
+	// Wait for the CONTENT, not merely for a painted region: an earlier
+	// committed line already leaves rows > 0, so waiting on that would race
+	// ahead of the tick that paints the build's detail.
+	waitFor(t, func() bool {
+		return strings.Contains(stripANSI(ft.String()), "creating disk image")
+	}, "the build detail to be painted")
+	l.Close()
+
+	got := stripANSI(ft.String())
+	for _, want := range []string{"building nixos-image", "stage-image", "[2/4 drv]", "creating disk image (2048 MiB)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the build row should carry %q; got:\n%q", want, got)
+		}
+	}
+}
+
+// The expected total MOVES as Nix discovers work. The display must follow it,
+// not freeze on the first figure.
+func TestLiveFollowsAMovingExpectedTotal(t *testing.T) {
+	l, ft := newTestLive(t)
+	l.Emit(progress.Event{Kind: progress.BuildStart, Owner: "r", Name: "img", Path: "/p"})
+	for _, c := range []struct{ done, expected int }{{0, 1}, {0, 3}, {2, 4}} {
+		l.Emit(progress.Event{
+			Kind: progress.BuildProgress, Path: "/p",
+			Derivation: "d", Done: c.done, Expected: c.expected,
+		})
+		waitFor(t, func() bool {
+			return strings.Contains(stripANSI(ft.String()), fmt.Sprintf("[%d/%d drv]", c.done, c.expected))
+		},
+			fmt.Sprintf("the region to show [%d/%d drv]", c.done, c.expected))
+	}
+	l.Close()
+}
+
+// nixpkgs output lines run long. A line wider than the terminal must be
+// truncated, not wrapped: a wrapped line makes the region grow and jump, and
+// the renderer's model of how many rows it owns goes wrong.
+func TestLiveTruncatesLongBuildOutput(t *testing.T) {
+	l, ft := newTestLive(t)
+	l.Emit(progress.Event{Kind: progress.BuildStart, Owner: "r", Name: "img", Path: "/p"})
+	l.Emit(progress.Event{
+		Kind: progress.BuildProgress, Path: "/p", Derivation: "d", Done: 1, Expected: 2,
+		LastLine: strings.Repeat("x", 500),
+	})
+	waitFor(t, func() bool {
+		return strings.Contains(stripANSI(ft.String()), "[1/2 drv]")
+	}, "the build detail to be painted")
+
+	l.mu.Lock()
+	rows := l.rows
+	l.mu.Unlock()
+	l.Close()
+
+	// The build's own row plus two subordinate rows: the count and the output
+	// line. A wrap would push it past that.
+	if rows > 3 {
+		t.Errorf("region is %d rows; a long output line must be truncated, not wrapped", rows)
+	}
+	for _, line := range strings.Split(stripANSI(ft.String()), "\n") {
+		if len([]rune(line)) > 200 {
+			t.Errorf("a rendered line is %d runes; it was not truncated", len([]rune(line)))
+		}
 	}
 }

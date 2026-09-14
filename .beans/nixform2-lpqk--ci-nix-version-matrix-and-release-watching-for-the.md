@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: low
 created_at: 2026-09-11T14:15:01Z
-updated_at: 2026-09-11T14:15:01Z
+updated_at: 2026-09-14T20:51:33Z
 blocked_by:
     - nixform2-flo8
 ---
@@ -44,3 +44,45 @@ automation, the first breakage we hear about is a user's nix upgrade.
 CLAUDE.md section 6: the Nix binary cache is not reachable from the dev
 environment, and egress is allowlisted. This is CI-side work; confirm the
 runners can fetch the nix versions the matrix needs before designing around it.
+
+
+---
+
+## Scope widened, 2026-09-14
+
+The `compat-tiers`-style **nix version map** moves here from nixform2-flo8.
+
+That bean originally carried the map alongside the re-renderer. Splitting it
+off, because a map and the matrix that exercises it are one piece of work:
+
+- A version map's value is EARLY DETECTION — knowing a new nix broke the
+  `internal-json` contract before a user does. Detection requires something to
+  run the conformance test across versions periodically. That is this bean's
+  matrix. A map without it is a table nobody checks.
+- Safety does not depend on the map. `render-nix-build-events` ships
+  degrade-never-fail: an unknown `type` is ignored and an unparseable stream
+  falls back to raw passthrough. A nix upgrade degrades visibly; it does not
+  break.
+
+So this bean now covers:
+
+1. The version map itself — the tier table (`unsupported` / `verified` /
+   `compatible by design`), reusing the `compat-tiers` vocabulary the repo
+   already has for providers.
+2. The CI matrix over the `verified` range, running the conformance test.
+3. A `regenerate-fixtures` script, so adding a version is one command.
+4. A scheduled job that notices a nix release above the map's ceiling and files
+   a bean.
+
+`render-nix-build-events` leaves behind what this builds on: the decoder, one
+golden fixture from the pinned nix, and the detected-version reporting at
+`verbose`.
+
+### Feasibility, checked 2026-09-14
+
+The pinned nixpkgs exposes `nixVersions.nix_2_4` through `nix_2_34`, so a matrix
+has versions to draw on without a separate fetch path. Building or substituting
+each is the cost, which is why it belongs in CI rather than a local gate.
+
+Note the caveat already in this bean: confirm the runners can actually fetch
+them before designing around it.

@@ -52,6 +52,16 @@ const (
 	BuildStart
 	BuildDone
 
+	// BuildProgress reports how a build that is already running is getting on:
+	// which derivation is building now, how many are done of how many expected,
+	// and the latest line of the build's own output. It arrives repeatedly
+	// while a single BuildStart/BuildDone pair is open.
+	//
+	// Expected MOVES: Nix discovers work as it proceeds, so the total rises and
+	// shifts as a running derivation is counted or not. A renderer shows what
+	// it currently says rather than treating the first figure as final.
+	BuildProgress
+
 	// ProviderSpawn reports a provider process being started. Name is its
 	// identity. Fires once per identity, since the manager pools them.
 	ProviderSpawn
@@ -93,6 +103,12 @@ type Event struct {
 	// three that drifted. A renderer cannot infer this from the other fields,
 	// so it is stated.
 	Refresh bool
+
+	// BuildProgress fields.
+	Derivation string // the derivation building now, by readable name
+	Done       int    // derivations finished
+	Expected   int    // derivations expected — this figure can change
+	LastLine   string // the latest line of the build's own output
 
 	Message string // Note
 

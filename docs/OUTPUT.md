@@ -87,24 +87,41 @@ provider's deprecation warning.
 
 Nix has a perfectly good progress display of its own, and a build of an
 operating-system image can take many minutes. But Nix's display and Nivis's live
-region both drive the cursor, so they can never both be active. Exactly one is,
-chosen by the verbosity:
+region both drive the cursor, so they can never both be active. The verbosity
+picks which one you get:
 
 | `--log-level` | Nix's own output | Nivis's live region |
-|---------------|----------------------|---------------------|
+|---------------|----------------------------|---------------------|
 | `quiet` | suppressed | off |
-| `info` | suppressed | **on** |
+| `info` | consumed and re-reported | **on** |
 | `verbose` | passed through raw | off |
 | `debug` | passed through raw | off |
 
-So when you want to watch a long build the way Nix reports it:
+At the **default** level Nivis reads Nix's own event stream and reports it
+itself, so the live region can stay up. A running build shows what is building,
+how many derivations are done of how many expected, how long it has been going,
+and the latest line of the build's own output:
+
+```
+  ⠹  + aws_s3_object.image                   2m14s
+     building nixos-image              [2/4 drv]  1m14s
+     creating disk image (2048 MiB)
+```
+
+The `[2/4 drv]` total **can go up while you watch**. Nix discovers work as it
+proceeds, so the number it expects is a running figure, not a promise.
+
+At **`verbose`** Nivis hands the terminal to Nix instead, so you get Nix's own
+display verbatim:
 
 ```console
 $ nivis apply --log-level verbose
 ```
 
-At the default level you still see that the build started, what is building, and
-how long it has been going — just in Nivis's own form rather than Nix's.
+That is also the fallback. Nix's event stream is not a documented interface, so
+if Nivis meets a version whose stream it cannot read, it stops interpreting and
+passes the output through rather than guessing — you get plainer output, never
+a broken build. `--log-level verbose` also reports which Nix is being driven.
 
 Whichever level you choose, a failing evaluation or build always reports its
 actionable error text.

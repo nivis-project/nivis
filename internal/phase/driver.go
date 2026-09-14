@@ -35,6 +35,7 @@ import (
 	"github.com/nivis-project/nivis/internal/graph"
 	"github.com/nivis-project/nivis/internal/ir"
 	"github.com/nivis-project/nivis/internal/ledger"
+	"github.com/nivis-project/nivis/internal/nixlog"
 	"github.com/nivis-project/nivis/internal/plan"
 	"github.com/nivis-project/nivis/internal/progress"
 	"github.com/nivis-project/nivis/internal/provider"
@@ -604,13 +605,30 @@ func (d *Driver) realiseBuild(ctx context.Context, owner string, b Build) error 
 		return nil // already built
 	}
 
+	// NOTE: the default realiser captures d.Term BY VALUE, so it must be built
+	// after OnBuild is attached below — otherwise it carries a Terminal with no
+	// consumer and the build reports nothing.
 	r := d.Realiser
-	if r == nil {
-		r = nixRealiser{term: d.Term}
-	}
 	name := storeName(b.Path)
 	d.emit(progress.Event{Kind: progress.BuildStart, Owner: owner, Name: name, Path: b.Path})
 	start := time.Now()
+
+	// While the build runs, report what Nix says about it: which derivation is
+	// building, how many are done of how many expected, and its latest output
+	// line. Without this a build of an operating-system image is a single line
+	// followed by minutes of nothing.
+	d.Term.OnBuild = func(u nixlog.Update) {
+		d.emit(progress.Event{
+			Kind: progress.BuildProgress, Owner: owner, Name: name, Path: b.Path,
+			Derivation: u.Building, Done: u.Done, Expected: u.Expected,
+			LastLine: u.LastLine,
+		})
+	}
+	defer func() { d.Term.OnBuild = nil }()
+
+	if r == nil {
+		r = nixRealiser{term: d.Term}
+	}
 	if err := r.Realise(ctx, b); err != nil {
 		err = fmt.Errorf("realise build for %q (%s): %w", owner, b.Path, err)
 		d.emit(progress.Event{
@@ -814,4 +832,11 @@ func (d *Driver) resolveOne(
 
 	d.Ledger.Append(id, outs)
 	return node, op, nil
+}
+
+// RealiseForTest realises a derivation through this driver's Terminal. It
+// exists so a test can exercise the real subprocess path — the decoding, the
+// capture, the fallback — without constructing a whole graph.
+func (d *Driver) RealiseForTest(ctx context.Context, drv string) (string, error) {
+	return d.Term.run(ctx, "nix-store", "--realise", drv)
 }

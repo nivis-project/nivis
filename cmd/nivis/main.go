@@ -328,6 +328,8 @@ func planCmd() *cobra.Command {
 				Term:     terminalFor(r, level),
 			}
 
+			reportNixVersion(cmd.Context(), r, level)
+
 			items, err := d.PlanReport(cmd.Context())
 			if err != nil {
 				return err
@@ -401,6 +403,8 @@ func applyCmd() *cobra.Command {
 				Observer:   r,
 				Term:       terminalFor(r, level),
 			}
+			reportNixVersion(cmd.Context(), r, level)
+
 			// Hold the state lock for the whole apply (no-op on an unlockable store).
 			var res *phase.Result
 			if err := withStateLock(r, store, "apply", func() error {

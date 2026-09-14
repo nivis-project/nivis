@@ -6,6 +6,7 @@ package ui
 import (
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/nivis-project/nivis/internal/progress"
@@ -51,6 +52,9 @@ type live struct {
 type inFlightItem struct {
 	label   string
 	started time.Time
+	// detail is a second, subordinate row: for a build, its derivation count
+	// and the latest line of its own output. Empty means no second row.
+	detail string
 }
 
 var spinner = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -99,6 +103,8 @@ func (l *live) Emit(e progress.Event) {
 		}
 	case progress.BuildStart:
 		l.add("build:"+e.Path, "building "+e.Name)
+	case progress.BuildProgress:
+		l.setDetail("build:"+e.Path, buildDetail(e))
 	case progress.BuildDone:
 		l.remove("build:" + e.Path)
 	case progress.EvalStart:
@@ -126,6 +132,41 @@ func (l *live) add(key, label string) {
 		l.order = append(l.order, key)
 	}
 	l.inFlight[key] = inFlightItem{label: label, started: time.Now()}
+}
+
+// setDetail updates an in-flight item's subordinate row, leaving its label and
+// start time alone.
+func (l *live) setDetail(key, detail string) {
+	it, ok := l.inFlight[key]
+	if !ok {
+		return
+	}
+	it.detail = detail
+	l.inFlight[key] = it
+}
+
+// buildDetail is the second row for a running build: what is building now, how
+// far along the whole realise is, and its latest output line.
+//
+// The count is rendered as done/expected even though EXPECTED MOVES — Nix
+// discovers work as it proceeds. Showing the current figure is honest;
+// smoothing it would invent certainty Nix does not have.
+func buildDetail(e progress.Event) string {
+	var parts []string
+	if e.Derivation != "" {
+		parts = append(parts, e.Derivation)
+	}
+	if e.Expected > 0 {
+		parts = append(parts, fmt.Sprintf("[%d/%d drv]", e.Done, e.Expected))
+	}
+	head := strings.Join(parts, "  ")
+	if e.LastLine == "" {
+		return head
+	}
+	if head == "" {
+		return e.LastLine
+	}
+	return head + "\n" + e.LastLine
 }
 
 func (l *live) remove(key string) {
@@ -180,6 +221,17 @@ func (l *live) redraw() {
 		}
 		fmt.Fprintln(l.w, row)
 		l.rows++
+
+		// The subordinate row(s): a build's derivation count and its latest
+		// output line. Truncated like the label — nixpkgs output runs long,
+		// and a wrapped line would make the region grow and jump.
+		for _, d := range strings.Split(it.detail, "\n") {
+			if d == "" {
+				continue
+			}
+			fmt.Fprintln(l.w, "    "+l.paint(Dim, truncate(d, l.width()-8)))
+			l.rows++
+		}
 	}
 }
 

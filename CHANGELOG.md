@@ -8,6 +8,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- At the default verbosity a Nix build now shows what it is building and how far
+  along it is, instead of a single line and then silence. A running build
+  reports the derivation, the derivations done against those expected, the
+  elapsed time, and the latest line of the build's own output. `--log-level
+  verbose` still hands the terminal to Nix for its own display, and also reports
+  which Nix is being driven.
+
 ### Changed
 - A dependency chain between resources no longer costs one Nix evaluation per
   link. Only a value Nix must compute from an apply-time result forces another

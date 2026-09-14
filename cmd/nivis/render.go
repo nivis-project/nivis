@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -65,6 +66,17 @@ func resolveLogLevel() (ui.Level, error) {
 		return l, nil
 	}
 	return ui.DefaultLevel, nil
+}
+
+// reportNixVersion notes which Nix is being driven, at verbose only. The event
+// stream Nivis decodes from Nix is an undocumented interface, so a user on an
+// unexercised version should be able to see that from the tool rather than
+// infer it from behaviour.
+func reportNixVersion(ctx context.Context, r ui.Renderer, level ui.Level) {
+	if level < ui.LevelVerbose {
+		return
+	}
+	fmt.Fprintf(r.Writer(), "using nix %s\n", phase.NixVersion(ctx))
 }
 
 // terminalFor builds the subprocess-terminal policy for a renderer at the
