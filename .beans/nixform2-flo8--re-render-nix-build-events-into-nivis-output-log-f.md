@@ -1,11 +1,11 @@
 ---
 # nixform2-flo8
 title: Re-render Nix build events into Nivis output (--log-format internal-json)
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-09-11T14:14:50Z
-updated_at: 2026-09-14T21:12:06Z
+updated_at: 2026-09-14T21:35:23Z
 blocked_by:
     - nixform2-7gdt
 ---

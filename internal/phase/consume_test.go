@@ -14,6 +14,7 @@ package phase
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -155,5 +156,93 @@ func TestConsumeTruncatedStream(t *testing.T) {
 	// No panic, and the partial line is still captured.
 	if buf.Len() == 0 {
 		t.Error("a truncated line should still be captured")
+	}
+}
+
+// The subprocess plumbing around consume: the pipe, the goroutine, the capture
+// and the error path.
+//
+// These use `sh` as a stand-in for nix, so they run in the coverage sandbox,
+// which has no nix binary. Without them this wiring is exercised only by tests
+// that skip there — which is how the whole streaming path came to be
+// unexercised in CI in the first place.
+//
+// run() appends --log-format internal-json; `sh -c SCRIPT arg...` takes the
+// extras as positional parameters and ignores them, so the flag is harmless.
+
+func TestRunDecodingCapturesAndReports(t *testing.T) {
+	var updates []nixlog.Update
+	term := Terminal{OnBuild: func(u nixlog.Update) { updates = append(updates, u) }}
+
+	script := `
+echo '@nix {"action":"start","id":1,"type":104}'
+echo '@nix {"action":"start","id":2,"type":105,"fields":["/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-img.drv"]}'
+echo '@nix {"action":"result","id":1,"type":105,"fields":[1,3,1,0]}'
+echo 'a plain line the user should see'
+`
+	out, err := term.run(context.Background(), "sh", "-c", script)
+	if err != nil {
+		t.Fatalf("run: %v\n%s", err, out)
+	}
+
+	if len(updates) == 0 {
+		t.Fatal("no updates: the stream never reached the decoder through the subprocess")
+	}
+	last := updates[len(updates)-1]
+	if last.Building != "img" || last.Done != 1 || last.Expected != 3 {
+		t.Errorf("final update = %+v, want img at 1/3", last)
+	}
+	// Everything is captured, structured and plain alike, because the error
+	// path needs all of it.
+	for _, want := range []string{"@nix ", "a plain line the user should see"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("captured output is missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// A failing subprocess still returns its output, so the caller can extract the
+// actionable error text from it.
+func TestRunDecodingKeepsOutputOnFailure(t *testing.T) {
+	term := Terminal{OnBuild: func(nixlog.Update) {}}
+	out, err := term.run(context.Background(), "sh", "-c", `echo "error: the real cause" >&2; exit 1`)
+	if err == nil {
+		t.Fatal("a failing subprocess should report an error")
+	}
+	if !strings.Contains(out, "error: the real cause") {
+		t.Errorf("the failure's output must survive decoding:\n%s", out)
+	}
+}
+
+// Without OnBuild the plain path runs instead: no log-format flag, output teed
+// to the user.
+func TestRunWithoutDecodingTeesOutput(t *testing.T) {
+	var seen bytes.Buffer
+	term := Terminal{Stderr: &seen}
+	out, err := term.run(context.Background(), "sh", "-c", `echo hello-from-the-subprocess`)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if !strings.Contains(out, "hello-from-the-subprocess") {
+		t.Error("output should be captured")
+	}
+	if !strings.Contains(seen.String(), "hello-from-the-subprocess") {
+		t.Error("output should also reach the user when passthrough is on")
+	}
+}
+
+// Suspend is invoked around the subprocess, so a live display can be released
+// for its duration.
+func TestRunSuspendsAroundTheSubprocess(t *testing.T) {
+	var suspended bool
+	term := Terminal{
+		OnBuild: func(nixlog.Update) {},
+		Suspend: func(fn func() error) error { suspended = true; return fn() },
+	}
+	if _, err := term.run(context.Background(), "sh", "-c", `true`); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if !suspended {
+		t.Error("the subprocess must run inside Suspend")
 	}
 }
