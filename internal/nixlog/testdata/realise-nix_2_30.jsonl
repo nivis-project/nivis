@@ -1,0 +1,155 @@
+# Captured from `nix-store --realise --log-format internal-json`.
+# nix version: 2.30.5+1
+# captured:    2026-09-14
+#
+# Three chained derivations, so the expected total MOVES as Nix
+# discovers work; a single-derivation capture would leave that untested.
+# Regenerate every fixture with internal/nixlog/testdata/capture.sh.
+@nix {"action":"start","id":14363843811606528,"level":6,"parent":0,"text":"querying info about missing paths","type":0}
+@nix {"action":"start","fields":["/nix/store/5dfh9h0zd9g1gpk4sqw4b68wzma38hiz-nivis-stage-image-TOKEN","https://cache.nixos.org"],"id":14363843811606529,"level":4,"parent":0,"text":"querying info about '/nix/store/5dfh9h0zd9g1gpk4sqw4b68wzma38hiz-nivis-stage-image-TOKEN' on 'https://cache.nixos.org'","type":109}
+@nix {"action":"start","fields":["https://cache.nixos.org/5dfh9h0zd9g1gpk4sqw4b68wzma38hiz.narinfo"],"id":14363843811606530,"level":4,"parent":14363843811606529,"text":"downloading 'https://cache.nixos.org/5dfh9h0zd9g1gpk4sqw4b68wzma38hiz.narinfo'","type":101}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606530,"type":105}
+@nix {"action":"stop","id":14363843811606529}
+@nix {"action":"stop","id":14363843811606530}
+@nix {"action":"start","fields":["/nix/store/y26vj9pw8akrqzv6msgihxw2lyapgw2f-nivis-stage-initrd-TOKEN","https://cache.nixos.org"],"id":14363843811606531,"level":4,"parent":0,"text":"querying info about '/nix/store/y26vj9pw8akrqzv6msgihxw2lyapgw2f-nivis-stage-initrd-TOKEN' on 'https://cache.nixos.org'","type":109}
+@nix {"action":"start","fields":["/nix/store/v4h7w13yh8m076hninjbjzll8f63jwjy-nivis-stage-kernel-TOKEN","https://cache.nixos.org"],"id":14363843811606532,"level":4,"parent":0,"text":"querying info about '/nix/store/v4h7w13yh8m076hninjbjzll8f63jwjy-nivis-stage-kernel-TOKEN' on 'https://cache.nixos.org'","type":109}
+@nix {"action":"start","fields":["https://cache.nixos.org/y26vj9pw8akrqzv6msgihxw2lyapgw2f.narinfo"],"id":14363843811606533,"level":4,"parent":14363843811606531,"text":"downloading 'https://cache.nixos.org/y26vj9pw8akrqzv6msgihxw2lyapgw2f.narinfo'","type":101}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"start","fields":["https://cache.nixos.org/v4h7w13yh8m076hninjbjzll8f63jwjy.narinfo"],"id":14363843811606534,"level":4,"parent":14363843811606532,"text":"downloading 'https://cache.nixos.org/v4h7w13yh8m076hninjbjzll8f63jwjy.narinfo'","type":101}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606533,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"stop","id":14363843811606531}
+@nix {"action":"stop","id":14363843811606533}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"result","fields":[3,3,0,0],"id":14363843811606534,"type":105}
+@nix {"action":"stop","id":14363843811606532}
+@nix {"action":"stop","id":14363843811606534}
+@nix {"action":"stop","id":14363843811606528}
+@nix {"action":"msg","level":3,"msg":"these 3 derivations will be built:"}
+@nix {"action":"msg","level":3,"msg":"  /nix/store/spjryfqlssczfa1b9nc4fx0mmw1hbdw2-nivis-stage-kernel-TOKEN.drv"}
+@nix {"action":"msg","level":3,"msg":"  /nix/store/969pf5adimbj0dk6xzdms52155hp4f6c-nivis-stage-initrd-TOKEN.drv"}
+@nix {"action":"msg","level":3,"msg":"  /nix/store/xjpx2i8ah1x5ci4b6lla7wq53xrdccib-nivis-stage-image-TOKEN.drv"}
+@nix {"action":"start","id":14363843811606535,"level":0,"parent":0,"text":"","type":102}
+@nix {"action":"start","id":14363843811606536,"level":0,"parent":0,"text":"","type":104}
+@nix {"action":"start","id":14363843811606537,"level":0,"parent":0,"text":"","type":103}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"start","id":14363843811606538,"level":6,"parent":0,"text":"querying info about missing paths","type":0}
+@nix {"action":"stop","id":14363843811606538}
+@nix {"action":"result","fields":[0,1,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[0,1,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[0,1,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[0,2,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[0,3,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"start","fields":["/nix/store/spjryfqlssczfa1b9nc4fx0mmw1hbdw2-nivis-stage-kernel-TOKEN.drv","",1,1],"id":14363843811606539,"level":3,"parent":0,"text":"building '/nix/store/spjryfqlssczfa1b9nc4fx0mmw1hbdw2-nivis-stage-kernel-TOKEN.drv'","type":105}
+@nix {"action":"result","fields":[0,3,1,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":["unpacking sources"],"id":14363843811606539,"type":101}
+@nix {"action":"result","fields":["building 'stage-kernel'"],"id":14363843811606539,"type":101}
+@nix {"action":"result","fields":["  CC  arch/x86/kernel/setup.o"],"id":14363843811606539,"type":101}
+@nix {"action":"result","fields":["  LD  vmlinux"],"id":14363843811606539,"type":101}
+@nix {"action":"result","fields":["installing"],"id":14363843811606539,"type":101}
+@nix {"action":"result","fields":[1,4,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"stop","id":14363843811606539}
+@nix {"action":"start","fields":["/nix/store/969pf5adimbj0dk6xzdms52155hp4f6c-nivis-stage-initrd-TOKEN.drv","",1,1],"id":14363843811606540,"level":3,"parent":0,"text":"building '/nix/store/969pf5adimbj0dk6xzdms52155hp4f6c-nivis-stage-initrd-TOKEN.drv'","type":105}
+@nix {"action":"result","fields":[1,3,1,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":["unpacking sources"],"id":14363843811606540,"type":101}
+@nix {"action":"result","fields":["building 'stage-initrd'"],"id":14363843811606540,"type":101}
+@nix {"action":"result","fields":["adding module ext4"],"id":14363843811606540,"type":101}
+@nix {"action":"result","fields":["compressing initrd"],"id":14363843811606540,"type":101}
+@nix {"action":"result","fields":["installing"],"id":14363843811606540,"type":101}
+@nix {"action":"result","fields":[2,4,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"stop","id":14363843811606540}
+@nix {"action":"start","fields":["/nix/store/xjpx2i8ah1x5ci4b6lla7wq53xrdccib-nivis-stage-image-TOKEN.drv","",1,1],"id":14363843811606541,"level":3,"parent":0,"text":"building '/nix/store/xjpx2i8ah1x5ci4b6lla7wq53xrdccib-nivis-stage-image-TOKEN.drv'","type":105}
+@nix {"action":"result","fields":[2,3,1,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":["unpacking sources"],"id":14363843811606541,"type":101}
+@nix {"action":"result","fields":["building 'stage-image'"],"id":14363843811606541,"type":101}
+@nix {"action":"result","fields":["creating disk image (2048 MiB)"],"id":14363843811606541,"type":101}
+@nix {"action":"result","fields":["copying closure"],"id":14363843811606541,"type":101}
+@nix {"action":"result","fields":["installing"],"id":14363843811606541,"type":101}
+@nix {"action":"result","fields":[3,4,0,0],"id":14363843811606536,"type":105}
+@nix {"action":"result","fields":[0,0,0,0],"id":14363843811606537,"type":105}
+@nix {"action":"result","fields":[101,0],"id":14363843811606535,"type":106}
+@nix {"action":"result","fields":[100,0],"id":14363843811606535,"type":106}
+@nix {"action":"stop","id":14363843811606541}
+@nix {"action":"stop","id":14363843811606537}
+@nix {"action":"stop","id":14363843811606536}
+@nix {"action":"stop","id":14363843811606535}
+@nix {"action":"msg","level":1,"msg":"\u001b[35;1mwarning:\u001b[0m you did not specify '--add-root'; the result might be removed by the garbage collector"}

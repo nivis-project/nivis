@@ -16,6 +16,8 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -34,10 +36,24 @@ func consumeLines(lines []string) (seen, captured string, updates []nixlog.Updat
 	return out.String(), buf.String(), updates
 }
 
-// The real fixture, replayed through the loop rather than through nix.
+// A real fixture, replayed through the loop rather than through nix.
+//
+// Found by glob, not by name: internal/nixlog captures one fixture per Nix
+// version the pin provides, and those filenames carry the version. A hardcoded
+// name here broke silently the moment that set was generalised — this test read
+// `realise-chain.jsonl` after it had become `realise-nix_2_34.jsonl`.
 func fixtureLines(t *testing.T) []string {
 	t.Helper()
-	b, err := os.ReadFile("../nixlog/testdata/realise-chain.jsonl")
+	paths, err := filepath.Glob("../nixlog/testdata/realise-*.jsonl")
+	if err != nil {
+		t.Fatalf("globbing fixtures: %v", err)
+	}
+	if len(paths) == 0 {
+		t.Fatal("no fixtures under ../nixlog/testdata — regenerate with " +
+			"internal/nixlog/testdata/capture.sh")
+	}
+	sort.Strings(paths)
+	b, err := os.ReadFile(paths[0])
 	if err != nil {
 		t.Fatalf("fixture: %v", err)
 	}

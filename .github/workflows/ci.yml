@@ -44,6 +44,14 @@ jobs:
       - name: Nix-library tests
         run: bash tests/run-nix-tests.sh
 
+      # Captures a fresh Nix log stream and decodes it. The committed fixtures
+      # (replayed by `go test` above) guard a DECODER change against older nix;
+      # only a fresh capture can catch a NEWER nix changing the stream, and the
+      # nix installed here may well be newer than the flake's pin. Needs a real
+      # nix, so it cannot run inside the build sandbox.
+      - name: Nix log-format conformance
+        run: bash tests/check-nix-logformat.sh
+
       # Docs single-source-of-truth + the docs-coverage gate. The mdbook build
       # check inside it skips itself when mdbook is absent (the docs workflow
       # builds the site).

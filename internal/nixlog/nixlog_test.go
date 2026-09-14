@@ -6,6 +6,9 @@ package nixlog_test
 import (
 	"bufio"
 	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/nivis-project/nivis/internal/nixlog"
@@ -25,14 +28,39 @@ func replay(t *testing.T, lines []string) (*nixlog.Decoder, []nixlog.Update) {
 	return d, seen
 }
 
-// fixture loads the captured stream. It is a REAL capture from nix (see
-// testdata/capture.sh), replayed here so the decoder is tested without a nix
-// binary in the test path.
-func fixture(t *testing.T) []string {
+// minFixtures is the floor on how many captured streams must be present.
+//
+// The fixtures are DISCOVERED by glob, so the set widens on its own when the
+// pinned nixpkgs offers more versions. The floor is what stops that
+// degenerating into a test that passes on zero inputs: a glob-driven check with
+// no minimum is green in an empty directory, which is the failure shape
+// nixform2-p72l and nixform2-pex6 are both open for. Raise it when the pin
+// offers more.
+const minFixtures = 4
+
+// fixturePaths lists every captured stream on disk.
+func fixturePaths(t *testing.T) []string {
 	t.Helper()
-	f, err := os.Open("testdata/realise-chain.jsonl")
+	paths, err := filepath.Glob("testdata/realise-*.jsonl")
 	if err != nil {
-		t.Fatalf("fixture: %v", err)
+		t.Fatalf("globbing fixtures: %v", err)
+	}
+	if len(paths) < minFixtures {
+		t.Fatalf("found %d fixture(s) (%v), want at least %d. "+
+			"Regenerate with internal/nixlog/testdata/capture.sh — a decoder verified "+
+			"against one nix is verified against one machine.",
+			len(paths), paths, minFixtures)
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+// readLines loads one captured stream.
+func readLines(t *testing.T, path string) []string {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("fixture %s: %v", path, err)
 	}
 	defer f.Close()
 	var lines []string
@@ -42,9 +70,29 @@ func fixture(t *testing.T) []string {
 		lines = append(lines, sc.Text())
 	}
 	if err := sc.Err(); err != nil {
-		t.Fatalf("fixture: %v", err)
+		t.Fatalf("fixture %s: %v", path, err)
 	}
 	return lines
+}
+
+// fixtureVersion reads the nix version a capture records. Provenance matters:
+// after a pin bump a STALE capture and a BROKEN decoder produce the same red
+// test, and this header is what separates them.
+func fixtureVersion(lines []string) string {
+	for _, ln := range lines {
+		if v, ok := strings.CutPrefix(ln, "# nix version:"); ok {
+			return strings.TrimSpace(v)
+		}
+	}
+	return "unrecorded"
+}
+
+// fixture loads one captured stream, for the tests that need only a
+// representative one. It is a REAL capture from nix (see testdata/capture.sh),
+// replayed so the decoder is tested without a nix binary in the test path.
+func fixture(t *testing.T) []string {
+	t.Helper()
+	return readLines(t, fixturePaths(t)[0])
 }
 
 // THE trap this decoder exists to avoid: the same type value means different
