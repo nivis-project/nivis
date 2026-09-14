@@ -1,13 +1,13 @@
 ---
 # nixform2-6qr9
 title: Phase boundaries measure dependency depth, not Nix round trips
-status: todo
+status: in-progress
 type: bug
 priority: normal
 tags:
     - discovered
 created_at: 2026-09-11T13:58:53Z
-updated_at: 2026-09-11T14:30:38Z
+updated_at: 2026-09-14T20:16:02Z
 ---
 
 Discovered while exploring nixform2-7gdt (improve console output).
@@ -89,3 +89,77 @@ with real semantics.
 **Not closed by the `stream-run-progress` OpenSpec change.** That change
 deliberately excludes phase-boundary semantics: this is an engine change with
 real semantics and its own test impact.
+
+
+---
+
+## Investigation, 2026-09-14 — the open question is settled
+
+The bean asked whether the snapshot-per-phase design might be deliberate, and
+said to check `docs/DESIGN.md` D3 before touching anything. Checked. It is not
+deliberate: **the code contradicts D3**, which is a decided architecture
+invariant, not a docstring.
+
+D3 states the two reference flavours and what each costs, verbatim:
+
+> - **TF→TF:** resource A's output feeds resource B's input. Resolved *inside*
+>   the executor during apply; **no re-eval needed**.
+> - **\*→Nix:** a Nix expression computes something from an apply-time value ...
+>   Requires re-eval with the value injected. **This is what drives phase count.**
+
+So a TF→TF chain must not cost a phase per link. It does today.
+
+### Confirmed empirically, not just by reading
+
+A throwaway test with a plain `__ref` chain and NO `__derived` anywhere:
+
+    A -> B (__ref A.value) -> C (__ref B.value)
+
+    AppliedPhases = 3
+      phase 1: alpha.alpha_token.A
+      phase 2: alpha.alpha_token.B
+      phase 3: alpha.alpha_token.C
+
+Per D3 this is one phase. Each extra phase is an extra full `nix eval`.
+
+### The milestone exit criterion is SAFE
+
+The worry was that fixing this would collapse the headline e2e below its
+"≥3 phases" criterion. It does not. `tests/e2e/headline_test.go` contains no
+`__derived` literal, but its IR comes from the REAL evaluator against
+`nivis.plan` (`nix/example/default.nix`). Evaluated at phase 0, that IR is:
+
+    __derived occurrences: 4
+    __ref occurrences    : 3
+      alpha.alpha_token.A -> {}
+      beta.beta_record.B  -> {"from": {"__derived": {"inputs": ["alpha.alpha_token.A.value"]}}}
+      alpha.alpha_token.C -> {"label": {"__derived": {"inputs": ["beta.beta_record.B.endpoint", ...]}}}
+
+Both hops are genuinely Nix-mediated (the config uses `str [...]`, which
+concatenates an apply-time value in Nix). The headline still needs 3 phases
+after the fix, for the right reason.
+
+### The other AppliedPhases assertions
+
+All three use `__derived` and should be unaffected:
+
+- `internal/phase/integration_test.go:60` — "B from=rec-+A.value (__derived)",
+  "C label=B.endpoint::A.value (__derived on both)"
+- `internal/phase/driver_test.go:114` — comment: "chain is Nix-mediated"
+- `internal/phase/datasource_integration_test.go:116` — its stub builds both
+  hops with `derivedOrValue`
+
+To be verified by running them, not assumed.
+
+### Consequence for scope
+
+Smaller and safer than this bean originally feared: direction (b) — fix the
+engine — is what D3 requires, and no existing phase-count assertion is expected
+to move. Direction (a) (leave the engine, relabel in the renderer) is now off
+the table: it would document a behaviour the design rejects.
+
+Extra urgency from v0.7.0: the CLI now prints phase headings prominently, so a
+user reads "Phase 2" as a Nix round trip when it may be plain dependency depth.
+The mismatch moved from a docstring to the screen.
+
+OpenSpec change: `resolve-tftf-within-a-phase`.
