@@ -48,4 +48,9 @@ release:
     name: nivis
   name_template: "Nivis {{ .Tag }}"
   draft: false
-  prerelease: auto # v0.x and -rc tags are marked pre-release
+  # `auto` keys off a SEMVER PRE-RELEASE SUFFIX in the tag (v1.0.0-rc1,
+  # v0.8.0-beta), not off the major version. A plain v0.x tag has no suffix,
+  # so 0.x releases are published as normal releases — which is how every
+  # release up to v0.7.0 went out. Pre-1.0 status is signalled by the version
+  # number itself. To flag a release, tag it with a suffix.
+  prerelease: auto

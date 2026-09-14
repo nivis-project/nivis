@@ -29,7 +29,11 @@ Pushing the tag runs **`.github/workflows/release.yml`**, which uses
 - write `checksums.txt` and changelog-derived release notes,
 - create the **GitHub release** with the archives attached.
 
-`v0.x` tags are marked pre-release automatically.
+Tags carrying a **semver pre-release suffix** (`v0.8.0-rc1`, `v1.0.0-beta`) are
+marked pre-release on GitHub. A plain `v0.x` tag is **not**: goreleaser's
+`prerelease: auto` keys off the suffix, not off the major version, so 0.x
+releases are published as normal releases. Pre-1.0 status is carried by the
+version number itself.
 
 ## Keeping the changelog current (the changelog gate)
 
