@@ -8,6 +8,30 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- The S3 state backend can now be told how to server-side encrypt the objects it
+  writes, through `backend.sseAlgorithm` (`"AES256"`, the unchanged default;
+  `"bucket-default"`; or `"aws:kms"` with `backend.kmsKeyId`). This is what lets
+  nivis share a hardened state bucket whose policy denies any write carrying an
+  encryption header other than the bucket's own default: set
+  `sseAlgorithm = "bucket-default"`. Previously every write requested `AES256`
+  and such a bucket refused it, so nivis needed a state bucket of its own. Both
+  the state object and the lock object follow the setting. See
+  docs/REMOTE-STATE.md, "Encryption".
+- An access denial on a state write now says that a server-side encryption
+  mismatch may be the cause and which mode to try, because S3 answers a policy
+  Deny with a bare `AccessDenied` that never mentions encryption.
+
+### Changed
+- **Breaking:** an unrecognized key in a `backend` block is now an error instead
+  of being silently ignored. A misspelling such as `sseAlgorythm` used to take
+  effect as its default and fail somewhere unrelated; it is now reported, with
+  the key it resembles. Keys carried over from a Terraform backend
+  (`dynamodbTable`, `roleArn`, `encrypt`, `profile`, `sessionName`) say what
+  nivis does instead. To upgrade, remove any backend key the error names: the s3
+  backend accepts `type`, `bucket`, `key`, `region`, `endpoint`, `sseAlgorithm`
+  and `kmsKeyId`, and the local backend accepts `type`.
+
 ## [0.8.0] - 2026-09-15
 
 ### Added

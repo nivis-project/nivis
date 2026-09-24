@@ -53,12 +53,14 @@ func TestS3StoreRoundTrip(t *testing.T) {
 	if err := st.Set(rs); err != nil {
 		t.Fatalf("set: %v", err)
 	}
-	// The object now exists in S3 and SSE was requested.
+	// The object now exists in S3, encrypted with the default mode (this backend
+	// declares no sseAlgorithm). The other two modes are covered in
+	// s3_encryption_test.go.
 	if !srv.Has("my-state", "prod/app.json") {
 		t.Error("state object was not created in S3")
 	}
 	if sse := srv.SSEFor("my-state", "prod/app.json"); sse != "AES256" {
-		t.Errorf("server-side encryption = %q, want AES256", sse)
+		t.Errorf("server-side encryption = %q, want AES256 (the default when sseAlgorithm is absent)", sse)
 	}
 
 	// Reopen against the same bucket/key: state persisted.

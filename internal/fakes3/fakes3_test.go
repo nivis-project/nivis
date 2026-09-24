@@ -4,10 +4,16 @@
 package fakes3_test
 
 import (
+	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/nivis-project/nivis/internal/fakes3"
 )
@@ -113,5 +119,107 @@ func TestDenyBucket(t *testing.T) {
 	code, body = put(t, srv, "locked", "state.json", "{}")
 	if code != http.StatusForbidden || !strings.Contains(body, "AccessDenied") {
 		t.Errorf("PUT a denied bucket: status = %d, body = %q; want 403 AccessDenied", code, body)
+	}
+}
+
+// sdkClient talks to the fake through the real AWS SDK, so the encryption headers
+// under test are the ones the SDK actually puts on the wire.
+func sdkClient(t *testing.T, srv *fakes3.Server) *s3.Client {
+	t.Helper()
+	t.Setenv("AWS_ACCESS_KEY_ID", "test")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
+	return s3.New(s3.Options{
+		Region:       "us-east-1",
+		BaseEndpoint: aws.String(srv.URL()),
+		UsePathStyle: true,
+		Credentials:  aws.AnonymousCredentials{},
+	})
+}
+
+func sdkPut(t *testing.T, c *s3.Client, bucket, key string, sse types.ServerSideEncryption, kmsKey string) error {
+	t.Helper()
+	in := &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   bytes.NewReader([]byte(`{}`)),
+	}
+	if sse != "" {
+		in.ServerSideEncryption = sse
+	}
+	if kmsKey != "" {
+		in.SSEKMSKeyId = aws.String(kmsKey)
+	}
+	_, err := c.PutObject(context.Background(), in)
+	return err
+}
+
+// Both encryption headers are recorded per object, so a test can assert WHICH key
+// was requested and not merely that SSE-KMS was.
+func TestRecordsBothEncryptionHeaders(t *testing.T) {
+	srv := fakes3.New()
+	defer srv.Close()
+	c := sdkClient(t, srv)
+
+	const arn = "arn:aws:kms:eu-central-1:104144963194:key/abc-123"
+	if err := sdkPut(t, c, "b", "k", types.ServerSideEncryptionAwsKms, arn); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if got := srv.SSEFor("b", "k"); got != "aws:kms" {
+		t.Errorf("SSEFor = %q, want aws:kms", got)
+	}
+	if got := srv.KMSKeyFor("b", "k"); got != arn {
+		t.Errorf("KMSKeyFor = %q, want %q", got, arn)
+	}
+
+	if err := sdkPut(t, c, "b", "plain", "", ""); err != nil {
+		t.Fatalf("put (no headers): %v", err)
+	}
+	if got := srv.SSEFor("b", "plain"); got != "" {
+		t.Errorf("SSEFor with no header = %q, want empty", got)
+	}
+	if got := srv.KMSKeyFor("b", "plain"); got != "" {
+		t.Errorf("KMSKeyFor with no header = %q, want empty", got)
+	}
+}
+
+// DenyMismatchedSSE models the real bucket policy: a matching header and NO header
+// are both accepted; a present-but-different header is denied.
+func TestDenyMismatchedSSE(t *testing.T) {
+	srv := fakes3.New()
+	defer srv.Close()
+	srv.DenyMismatchedSSE("hardened", "aws:kms")
+	c := sdkClient(t, srv)
+
+	if err := sdkPut(t, c, "hardened", "kms", types.ServerSideEncryptionAwsKms, "arn:key"); err != nil {
+		t.Errorf("matching header should be accepted: %v", err)
+	}
+	if err := sdkPut(t, c, "hardened", "none", "", ""); err != nil {
+		t.Errorf("absent header should be accepted (the bucket default applies): %v", err)
+	}
+	if err := sdkPut(t, c, "hardened", "aes", types.ServerSideEncryptionAes256, ""); err == nil {
+		t.Error("a mismatched header should be denied")
+	}
+	if srv.Has("hardened", "aes") {
+		t.Error("a denied put must not store the object")
+	}
+
+	if err := sdkPut(t, c, "open", "aes", types.ServerSideEncryptionAes256, ""); err != nil {
+		t.Errorf("an unenforced bucket should accept any header: %v", err)
+	}
+}
+
+// DenyMissingSSE is the other policy shape: an explicit header is required, so
+// relying on the bucket default is refused.
+func TestDenyMissingSSE(t *testing.T) {
+	srv := fakes3.New()
+	defer srv.Close()
+	srv.DenyMissingSSE("strict")
+	c := sdkClient(t, srv)
+
+	if err := sdkPut(t, c, "strict", "none", "", ""); err == nil {
+		t.Error("a put with no encryption header should be denied")
+	}
+	if err := sdkPut(t, c, "strict", "kms", types.ServerSideEncryptionAwsKms, "arn:key"); err != nil {
+		t.Errorf("an explicit header should be accepted: %v", err)
 	}
 }

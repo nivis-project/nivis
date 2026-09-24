@@ -29,6 +29,7 @@ type Server struct {
 	mu   sync.Mutex
 	objs map[string][]byte // "<bucket>/<key>" -> bytes
 	sse  map[string]string // "<bucket>/<key>" -> x-amz-server-side-encryption header
+	kms  map[string]string // "<bucket>/<key>" -> x-amz-server-side-encryption-aws-kms-key-id header
 	// buckets, when non-nil, is the set of buckets that EXIST: a request to any
 	// other bucket answers 404 NoSuchBucket, as real S3 does. A nil map accepts
 	// any bucket (the historical behaviour, for tests that do not care).
@@ -36,11 +37,19 @@ type Server struct {
 	// denied is the set of buckets that answer 403 AccessDenied, so a test can
 	// distinguish a permission failure from a missing bucket.
 	denied map[string]bool
+	// sseRequired maps a bucket to the only server-side-encryption header value it
+	// accepts on a put, modelling the bucket policy real hardened state buckets
+	// carry. See DenyMismatchedSSE.
+	sseRequired map[string]string
+	// sseMandatory is the set of buckets that reject a put carrying NO encryption
+	// header, the other half of the policy shapes seen in the wild. See
+	// DenyMissingSSE.
+	sseMandatory map[string]bool
 }
 
 // New starts a fake S3 server that accepts any bucket name. Call Close to stop it.
 func New() *Server {
-	s := &Server{objs: map[string][]byte{}, sse: map[string]string{}}
+	s := &Server{objs: map[string][]byte{}, sse: map[string]string{}, kms: map[string]string{}}
 	s.ts = httptest.NewServer(http.HandlerFunc(s.handle))
 	return s
 }
@@ -50,7 +59,7 @@ func New() *Server {
 // Pass no names for a server where no bucket exists yet (the state-bootstrap
 // case, where the bucket is created during the run).
 func NewWithBuckets(buckets ...string) *Server {
-	s := &Server{objs: map[string][]byte{}, sse: map[string]string{}, buckets: map[string]bool{}}
+	s := &Server{objs: map[string][]byte{}, sse: map[string]string{}, kms: map[string]string{}, buckets: map[string]bool{}}
 	for _, b := range buckets {
 		s.buckets[b] = true
 	}
@@ -79,6 +88,37 @@ func (s *Server) DenyBucket(bucket string) {
 	s.denied[bucket] = true
 }
 
+// DenyMismatchedSSE makes bucket answer 403 AccessDenied to any PutObject whose
+// server-side-encryption header is PRESENT and not equal to want. A request that
+// sends no such header is accepted, because the bucket's own default encryption
+// then applies.
+//
+// This is the shape of the bucket policy the hardened state buckets in the wild
+// carry ("deny if x-amz-server-side-encryption is present and != aws:kms"), so a
+// test can assert that a run is ACCEPTED rather than only that nivis sent a
+// particular header.
+func (s *Server) DenyMismatchedSSE(bucket, want string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sseRequired == nil {
+		s.sseRequired = map[string]string{}
+	}
+	s.sseRequired[bucket] = want
+}
+
+// DenyMissingSSE makes bucket answer 403 AccessDenied to any PutObject that sends
+// NO server-side-encryption header, modelling the other common policy shape
+// ("deny unless the encryption is stated explicitly"). It is the bucket for which
+// relying on the bucket default is not enough and an explicit key is required.
+func (s *Server) DenyMissingSSE(bucket string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sseMandatory == nil {
+		s.sseMandatory = map[string]bool{}
+	}
+	s.sseMandatory[bucket] = true
+}
+
 // URL is the endpoint to pass to the s3 backend (the BaseEndpoint override).
 func (s *Server) URL() string { return s.ts.URL }
 
@@ -91,6 +131,15 @@ func (s *Server) SSEFor(bucket, key string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.sse[bucket+"/"+key]
+}
+
+// KMSKeyFor returns the KMS key id header recorded for the last put to
+// "<bucket>/<key>" (empty if none/absent), so tests can assert which key was
+// requested, not merely that SSE-KMS was.
+func (s *Server) KMSKeyFor(bucket, key string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.kms[bucket+"/"+key]
 }
 
 // Has reports whether an object exists at "<bucket>/<key>".
@@ -128,6 +177,19 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPut:
 		body, _ := io.ReadAll(r.Body)
+		s.mu.Lock()
+		want, enforced := s.sseRequired[bucket]
+		mandatory := s.sseMandatory[bucket]
+		s.mu.Unlock()
+		got := r.Header.Get("X-Amz-Server-Side-Encryption")
+		if enforced && got != "" && got != want {
+			writeAccessDenied(w, bucket)
+			return
+		}
+		if mandatory && got == "" {
+			writeAccessDenied(w, bucket)
+			return
+		}
 		// Conditional create-if-absent (IfNoneMatch: "*"): if the object already
 		// exists, fail with 412 PreconditionFailed (how S3 enforces an atomic lock).
 		if r.Header.Get("If-None-Match") == "*" {
@@ -142,6 +204,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		s.objs[id] = body
 		s.sse[id] = r.Header.Get("X-Amz-Server-Side-Encryption")
+		s.kms[id] = r.Header.Get("X-Amz-Server-Side-Encryption-Aws-Kms-Key-Id")
 		s.mu.Unlock()
 		w.WriteHeader(http.StatusOK)
 	case http.MethodGet, http.MethodHead:
@@ -161,6 +224,7 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		delete(s.objs, id)
 		delete(s.sse, id)
+		delete(s.kms, id)
 		s.mu.Unlock()
 		w.WriteHeader(http.StatusNoContent)
 	default:

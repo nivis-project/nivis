@@ -32,6 +32,7 @@ type s3Store struct {
 	bucket string
 	key    string
 	region string // carried only so a missing-bucket error can name it
+	sse    sseConfig
 }
 
 // s3API is the subset of the S3 client the store uses, so tests can substitute a
@@ -44,7 +45,7 @@ type s3API interface {
 // newS3Store builds an s3Store from a resolved configuration. endpoint is optional
 // (empty => the SDK resolves the real S3 endpoint); when set (tests, S3-compatible
 // servers) the client uses it with path-style addressing.
-func newS3Store(ctx context.Context, bucket, key, region, endpoint string) (*s3Store, error) {
+func newS3Store(ctx context.Context, bucket, key, region, endpoint string, sse sseConfig) (*s3Store, error) {
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
 	if err != nil {
 		return nil, fmt.Errorf("state: s3: load AWS config: %w", err)
@@ -55,7 +56,20 @@ func newS3Store(ctx context.Context, bucket, key, region, endpoint string) (*s3S
 			o.UsePathStyle = true // test servers and most S3-compatibles want path-style
 		}
 	})
-	return &s3Store{client: client, bucket: bucket, key: key, region: region}, nil
+	return &s3Store{client: client, bucket: bucket, key: key, region: region, sse: sse}, nil
+}
+
+// applyTo sets the encryption parameters of a put. bucket-default sets nothing:
+// the SDK omits the header when ServerSideEncryption is unset, which is exactly
+// what a bucket that enforces its own default requires.
+func (c sseConfig) applyTo(in *s3.PutObjectInput) {
+	switch c.algorithm {
+	case sseAES256:
+		in.ServerSideEncryption = types.ServerSideEncryptionAes256
+	case sseKMS:
+		in.ServerSideEncryption = types.ServerSideEncryptionAwsKms
+		in.SSEKMSKeyId = aws.String(c.kmsKeyID)
+	}
 }
 
 // readDoc loads the state document from the S3 object. A missing object (NoSuchKey
@@ -92,24 +106,25 @@ func (s *s3Store) readDoc(ctx context.Context) (document, error) {
 	return parsed, nil
 }
 
-// writeDoc serializes and puts the document, server-side encrypted.
+// writeDoc serializes and puts the document under the configured encryption.
 func (s *s3Store) writeDoc(ctx context.Context, doc document) error {
 	data, err := marshalDocument(doc)
 	if err != nil {
 		return err
 	}
-	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:               aws.String(s.bucket),
-		Key:                  aws.String(s.key),
-		Body:                 bytes.NewReader(data),
-		ServerSideEncryption: types.ServerSideEncryptionAes256,
-		ContentType:          aws.String("application/json"),
-	})
+	in := &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(s.key),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String("application/json"),
+	}
+	s.sse.applyTo(in)
+	_, err = s.client.PutObject(ctx, in)
 	if err != nil {
 		if mb := s.missingBucket(err); mb != nil {
 			return mb
 		}
-		return fmt.Errorf("state: s3: put %s/%s: %w", s.bucket, s.key, err)
+		return fmt.Errorf("state: s3: put %s/%s: %w%s", s.bucket, s.key, err, s.encryptionHint(err))
 	}
 	return nil
 }
@@ -188,14 +203,15 @@ func (s *s3Store) Lock(info LockInfo) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("state: s3: marshal lock info: %w", err)
 	}
-	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:               aws.String(s.bucket),
-		Key:                  aws.String(s.lockKey()),
-		Body:                 bytes.NewReader(body),
-		IfNoneMatch:          aws.String("*"), // create iff the lock object is absent
-		ServerSideEncryption: types.ServerSideEncryptionAes256,
-		ContentType:          aws.String("application/json"),
-	})
+	in := &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(s.lockKey()),
+		Body:        bytes.NewReader(body),
+		IfNoneMatch: aws.String("*"), // create iff the lock object is absent
+		ContentType: aws.String("application/json"),
+	}
+	s.sse.applyTo(in)
+	_, err = s.client.PutObject(ctx, in)
 	if err != nil {
 		if mb := s.missingBucket(err); mb != nil {
 			return "", mb
@@ -209,7 +225,7 @@ func (s *s3Store) Lock(info LockInfo) (string, error) {
 			return "", fmt.Errorf("state is locked by %s; run `nivis force-unlock` to override",
 				holder.describe())
 		}
-		return "", fmt.Errorf("state: s3: acquire lock %s/%s: %w", s.bucket, s.lockKey(), err)
+		return "", fmt.Errorf("state: s3: acquire lock %s/%s: %w%s", s.bucket, s.lockKey(), err, s.encryptionHint(err))
 	}
 	return info.ID, nil
 }

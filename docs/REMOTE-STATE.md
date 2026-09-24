@@ -39,6 +39,12 @@ state document is stored as that one object.
 - `bucket`, `key`, `region` (required for s3): where the state object lives.
 - `endpoint` (optional): override the S3 endpoint (for an S3-compatible store or a
   test server). Unset in production, where the AWS SDK resolves the real endpoint.
+- `sseAlgorithm`, `kmsKeyId` (optional): how the objects are server-side
+  encrypted. See [Encryption](#encryption).
+
+This list is the **complete** set of keys the s3 backend accepts. Any other key is
+an error rather than being ignored, so a misspelling is reported instead of
+silently taking effect as its default. A `local` backend accepts only `type`.
 
 The backend is **static**: its values must be plain (no references to resource
 outputs), because the executor has to know where state lives before it evaluates
@@ -54,7 +60,79 @@ keys) in your shell or CI; the config carries only the location.
 
 ## Encryption
 
-Every write requests **server-side encryption** (`AES256`) on the state object.
+Both objects the backend writes (the state object and the lock object) are
+server-side encrypted. How is set by `sseAlgorithm`:
+
+| `sseAlgorithm`     | what is sent                     | the object is encrypted with        |
+|--------------------|----------------------------------|-------------------------------------|
+| absent / `AES256`  | `x-amz-server-side-encryption: AES256` | SSE-S3, an S3-managed key     |
+| `"bucket-default"` | nothing                          | whatever the bucket's default encryption rule says |
+| `"aws:kms"`        | `aws:kms` plus `kmsKeyId`        | SSE-KMS with that key               |
+
+`kmsKeyId` is required when `sseAlgorithm` is `"aws:kms"`, and refused otherwise.
+
+None of these modes writes state unencrypted. Every S3 bucket has had default
+encryption applied since January 2023, so `"bucket-default"` still produces an
+encrypted object: SSE-S3 at minimum, and the bucket's KMS key when one is
+configured.
+
+### Sharing a bucket that enforces SSE-KMS
+
+Hardened state buckets commonly carry a policy that **denies** any write whose
+encryption header is present and is not the bucket's own default, for example:
+
+```json
+{ "Effect": "Deny", "Principal": "*", "Action": "s3:*",
+  "Condition": {
+    "Null": { "s3:x-amz-server-side-encryption": "false" },
+    "StringNotEquals": { "s3:x-amz-server-side-encryption": "aws:kms" } } }
+```
+
+`"Null": "false"` means "the header is present", so the statement fires only on a
+header that is there and wrong. Against such a bucket the default `AES256` is
+denied and **`"bucket-default"` is the mode to use**:
+
+```nix
+backend = {
+  type = "s3";
+  bucket = "terraform-state-123456789012-production";
+  key = "nivis/app.json";
+  region = "eu-central-1";
+  sseAlgorithm = "bucket-default";
+};
+```
+
+Sending no header satisfies the policy and lets the bucket encrypt the object with
+its own CMK, which is also what Terraform does against these buckets when its
+backend sets no `encrypt`.
+
+Use `"aws:kms"` instead when the bucket policy requires the key to be stated
+explicitly (the variant that denies a write whose key-id header is *missing*).
+Then `kmsKeyId` must be the **exact key ARN the policy compares against**: such
+policies test it as a string, so an alias or a bare key id names the same key and
+is still denied.
+
+### The symptom
+
+A bucket that refuses your encryption mode fails the **lock** object first, since
+that is the first write of a `plan` or `apply`, and S3 answers an explicit policy
+Deny with a bare `AccessDenied` that never mentions encryption:
+
+```
+error: state: s3: acquire lock my-bucket/nivis/app.json.lock: ... AccessDenied
+  This may be a server-side encryption mismatch rather than a credentials problem:
+  nivis requested "AES256". A bucket whose policy enforces its own default
+  encryption (commonly SSE-KMS with a fixed key) denies that write. If the bucket
+  already defaults to the right key, set backend.sseAlgorithm = "bucket-default".
+```
+
+### KMS permissions
+
+Reading and writing a KMS-encrypted object needs permission on the **key**, not
+only on the bucket: `kms:GenerateDataKey` to write and `kms:Decrypt` to read. A
+run that can list the bucket but lacks `kms:Decrypt` fails on the read with
+another bare `AccessDenied`.
+
 Enable bucket policies/versioning on your side as you would for any state bucket.
 
 ## Locking

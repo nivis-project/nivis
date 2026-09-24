@@ -71,7 +71,11 @@ to know where state lives before it evaluates anything), so its leaves are plain
 JSON scalars/objects and may **not** contain a `__ref`, `__derived`, or other
 unknown leaf. It has a required non-empty string `type` naming the backend kind
 (e.g. `"s3"`); other keys are backend-specific and are interpreted by that backend,
-not the IR layer. Credentials are **never** in `backend` (they come from the
+not the IR layer. Each backend defines and enforces the COMPLETE set of keys it
+accepts, so a key outside that set is an error rather than being ignored: for
+`"s3"` that set is `type`, `bucket`, `key`, `region`, `endpoint`, `sseAlgorithm`
+and `kmsKeyId` (see docs/REMOTE-STATE.md); for `"local"` it is `type` alone.
+Credentials are **never** in `backend` (they come from the
 provider/AWS credential chain); only the location of state. When `backend` is
 absent, the executor uses the **local file store** (the default). Adding the
 optional field is additive: `schemaVersion` stays `1`.
