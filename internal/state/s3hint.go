@@ -41,8 +41,17 @@ func (s *s3Store) encryptionHint(err error) string {
 			"  (commonly SSE-KMS with a fixed key) denies that write. If the bucket already\n"+
 			"  defaults to the right key, set backend.sseAlgorithm = %q.", sseAES256, sseBucketDefault)
 	}
-	return "\n  This may be a server-side encryption mismatch rather than a credentials problem:\n  " +
-		detail + "\n  See docs/REMOTE-STATE.md, \"Encryption\"."
+	hint := "\n  This may be a server-side encryption mismatch:\n  " + detail
+
+	// Only when nivis is choosing the identity too. A run without assumeRole reads
+	// exactly as it did before, and naming a role that is not configured would be
+	// noise.
+	if s.role.configured() {
+		hint += fmt.Sprintf("\n  It may equally be the assumed role: nivis assumed %q as session %q.\n"+
+			"  Check that role may write to this bucket, and its key if the bucket is KMS-encrypted.",
+			s.role.roleARN, s.role.sessionName)
+	}
+	return hint + "\n  See docs/REMOTE-STATE.md, \"Encryption\" and \"Assuming a role for state access\"."
 }
 
 // isAccessDenied reports whether an S3 error is a permission denial, which is how

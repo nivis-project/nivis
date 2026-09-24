@@ -44,7 +44,11 @@ func OpenBackend(backend map[string]interface{}, localPath string) (Store, error
 		if err != nil {
 			return nil, err
 		}
-		return newS3Store(context.Background(), bucket, key, region, endpoint, sse)
+		role, err := resolveAssumeRole(backend)
+		if err != nil {
+			return nil, err
+		}
+		return newS3Store(context.Background(), bucket, key, region, endpoint, sse, role)
 	default:
 		return nil, fmt.Errorf("state: unsupported backend type %q (supported: \"s3\", \"local\")", typ)
 	}
@@ -122,6 +126,71 @@ func resolveSSE(backend map[string]interface{}) (sseConfig, error) {
 		return cfg, fmt.Errorf(`state: s3 backend kmsKeyId is only meaningful with sseAlgorithm = %q, but sseAlgorithm is %q; `+
 			"remove kmsKeyId or set sseAlgorithm, rather than encrypting with a different key than the one named",
 			sseKMS, cfg.algorithm)
+	}
+	return cfg, nil
+}
+
+// defaultSessionName is the STS session name used when the configuration does not
+// set one. It names the tool, which is what shows up in CloudTrail; a deployment
+// that needs sessions attributable to a person sets sessionName.
+const defaultSessionName = "nivis"
+
+// assumeRoleConfig is the resolved assume-role setting. A zero value means no role
+// is assumed and credentials come straight from the default chain, exactly as
+// before this setting existed.
+type assumeRoleConfig struct {
+	roleARN     string
+	sessionName string
+	externalID  string
+}
+
+// configured reports whether a role is to be assumed.
+func (a assumeRoleConfig) configured() bool { return a.roleARN != "" }
+
+// resolveAssumeRole reads the optional assumeRole block. It runs before any client
+// is constructed, so a block that would assume nothing is reported as a
+// configuration error rather than as an opaque denial from S3 later.
+func resolveAssumeRole(backend map[string]interface{}) (assumeRoleConfig, error) {
+	var cfg assumeRoleConfig
+	raw, present := backend["assumeRole"]
+	if !present {
+		return cfg, nil
+	}
+	block, ok := raw.(map[string]interface{})
+	if !ok {
+		return cfg, fmt.Errorf("state: s3 backend assumeRole must be a block, got %v", raw)
+	}
+
+	str := func(name string) (string, error) {
+		v, ok := block[name]
+		if !ok {
+			return "", nil
+		}
+		s, ok := v.(string)
+		if !ok || s == "" {
+			return "", fmt.Errorf("state: s3 backend assumeRole.%s must be a non-empty string, got %v", name, v)
+		}
+		return s, nil
+	}
+
+	var err error
+	if cfg.roleARN, err = str("roleArn"); err != nil {
+		return assumeRoleConfig{}, err
+	}
+	if cfg.sessionName, err = str("sessionName"); err != nil {
+		return assumeRoleConfig{}, err
+	}
+	if cfg.externalID, err = str("externalId"); err != nil {
+		return assumeRoleConfig{}, err
+	}
+
+	if cfg.roleARN == "" {
+		return assumeRoleConfig{}, fmt.Errorf(
+			"state: s3 backend assumeRole requires roleArn (the role to assume for state access); " +
+				"a block without it assumes nothing while reading as configured")
+	}
+	if cfg.sessionName == "" {
+		cfg.sessionName = defaultSessionName
 	}
 	return cfg, nil
 }

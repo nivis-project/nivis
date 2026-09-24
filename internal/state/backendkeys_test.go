@@ -114,7 +114,7 @@ func TestOpenBackendRejectsUnknownKeys(t *testing.T) {
 		{
 			"an unknown s3 key lists the accepted ones",
 			baseS3(map[string]interface{}{"nonsense": "x"}),
-			[]string{`unknown key`, `"nonsense"`, "sseAlgorithm", "kmsKeyId", "bucket", "region"},
+			[]string{`unknown key`, `"nonsense"`, "sseAlgorithm", "kmsKeyId", "bucket", "region", "assumeRole"},
 		},
 		{
 			"a misspelling suggests the key it resembles",
@@ -147,14 +147,43 @@ func TestOpenBackendRejectsUnknownKeys(t *testing.T) {
 			[]string{"Terraform backend setting", "sseAlgorithm"},
 		},
 		{
-			"roleArn says state assume-role is unsupported",
+			"a top-level roleArn is told where it belongs",
 			baseS3(map[string]interface{}{"roleArn": "arn:aws:iam::1:role/r"}),
-			[]string{"Terraform backend setting", "not supported yet", "AWS profile"},
+			[]string{"belongs in the assumeRole block", "assumeRole.roleArn"},
 		},
 		{
-			"profile points at the credential chain",
+			"role_arn is relocated in either convention",
+			baseS3(map[string]interface{}{"role_arn": "arn:aws:iam::1:role/r"}),
+			[]string{"belongs in the assumeRole block", "assumeRole.roleArn"},
+		},
+		{
+			"a top-level sessionName is relocated too",
+			baseS3(map[string]interface{}{"sessionName": "nivis"}),
+			[]string{"belongs in the assumeRole block", "assumeRole.sessionName"},
+		},
+		{
+			"an unknown key inside a block is named by its path",
+			baseS3(map[string]interface{}{"assumeRole": map[string]interface{}{
+				"roleArn": "arn:aws:iam::1:role/r", "rolArn": "x",
+			}}),
+			[]string{`"assumeRole.rolArn"`, `did you mean "roleArn"`},
+		},
+		{
+			"a suggestion inside a block comes from that block",
+			baseS3(map[string]interface{}{"assumeRole": map[string]interface{}{
+				"roleArn": "arn:aws:iam::1:role/r", "externalID": "x",
+			}}),
+			[]string{`"assumeRole.externalID"`, `did you mean "externalId"`},
+		},
+		{
+			"a block given a non-block value is rejected as such",
+			baseS3(map[string]interface{}{"assumeRole": "arn:aws:iam::1:role/r"}),
+			[]string{`"assumeRole" is a block, not a value`, "assumeRole = { roleArn = ...; }"},
+		},
+		{
+			"profile points at the credential chain and says why it is excluded",
 			baseS3(map[string]interface{}{"profile": "technative"}),
-			[]string{"Terraform backend setting", "AWS_PROFILE"},
+			[]string{"Terraform backend setting", "AWS_PROFILE", "one machine's shared config", "committed configuration"},
 		},
 		{
 			"strictness applies to the local backend too",
@@ -192,6 +221,11 @@ func TestOpenBackendAcceptsEveryDocumentedKey(t *testing.T) {
 		"type": "s3", "bucket": "b", "key": "k", "region": "r",
 		"endpoint": "http://127.0.0.1:1", "sseAlgorithm": "aws:kms",
 		"kmsKeyId": "arn:aws:kms:eu-central-1:1:key/a",
+		"assumeRole": map[string]interface{}{
+			"roleArn":     "arn:aws:iam::123456789012:role/state",
+			"sessionName": "custom",
+			"externalId":  "shared",
+		},
 	}
 	if _, err := state.OpenBackend(full, ""); err != nil {
 		t.Fatalf("a backend using every accepted key should open: %v", err)

@@ -45,6 +45,10 @@ type Server struct {
 	// header, the other half of the policy shapes seen in the wild. See
 	// DenyMissingSSE.
 	sseMandatory map[string]bool
+	// onlyKey maps a bucket to the only SigV4 access key id allowed to touch it,
+	// modelling a bucket reachable by one identity and not another. See
+	// AllowOnlyAccessKey.
+	onlyKey map[string]string
 }
 
 // New starts a fake S3 server that accepts any bucket name. Call Close to stop it.
@@ -119,6 +123,41 @@ func (s *Server) DenyMissingSSE(bucket string) {
 	s.sseMandatory[bucket] = true
 }
 
+// AllowOnlyAccessKey makes bucket answer 403 AccessDenied to any request whose
+// SigV4 credential does not name keyID. It models a bucket only one identity may
+// reach, which is what an assume-role test needs and what DenyBucket (all or
+// nothing) cannot express.
+//
+// The fake verifies no signature; it reads the access key id out of the
+// Authorization header, which is enough to tell two identities apart.
+func (s *Server) AllowOnlyAccessKey(bucket, keyID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.onlyKey == nil {
+		s.onlyKey = map[string]string{}
+	}
+	s.onlyKey[bucket] = keyID
+}
+
+// accessKeyOf reads the access key id out of a SigV4 Authorization header, whose
+// credential scope reads "Credential=<key>/<date>/<region>/<service>/aws4_request".
+// It returns "" when there is no usable header.
+func accessKeyOf(r *http.Request) string {
+	auth := r.Header.Get("Authorization")
+	i := strings.Index(auth, "Credential=")
+	if i < 0 {
+		return ""
+	}
+	rest := auth[i+len("Credential="):]
+	if j := strings.IndexByte(rest, '/'); j >= 0 {
+		return rest[:j]
+	}
+	if j := strings.IndexByte(rest, ','); j >= 0 {
+		return strings.TrimSpace(rest[:j])
+	}
+	return strings.TrimSpace(rest)
+}
+
 // URL is the endpoint to pass to the s3 backend (the BaseEndpoint override).
 func (s *Server) URL() string { return s.ts.URL }
 
@@ -164,8 +203,13 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	denied := s.denied[bucket]
 	missing := s.buckets != nil && !s.buckets[bucket]
+	wantKey, gated := s.onlyKey[bucket]
 	s.mu.Unlock()
 	if denied {
+		writeAccessDenied(w, bucket)
+		return
+	}
+	if gated && accessKeyOf(r) != wantKey {
 		writeAccessDenied(w, bucket)
 		return
 	}

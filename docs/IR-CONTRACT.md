@@ -73,10 +73,20 @@ unknown leaf. It has a required non-empty string `type` naming the backend kind
 (e.g. `"s3"`); other keys are backend-specific and are interpreted by that backend,
 not the IR layer. Each backend defines and enforces the COMPLETE set of keys it
 accepts, so a key outside that set is an error rather than being ignored: for
-`"s3"` that set is `type`, `bucket`, `key`, `region`, `endpoint`, `sseAlgorithm`
-and `kmsKeyId` (see docs/REMOTE-STATE.md); for `"local"` it is `type` alone.
-Credentials are **never** in `backend` (they come from the
-provider/AWS credential chain); only the location of state. When `backend` is
+`"s3"` that set is `type`, `bucket`, `key`, `region`, `endpoint`, `sseAlgorithm`,
+`kmsKeyId` and the `assumeRole` block (`roleArn`, `sessionName`, `externalId`; see
+docs/REMOTE-STATE.md); for `"local"` it is `type` alone. Validation reaches inside
+a declared block, so a key misspelled one level down is reported rather than
+dropped.
+
+Secrets are **never** in `backend`. It MAY name an **identity to assume**, such as
+a role ARN, which is a globally resolvable identifier rather than a credential;
+the credentials that authorize assuming it always come from the provider/AWS
+credential chain. It does NOT carry machine-local credential selectors such as a
+shared-config profile name, because `backend` is committed configuration and such
+a name resolves differently on each machine. Beyond an identity to assume,
+`backend` carries the location of state and the settings its backend defines for
+reaching it. When `backend` is
 absent, the executor uses the **local file store** (the default). Adding the
 optional field is additive: `schemaVersion` stays `1`.
 

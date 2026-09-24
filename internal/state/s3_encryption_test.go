@@ -313,3 +313,23 @@ func TestMigrateBetweenBackendsWithDifferentEncryption(t *testing.T) {
 		t.Error("the source document should have been removed by the migration")
 	}
 }
+
+// The hint no longer asserts a denial is "not a credentials problem", which stopped
+// being true once the backend can resolve credentials of its own.
+func TestHintDoesNotDenyCredentialsAsACause(t *testing.T) {
+	srv := fakes3.New()
+	defer srv.Close()
+	srv.DenyMismatchedSSE("hardened", "aws:kms")
+	st := mustOpenS3With(t, srv, "hardened", "k", nil)
+
+	err := st.Set(state.ResourceState{ID: "a.t.n", Type: "t"})
+	if err == nil {
+		t.Fatal("a denied write should fail")
+	}
+	if strings.Contains(err.Error(), "rather than a credentials problem") {
+		t.Errorf("the hint must not rule out credentials as a cause, got: %s", err)
+	}
+	if !strings.Contains(err.Error(), "encryption mismatch") {
+		t.Errorf("the encryption cause should still be named, got: %s", err)
+	}
+}

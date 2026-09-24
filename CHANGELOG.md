@@ -9,6 +9,28 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- The S3 state backend can assume a role for state access, through a
+  `backend.assumeRole` block taking `roleArn` (required), `sessionName`
+  (optional, defaulting to `nivis`) and `externalId` (optional). A landing-zone
+  operator can now authenticate once with a base profile and let the repository
+  declare which role reaches each account's state bucket, instead of every
+  operator keeping a per-account assume-role profile in `~/.aws/config`. The
+  credentials from the default chain remain the source identity, and the assumed
+  credentials are cached and refreshed across a run. See docs/REMOTE-STATE.md,
+  "Assuming a role for state access".
+
+### Changed
+- A misspelled key inside a `backend` block is now reported instead of dropped:
+  validation reaches inside nested blocks, names the offending key by its full
+  path (`assumeRole.rolArn`), and suggests the key it resembles from that block.
+  A role setting written at the top level, as Terraform's S3 backend and the
+  `.tfbackend` files allow, is told which block it belongs in.
+- An access denial on a state write no longer claims the cause is "not a
+  credentials problem", which stopped being true now that the backend can resolve
+  credentials of its own. When a role is configured the hint names it alongside
+  the encryption mode as the other thing to check.
+
+### Added
 - The S3 state backend can now be told how to server-side encrypt the objects it
   writes, through `backend.sseAlgorithm` (`"AES256"`, the unchanged default;
   `"bucket-default"`; or `"aws:kms"` with `backend.kmsKeyId`). This is what lets

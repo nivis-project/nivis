@@ -14,8 +14,10 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 )
 
@@ -33,6 +35,7 @@ type s3Store struct {
 	key    string
 	region string // carried only so a missing-bucket error can name it
 	sse    sseConfig
+	role   assumeRoleConfig // carried so a denial can name the assumed role as a cause
 }
 
 // s3API is the subset of the S3 client the store uses, so tests can substitute a
@@ -45,10 +48,13 @@ type s3API interface {
 // newS3Store builds an s3Store from a resolved configuration. endpoint is optional
 // (empty => the SDK resolves the real S3 endpoint); when set (tests, S3-compatible
 // servers) the client uses it with path-style addressing.
-func newS3Store(ctx context.Context, bucket, key, region, endpoint string, sse sseConfig) (*s3Store, error) {
+func newS3Store(ctx context.Context, bucket, key, region, endpoint string, sse sseConfig, role assumeRoleConfig) (*s3Store, error) {
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region))
 	if err != nil {
 		return nil, fmt.Errorf("state: s3: load AWS config: %w", err)
+	}
+	if role.configured() {
+		cfg.Credentials = assumeRoleCredentials(cfg, role)
 	}
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
 		if endpoint != "" {
@@ -56,7 +62,25 @@ func newS3Store(ctx context.Context, bucket, key, region, endpoint string, sse s
 			o.UsePathStyle = true // test servers and most S3-compatibles want path-style
 		}
 	})
-	return &s3Store{client: client, bucket: bucket, key: key, region: region, sse: sse}, nil
+	return &s3Store{client: client, bucket: bucket, key: key, region: region, sse: sse, role: role}, nil
+}
+
+// assumeRoleCredentials wraps the config's own credentials, which stay the SOURCE
+// identity for the assumption, in an assume-role provider behind a cache.
+//
+// The cache is not optional: without it every S3 request drags an STS call behind
+// it, and a read-modify-write backend makes several per operation. It also
+// refreshes near expiry, so a long apply does not fail partway through because the
+// first assumption aged out.
+func assumeRoleCredentials(cfg aws.Config, role assumeRoleConfig) aws.CredentialsProvider {
+	client := sts.NewFromConfig(cfg)
+	provider := stscreds.NewAssumeRoleProvider(client, role.roleARN, func(o *stscreds.AssumeRoleOptions) {
+		o.RoleSessionName = role.sessionName
+		if role.externalID != "" {
+			o.ExternalID = aws.String(role.externalID)
+		}
+	})
+	return aws.NewCredentialsCache(provider)
 }
 
 // applyTo sets the encryption parameters of a put. bucket-default sets nothing:

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
@@ -221,5 +222,54 @@ func TestDenyMissingSSE(t *testing.T) {
 	}
 	if err := sdkPut(t, c, "strict", "kms", types.ServerSideEncryptionAwsKms, "arn:key"); err != nil {
 		t.Errorf("an explicit header should be accepted: %v", err)
+	}
+}
+
+// AllowOnlyAccessKey gates a bucket on the SigV4 identity, so a test can model a
+// bucket one identity may reach and another may not. DenyBucket cannot express
+// that: it is all or nothing.
+func TestAllowOnlyAccessKey(t *testing.T) {
+	srv := fakes3.New()
+	defer srv.Close()
+	srv.AllowOnlyAccessKey("member-account", "ASIAFAKEASSUMEDROLE")
+
+	assumed := s3.New(s3.Options{
+		Region:       "us-east-1",
+		BaseEndpoint: aws.String(srv.URL()),
+		UsePathStyle: true,
+		Credentials: credentials.NewStaticCredentialsProvider(
+			"ASIAFAKEASSUMEDROLE", "secret", "token"),
+	})
+	base := s3.New(s3.Options{
+		Region:       "us-east-1",
+		BaseEndpoint: aws.String(srv.URL()),
+		UsePathStyle: true,
+		Credentials: credentials.NewStaticCredentialsProvider(
+			"AKIABASEIDENTITY", "secret", ""),
+	})
+
+	if err := sdkPut(t, base, "member-account", "k", "", ""); err == nil {
+		t.Error("the base identity should be refused by a gated bucket")
+	}
+	if srv.Has("member-account", "k") {
+		t.Error("a refused put must not store the object")
+	}
+	if err := sdkPut(t, assumed, "member-account", "k", "", ""); err != nil {
+		t.Errorf("the allowed identity should be accepted: %v", err)
+	}
+	if !srv.Has("member-account", "k") {
+		t.Error("the allowed identity's put should have stored the object")
+	}
+
+	// Reads are gated the same way: the gate is on the bucket, not on writes.
+	if _, err := base.GetObject(context.Background(), &s3.GetObjectInput{
+		Bucket: aws.String("member-account"), Key: aws.String("k"),
+	}); err == nil {
+		t.Error("the base identity should be refused on a read too")
+	}
+
+	// An ungated bucket on the same server is unaffected.
+	if err := sdkPut(t, base, "open", "k", "", ""); err != nil {
+		t.Errorf("an ungated bucket should accept any identity: %v", err)
 	}
 }

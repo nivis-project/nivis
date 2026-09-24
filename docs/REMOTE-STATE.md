@@ -52,11 +52,75 @@ anything.
 
 ## Credentials
 
-Credentials are **never** in the config. The S3 backend uses the **AWS default
+Secrets are **never** in the config. The S3 backend uses the **AWS default
 credential chain** (the same chain the AWS CLI/SDK use): environment variables
 (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_PROFILE`), the shared
 credentials/config files, or an instance/role profile. Set `AWS_PROFILE` (or the
-keys) in your shell or CI; the config carries only the location.
+keys) in your shell or CI.
+
+The config may name a **role to assume** (see below). That is an identity, not a
+credential: the credentials that authorize assuming it still come from the chain.
+
+## Assuming a role for state access
+
+In a landing zone an operator usually authenticates once, as a management-account
+user, and reaches each workload account by assuming a role there. Declare that in
+the backend and the mapping lives in the repository instead of in every operator's
+`~/.aws/config`:
+
+```nix
+backend = {
+  type = "s3";
+  bucket = "terraform-state-104144963194-production";
+  key = "nivis/app.json";
+  region = "eu-central-1";
+
+  assumeRole = {
+    roleArn = "arn:aws:iam::104144963194:role/landing_zone_devops_user";
+    sessionName = "nivis";        # optional, defaults to "nivis"
+    externalId = "...";           # optional, when the trust policy requires one
+  };
+};
+```
+
+- `roleArn` is **required** whenever the block is present. A block without it would
+  assume nothing while reading as configured, so it is refused.
+- `sessionName` is what appears in CloudTrail against every state write. The
+  default names the tool; set it to something identifying the operator or the CI
+  job when state changes need to be attributable to a person.
+- `externalId` is sent only when set. Third-party and cross-account trust policies
+  commonly require it.
+
+The credentials from the default chain are the **source identity** for the
+assumption, so an operator still needs their base profile; they no longer need a
+per-account assume-role profile. The assumed credentials are cached and refreshed,
+so a long apply does not make an STS call per request and does not fail partway
+through when the first session ages out.
+
+Assuming a role for state needs `sts:AssumeRole` on the role, and the role itself
+needs access to the bucket (and to its KMS key, if the bucket is CMK-encrypted).
+
+### This is not the provider's `assume_role`
+
+They look alike and are different mechanisms:
+
+| | who calls STS | where it is declared | spelling |
+|---|---|---|---|
+| provider | the AWS provider binary | `providers.aws.config` | `assume_role`, `role_arn` |
+| backend  | nivis itself            | `backend`              | `assumeRole`, `roleArn` |
+
+Provider config follows the **provider's** schema, which is why it is snake_case
+and passed through untouched. The backend block is nivis's own schema. A config
+that switches accounts for both will carry both, and they are set independently.
+
+### Why there is no `profile` key
+
+`profile` is refused deliberately. A role ARN means the same thing from any
+machine and any CI runner; a profile name points into one operator's
+`~/.aws/config`, resolves differently elsewhere, and is usually absent in CI
+entirely. The backend block is committed configuration, so it carries the
+globally meaningful identifier and leaves the machine-local one to the
+environment. Use `AWS_PROFILE` for the base identity.
 
 ## Encryption
 
