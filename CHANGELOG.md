@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-25
+
 ### Added
 - The S3 state backend can assume a role for state access, through a
   `backend.assumeRole` block taking `roleArn` (required), `sessionName`
@@ -389,7 +391,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/nivis-project/nivis/releases/tag/v0.9.0
 [0.8.0]: https://github.com/nivis-project/nivis/releases/tag/v0.8.0
 [0.7.0]: https://github.com/nivis-project/nivis/releases/tag/v0.7.0
 [0.6.1]: https://github.com/nivis-project/nivis/releases/tag/v0.6.1
