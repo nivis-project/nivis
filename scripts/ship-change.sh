@@ -62,11 +62,16 @@ STORE="$(sed -n 's/^store:[[:space:]]*//p' openspec/config.yaml 2>/dev/null | he
 STORE_FLAG=()
 CHANGE_DIR="openspec/changes/${CHANGE}"
 STORE_ROOT=""
+STORE_REPO=""
 if [[ -n "$STORE" ]]; then
   STORE_FLAG=(--store "$STORE")
   STORE_ROOT="$(openspec store list --json | python3 -c \
     "import json,sys; print(next(s['root'] for s in json.load(sys.stdin)['stores'] if s['id']=='$STORE'))")"
   CHANGE_DIR="${STORE_ROOT}/openspec/changes/${CHANGE}"
+  # The helper scripts live at the store REPO's root, NOT at the store's own
+  # root: one working tree holds several stores as subdirectories, and
+  # scripts/ sits one level above any of them.
+  STORE_REPO="$(git -C "$STORE_ROOT" rev-parse --show-toplevel)"
 fi
 
 TASKS="${CHANGE_DIR}/tasks.md"
@@ -125,22 +130,26 @@ echo "==> [6/7] commit and push the OpenSpec store"
 if [[ -z "$STORE_ROOT" ]]; then
   echo "    (changes are repo-local; nothing to do)"
 else
-  if [[ -x "${STORE_ROOT}/scripts/store-commit.sh" ]]; then
-    bash "${STORE_ROOT}/scripts/store-commit.sh" "Archive ${CHANGE}"
+  if [[ -x "${STORE_REPO}/scripts/store-commit.sh" ]]; then
+    bash "${STORE_REPO}/scripts/store-commit.sh" "Archive ${CHANGE}"
   else
-    # An older store checkout without the helpers: do it inline, and say so, so
-    # the gap is visible rather than silently unprotected.
-    echo "    note: ${STORE_ROOT} has no scripts/store-commit.sh (old checkout?);" >&2
-    echo "          committing inline without the fetch/rebase protection" >&2
-    git -C "$STORE_ROOT" add -A
-    git -C "$STORE_ROOT" commit -m "Archive ${CHANGE}"
-    git -C "$STORE_ROOT" push origin main
+    # There used to be an inline fallback here. It committed with plain git,
+    # which in a jj-colocated store lands on a DETACHED HEAD, and then pushed
+    # `main`, which had not moved: "Everything up-to-date", exit 0, archive
+    # stranded on the laptop while the code went public. A wrong result that
+    # looks like success is worse than no fallback, so this aborts instead.
+    echo "ship: ${STORE_REPO}/scripts/store-commit.sh is missing or not executable." >&2
+    echo "      The change is archived locally but NOT published. Update the store" >&2
+    echo "      checkout, then commit and push it from ${STORE_REPO}." >&2
+    exit 1
   fi
 
   # The post-condition: after a finished ship, nothing about this change may
   # exist only on this machine.
-  if [[ -x "${STORE_ROOT}/scripts/store-hygiene.sh" ]]; then
-    bash "${STORE_ROOT}/scripts/store-hygiene.sh"
+  if [[ -x "${STORE_REPO}/scripts/store-hygiene.sh" ]]; then
+    bash "${STORE_REPO}/scripts/store-hygiene.sh"
+  else
+    echo "    warning: no store-hygiene.sh; the published-everything check did not run" >&2
   fi
 fi
 
