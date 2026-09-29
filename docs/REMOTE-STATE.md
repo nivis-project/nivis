@@ -50,6 +50,27 @@ The backend is **static**: its values must be plain (no references to resource
 outputs), because the executor has to know where state lives before it evaluates
 anything.
 
+## The local files a run writes
+
+Even with a remote backend, a run writes the **outputs ledger** into your working
+directory, next to where `--state` points (`<state path>.ledger`). With the local
+store it writes the state document there too.
+
+Both can hold secrets from provider outputs, and the ledger is where Nivis keeps
+sensitive ones in plaintext by design, to keep them out of the world-readable Nix
+store (see docs/IR-CONTRACT.md, "Sensitive values across the boundary"). They are
+written `0600`; that stops another user on the machine, not `git add`. Ignore
+them:
+
+```gitignore
+nivis.state.json*
+*.ledger
+```
+
+Nivis names these paths once, the first time a run creates them. A file already
+committed needs removing from the repository and its secrets rotating; ignoring it
+from now on leaves it in your history.
+
 ## Credentials
 
 Secrets are **never** in the config. The S3 backend uses the **AWS default

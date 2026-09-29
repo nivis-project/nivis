@@ -26,18 +26,23 @@ result-*
 go.work
 go.work.sum
 
-# --- terrae-nivis runtime artifacts ---
-# The outputs ledger is 0600 and MUST NOT be committed (may hold sensitive provider outputs).
+# --- nivis runtime artifacts ---
+# A run writes its state document and, beside it, the outputs ledger. BOTH can
+# hold secrets from provider outputs and MUST NOT be committed: the ledger is
+# where sensitive outputs live in plaintext by design, because they are kept out
+# of the world-readable Nix store. The ledger is 0600; git does not care.
 # See docs/IR-CONTRACT.md "Sensitive values across the boundary".
-*.ledger.json
-/.terrae-nivis/
+#
+# *.ledger is a SUFFIX rule so it follows the file when --state puts it
+# elsewhere; the state rule can only cover the default name, which is why nivis
+# also reports these paths when a run creates them.
+*.ledger
+nivis.state.json*
 
 # --- editor / OS noise ---
 *.swp
 .DS_Store
 
-# tn state written to the working dir during real runs (may hold provider outputs)
-terrae-nivis.state.json*
 
 # goreleaser build output
 dist/

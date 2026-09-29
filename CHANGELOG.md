@@ -8,6 +8,21 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Nivis now tells you, once, when a run creates a state or ledger file in your
+  working directory, naming the paths and that they must not be committed. Both
+  can hold secrets that came back from a provider, and the ledger is where
+  sensitive outputs are kept in plaintext by design. The notice appears only when
+  a run creates the files, not on every run, and `--log-level quiet` suppresses it
+  with the rest of Nivis's narrative.
+
+### Fixed
+- The repository's own ignore rules for those files had stopped matching anything
+  after the project was renamed, so a state document or ledger could be committed
+  from a nivis checkout. If you have either committed in your own repository,
+  removing it from `.gitignore`'s reach is not enough: take it out of the
+  repository and rotate what it held.
+
 ## [0.9.0] - 2026-09-25
 
 ### Added

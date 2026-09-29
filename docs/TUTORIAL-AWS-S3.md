@@ -226,6 +226,36 @@ re-evaluates the Nix config with the bucket's generated name injected, which
 resolves the object's `content`; phase 2 uploads it. `nivis` writes the resulting
 state to `nivis.state.json` in `my-infra`.
 
+### What appears in your working directory
+
+The run writes two files next to your config:
+
+```
+nivis.state.json          the state document
+nivis.state.json.ledger   the outputs ledger
+```
+
+**Neither may be committed.** Both can hold secrets that came back from a
+provider: an access key, a generated password, a token. The ledger in particular
+is where Nivis keeps sensitive provider outputs in plaintext, deliberately, to
+keep them out of the world-readable Nix store. Both are written `0600`, but file
+permissions do not stop `git add`.
+
+Add this to your `.gitignore` before your first commit:
+
+```gitignore
+nivis.state.json*
+*.ledger
+```
+
+`*.ledger` is a suffix rule, so it still covers the ledger if you point `--state`
+somewhere else. Nivis also names these paths once, the first time a run creates
+them.
+
+If one of them is already committed, adding it to `.gitignore` is not enough: the
+file stays in your history. Remove it from the repository and rotate whatever it
+contained.
+
 ### Inspect the round trip
 
 ```sh

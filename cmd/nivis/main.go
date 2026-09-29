@@ -306,6 +306,10 @@ func planCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// Watched before anything is opened, reported after the run's output:
+			// a file this run brings into being is named once, on creation only.
+			secrets := watchSecretFiles(statePath)
+			defer secrets.report(r, level)
 			store, err := openStore(cmd.Context(), r)
 			if err != nil {
 				return err
@@ -377,6 +381,10 @@ func applyCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// Watched before anything is opened, reported after the run's output:
+			// a file this run brings into being is named once, on creation only.
+			secrets := watchSecretFiles(statePath)
+			defer secrets.report(r, level)
 			store, err := openStore(cmd.Context(), r)
 			if err != nil {
 				return err
@@ -450,6 +458,12 @@ func destroyCmd() *cobra.Command {
 				return err
 			}
 			defer r.Close()
+			dlevel, err := resolveLogLevel()
+			if err != nil {
+				return err
+			}
+			secrets := watchSecretFiles(statePath)
+			defer secrets.report(r, dlevel)
 			g, err := configGraph(cmd.Context())
 			if err != nil {
 				return err
