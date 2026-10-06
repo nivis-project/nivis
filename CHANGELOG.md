@@ -8,6 +8,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+- `google.golang.org/grpc` is updated from 1.83.1 to 1.83.2, which carries the
+  fix for GHSA-2v4p-qf9q-27wj. The crash that advisory describes is in gRPC's
+  xDS server, reached by a request that carries neither an `:authority` nor a
+  `Host` header. Nivis runs no xDS server: it uses gRPC only for the go-plugin
+  channel to a provider binary it spawned itself, over a local pipe. No Nivis
+  release was exposed, so this is hygiene rather than a fix you need to act on.
+  The update pulls newer `golang.org/x/net`, `x/sys`, `x/term` and `x/text` with
+  it, as grpc 1.83.2 requires them.
+
 ### Added
 - Nivis now tells you, once, when a run creates a state or ledger file in your
   working directory, naming the paths and that they must not be committed. Both

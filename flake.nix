@@ -50,7 +50,7 @@
       # Go module dependency hash, shared by every buildGoModule call below (they
       # all build the same go.mod). If go.mod changes, `nix build` reports the
       # expected hash; update it here, in this one place.
-      goVendorHash = "sha256-Isia+zmQtZlLoS1Kvs1KnCDLLTQ/VsEzmPWdZKUL1BA=";
+      goVendorHash = "sha256-bxT2KxI0blkUAoBE9T5X5vg0CLb0GnOE7JSfxVsAjjY=";
 
       mkCli =
         system:
