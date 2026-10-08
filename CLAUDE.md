@@ -116,20 +116,50 @@ forces the call to be made and written down. This is the docs analogue of §5.
 
 ## 6. Environment constraints (read before you hit a wall)
 
-- Network egress is **restricted to an allowlist** (GitHub, the Go module proxy
-  via GitHub, PyPI, npm, crates). The **OpenTofu provider registry and the Nix
-  binary cache are NOT reachable.** Consequences:
-  - Do not implement provider download from the registry as a blocking step in
-    the PoC. Use the in-repo fake providers instead. If real-provider download
-    is needed later, it is a separate, network-gated task — create a bean and
-    flag it; do not silently fail.
-  - `terraform-plugin-go` is fetchable via the Go proxy/GitHub — fine to depend
-    on.
-  - If a Nix evaluator is not present, that is a known setup gap: record a bean
-    and prefer a vendored/static evaluator or a stub IR emitter for early
-    phases rather than blocking.
-- If a network call fails with an `x-deny-reason`, the domain is not allowlisted;
-  surface that clearly rather than retrying blindly.
+Network egress may be **restricted to an allowlist**, and what is on it differs
+per environment. Measure before you design around a limit; an earlier version of
+this section asserted a blanket restriction that was false, and the wrong claim
+cost real work (see bean `nixform2-irf4`).
+
+Measured on 2026-10-06, from a developer workstation:
+
+| Host                                   | Result                        |
+|----------------------------------------|-------------------------------|
+| `cache.nixos.org`                      | reachable, substitution works |
+| `registry.opentofu.org`                | reachable                     |
+| `registry.terraform.io`                | reachable                     |
+| a provider zip from its GitHub release | downloads and unpacks         |
+| `proxy.golang.org`                     | reachable                     |
+
+So: the Nix binary cache, the OpenTofu provider registry and the Go module proxy
+are all reachable here. `nix build` substitutes, and a provider address resolves
+to an artifact that downloads end to end.
+
+- `GOPROXY` is `https://proxy.golang.org,direct`, which answers directly rather
+  than through GitHub. `terraform-plugin-go` is fine to depend on.
+- Real-provider download **is implemented and specified**: see
+  `openspec/specs/registry/spec.md` (resolve, download, verify the checksum,
+  cache) and the `nivis.aws` requirement in `openspec/specs/e2e/spec.md`. Do not
+  write it again, and do not describe it as out of scope.
+- Tests still run against the **in-repo fake providers**, for a reason that has
+  nothing to do with reachability: they are hermetic, need no credentials, and
+  cost no network. That is why `tests/e2e` works anywhere. Reaching for a real
+  provider in a test is the exception, and needs a credentialed environment.
+
+What genuinely is constrained:
+
+- The `nix flake check` **build sandbox has no `nix` binary**. Tests that need
+  one skip themselves there, so `tests/run-nix-tests.sh` and
+  `tests/check-nix-logformat.sh` run as their own CI steps outside the sandbox
+  (`.github/workflows/ci.yml`). Coverage floors in `scripts/coverage.sh` are set
+  to the sandbox baseline, which is the stricter environment: `internal/phase`
+  is floored at 77 because `tests/e2e` skips there, against 81.4 on a machine
+  with `nix` on PATH.
+- If a network call fails with an `x-deny-reason`, that domain is not
+  allowlisted in the environment you are in. Surface it clearly, record what you
+  measured, and do not retry blindly.
+- If a Nix evaluator is not present, that is a setup gap: record a bean rather
+  than blocking.
 
 ## 7. Stack
 
