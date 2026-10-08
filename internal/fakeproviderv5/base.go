@@ -123,7 +123,11 @@ func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov5.PlanResour
 	if err != nil {
 		return nil, err
 	}
-	planned := r.planned(cfg)
+	proposedAttrs, err := asObject(proposed)
+	if err != nil {
+		return nil, err
+	}
+	planned := r.planned(cfg, proposedAttrs)
 	dv, err := encode(r.objType(), planned)
 	if err != nil {
 		return nil, err
@@ -159,7 +163,11 @@ func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov5.ApplyReso
 	if diags := r.validateConfig(cfg); len(diags) > 0 {
 		return &tfprotov5.ApplyResourceChangeResponse{Diagnostics: diags}, nil
 	}
-	newState, diags := r.applied(cfg, s.counter.Next())
+	plannedAttrs, err := asObject(planned)
+	if err != nil {
+		return nil, err
+	}
+	newState, diags := r.applied(cfg, plannedAttrs, s.counter.Next())
 	if len(diags) > 0 {
 		return &tfprotov5.ApplyResourceChangeResponse{Diagnostics: diags}, nil
 	}

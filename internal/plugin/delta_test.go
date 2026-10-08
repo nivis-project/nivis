@@ -77,3 +77,88 @@ func TestDeltaCollectionsRoundTrip(t *testing.T) {
 		t.Errorf("id = %v, want delta-0", ar.Attrs["id"])
 	}
 }
+
+// TestDeltaDefaultBlockedByEncoderUnknown pins bean nixform2-1mk0 at the
+// integration level. The fake now applies a declared default only where config
+// is null, as terraform-plugin-framework does. tfvalue.EncodeConfig still sends
+// unknown for an attribute absent from config but computed in the schema, and
+// unknown is not null, so the default does not fire and tier reaches apply
+// empty. That is the defect, reproduced through a real spawn.
+//
+// The next change makes EncodeConfig send null. When it lands this test INVERTS:
+// tier must then be "standard" at plan and after apply. Failing here is the
+// signal to update it, not to loosen the provider.
+func TestDeltaDefaultBlockedByEncoderUnknown(t *testing.T) {
+	bin := buildProvider(t, "provider-delta")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	ctx := context.Background()
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+
+	client, err := mgr.Client("delta", bin, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	rs, err := client.GetSchema(ctx, "delta_thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := map[string]interface{}{"label": "L"}
+
+	pr, err := client.Plan(ctx, provider.PlanRequest{Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if !contains(pr.UnknownAfterApply, "tier") {
+		t.Fatalf("tier is NOT unknown at plan: EncodeConfig now sends null and the default fires. "+
+			"nixform2-1mk0 is fixed, so invert this test (want tier=standard). Got unknowns %v", pr.UnknownAfterApply)
+	}
+
+	ar, err := client.Apply(ctx, provider.ApplyRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg, PlannedState: pr.PlannedState,
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got := ar.Attrs["tier"]; got != nil && got != "" {
+		t.Fatalf("tier = %#v after apply; expected the defect (empty), so nixform2-1mk0 may be fixed: invert this test", got)
+	}
+}
+
+// TestDeltaConfiguredValueBeatsDefault is the other half: a value the user set
+// must reach the provider unchanged rather than being replaced by the default.
+func TestDeltaConfiguredValueBeatsDefault(t *testing.T) {
+	bin := buildProvider(t, "provider-delta")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	ctx := context.Background()
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+
+	client, err := mgr.Client("delta", bin, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	rs, err := client.GetSchema(ctx, "delta_thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := map[string]interface{}{"label": "L", "tier": "premium"}
+
+	pr, err := client.Plan(ctx, provider.PlanRequest{Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	ar, err := client.Apply(ctx, provider.ApplyRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg, PlannedState: pr.PlannedState,
+	})
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+	if got := ar.Attrs["tier"]; got != "premium" {
+		t.Errorf("tier = %#v after apply, want \"premium\"", got)
+	}
+}

@@ -21,12 +21,14 @@ import (
 	"github.com/nivis-project/nivis/internal/tfcodec"
 )
 
-// Attr is a rich-typed resource attribute.
+// Attr is a rich-typed resource attribute. Default is a plain Go value applied
+// at plan when an Optional+Computed attr is absent from config; nil means none.
 type Attr struct {
 	Type     tftypes.Type
 	Required bool
 	Optional bool
 	Computed bool
+	Default  interface{}
 }
 
 // Resource is a rich fake resource: a type name, its attributes, and a pure
@@ -127,16 +129,20 @@ func (s *Server) GetMetadata(context.Context, *tfprotov6.GetMetadataRequest) (*t
 }
 
 func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResourceChangeRequest) (*tfprotov6.PlanResourceChangeResponse, error) {
-	proposed, err := decodeOrNull(req.ProposedNewState, s.r.objType())
+	proposedVal, err := decodeOrNull(req.ProposedNewState, s.r.objType())
 	if err != nil {
 		return nil, err
 	}
-	if proposed.IsNull() {
+	if proposedVal.IsNull() {
 		dv, err := s.encodeValue(tftypes.NewValue(s.r.objType(), nil))
 		if err != nil {
 			return nil, err
 		}
 		return &tfprotov6.PlanResourceChangeResponse{PlannedState: dv}, nil
+	}
+	proposed, err := s.decode(req.ProposedNewState)
+	if err != nil {
+		return nil, err
 	}
 	cfg, err := s.decode(req.Config)
 	if err != nil {
@@ -144,21 +150,49 @@ func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResour
 	}
 	out := map[string]tftypes.Value{}
 	for name, a := range s.r.Attrs {
-		if a.Computed && !a.Optional {
-			out[name] = tftypes.NewValue(a.Type, tftypes.UnknownValue) // unknown at plan
-			continue
+		v, err := planAttr(name, a, cfg, proposed)
+		if err != nil {
+			return nil, err
 		}
-		if v, ok := cfg[name]; ok {
-			out[name] = v
-		} else {
-			out[name] = tftypes.NewValue(a.Type, nil)
-		}
+		out[name] = v
 	}
 	dv, err := s.encode(out)
 	if err != nil {
 		return nil, err
 	}
 	return &tfprotov6.PlanResourceChangeResponse{PlannedState: dv}, nil
+}
+
+// planAttr decides one attribute of the planned state. Values come from
+// ProposedNewState (prior merged with config), as they do for a real provider;
+// config only answers whether the user set the attribute.
+func planAttr(name string, a Attr, cfg, proposed map[string]tftypes.Value) (tftypes.Value, error) {
+	if a.Computed && !a.Optional {
+		return tftypes.NewValue(a.Type, tftypes.UnknownValue), nil
+	}
+	if a.Computed {
+		if v, ok := cfg[name]; ok && !v.IsKnown() {
+			return tftypes.NewValue(a.Type, tftypes.UnknownValue), nil
+		}
+		if v, ok := cfg[name]; ok && v.IsKnown() && !v.IsNull() {
+			return v, nil
+		}
+		if v, ok := proposed[name]; ok && v.IsKnown() && !v.IsNull() {
+			return v, nil
+		}
+		if a.Default != nil {
+			v, err := tfcodec.GoToValue(a.Type, a.Default)
+			if err != nil {
+				return tftypes.Value{}, fmt.Errorf("default for %q: %w", name, err)
+			}
+			return v, nil
+		}
+		return tftypes.NewValue(a.Type, tftypes.UnknownValue), nil
+	}
+	if v, ok := proposed[name]; ok {
+		return v, nil
+	}
+	return tftypes.NewValue(a.Type, nil), nil
 }
 
 func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyResourceChangeRequest) (*tfprotov6.ApplyResourceChangeResponse, error) {
@@ -174,6 +208,10 @@ func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyReso
 		return &tfprotov6.ApplyResourceChangeResponse{NewState: dv}, nil
 	}
 	cfg, err := s.decode(req.Config)
+	if err != nil {
+		return nil, err
+	}
+	plannedAttrs, err := s.decode(req.PlannedState)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +236,7 @@ func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyReso
 	out := map[string]tftypes.Value{}
 	for name, a := range s.r.Attrs {
 		if a.Computed {
-			if v, ok := cfg[name]; ok && v.IsKnown() && !v.IsNull() {
+			if v, ok := plannedAttrs[name]; ok && v.IsKnown() && !v.IsNull() {
 				out[name] = v
 				continue
 			}

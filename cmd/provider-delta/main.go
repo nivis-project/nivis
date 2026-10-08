@@ -29,6 +29,7 @@ var DeltaThing = fakeproviderx.Resource{
 	TypeName: "delta_thing",
 	Attrs: map[string]fakeproviderx.Attr{
 		"label":     {Type: tftypes.String, Optional: true},
+		"tier":      {Type: tftypes.String, Optional: true, Computed: true, Default: "standard"},
 		"tags":      {Type: tftypes.Map{ElementType: tftypes.String}, Optional: true},
 		"ports":     {Type: tftypes.List{ElementType: tftypes.Number}, Optional: true},
 		"id":        {Type: tftypes.String, Computed: true},

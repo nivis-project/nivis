@@ -3,8 +3,9 @@
 title: Unset optional-computed attributes reach a provider as unknown, so its schema defaults never fire
 status: todo
 type: bug
+priority: normal
 created_at: 2026-09-14T21:54:22Z
-updated_at: 2026-09-14T21:54:22Z
+updated_at: 2026-10-08T22:02:32Z
 ---
 
 A provider that declares a schema default for an optional-computed attribute
@@ -78,3 +79,29 @@ provider each have a distinct contract, and nivis does not yet keep them apart.
 - [ ] Test: a resource whose optional-computed attribute has a schema default,
       unset in config, arrives at apply carrying that default
 - [ ] nivis-demos then drops the explicit tunnel_command and profile in 040
+
+
+## Blocked on nixform2-msl4
+
+The fakes cannot see this bug and the fix breaks them, because they read
+`Config` where a real provider reads `ProposedNewState` and cannot express a
+schema default. Split agreed on 2026-10-09: fakes first (nixform2-msl4,
+OpenSpec `fakes-model-the-plan-contract`), then this.
+
+Two findings that shrink the work here once that lands:
+
+- `EncodeConfig` never needs the `computed` map. Absent means null whatever
+  the computedness, so the parameter drops out of the signature. The correct
+  Config encoder does not know what is computed. `ValidateResourceConfig` and
+  `ConfigureProvider` already call it with an empty map.
+- Todo 2 is already satisfied: `PlannedState` is an opaque handle
+  (`internal/plan/plan.go:35`) passed from plan to apply without re-encoding,
+  so a default applied at plan survives.
+
+The spec never asked for the broken behavior. `executor/spec.md:155` specifies
+"resolved values known; unresolved refs unknown" and says nothing about unset
+computed attributes. The `!present && computed[name]` branch dates from
+`2e8f547` (the original E3 plugin-client commit) and no test passes a
+non-empty `computed` map to `EncodeConfig`, so it is unspecified and
+untested. The "rightly" comment on `ProposedMsgPack` was written later and
+assumed the create path was correct; it is not evidence.

@@ -10,12 +10,15 @@ import (
 
 // Attr describes one resource attribute: its type and role. Exactly one of the
 // role flags drives behavior: Computed attrs are unknown at plan and filled by
-// Apply; Required/Optional attrs are user-supplied inputs.
+// Apply; Required/Optional attrs are user-supplied inputs. Default is a plain Go
+// value applied at plan when an Optional+Computed attr is absent from config;
+// nil means none.
 type Attr struct {
 	Type     tftypes.Type
 	Required bool
 	Optional bool
 	Computed bool
+	Default  interface{}
 }
 
 // Resource is a fake resource definition: a type name, its attribute set, and a
@@ -75,27 +78,34 @@ func (r Resource) validateConfig(cfg map[string]tftypes.Value) []*tfprotov5.Diag
 	return diags
 }
 
-// planned builds the planned state: every Computed attribute is set to the
-// tftypes unknown value (its value isn't known until apply); every input
-// attribute is carried through from config (preserving null/known as given).
-func (r Resource) planned(cfg map[string]tftypes.Value) tftypes.Value {
+// planned builds the planned state out of ProposedNewState (prior merged with
+// config), as a real provider does; cfg only answers whether the user set an
+// attribute. Pure computed attrs are unknown. An optional+computed attr takes
+// the configured value, else a prior value carried in by proposed, else its
+// declared Default, else unknown.
+func (r Resource) planned(cfg, proposed map[string]tftypes.Value) tftypes.Value {
 	out := make(map[string]tftypes.Value, len(r.Attrs))
 	for name, a := range r.Attrs {
 		if a.Computed && !a.Required && !a.Optional {
-			// pure computed: unknown at plan
 			out[name] = tftypes.NewValue(a.Type, tftypes.UnknownValue)
 			continue
 		}
 		if a.Computed {
-			// optional+computed: unknown unless the user supplied a value
-			if v, ok := cfg[name]; ok && v.IsKnown() && !v.IsNull() {
-				out[name] = v
-			} else {
+			switch {
+			case isUnknown(cfg, name):
+				out[name] = tftypes.NewValue(a.Type, tftypes.UnknownValue)
+			case isSet(cfg, name):
+				out[name] = cfg[name]
+			case isSet(proposed, name):
+				out[name] = proposed[name]
+			case a.Default != nil:
+				out[name] = tftypes.NewValue(a.Type, a.Default)
+			default:
 				out[name] = tftypes.NewValue(a.Type, tftypes.UnknownValue)
 			}
 			continue
 		}
-		if v, ok := cfg[name]; ok {
+		if v, ok := proposed[name]; ok {
 			out[name] = v
 		} else {
 			out[name] = tftypes.NewValue(a.Type, nil)
@@ -104,9 +114,26 @@ func (r Resource) planned(cfg map[string]tftypes.Value) tftypes.Value {
 	return tftypes.NewValue(r.objType(), out)
 }
 
+// isSet reports whether attrs carries a known, non-null value for name.
+func isSet(attrs map[string]tftypes.Value, name string) bool {
+	v, ok := attrs[name]
+	return ok && v.IsKnown() && !v.IsNull()
+}
+
+// isUnknown reports whether attrs carries an unknown value for name. In a config
+// object that means the user set the attribute to an expression that is not
+// resolved yet, which is not the same as leaving it unset: a default must not
+// fire and the planned value stays unknown.
+func isUnknown(attrs map[string]tftypes.Value, name string) bool {
+	v, ok := attrs[name]
+	return ok && !v.IsKnown()
+}
+
 // applied computes the final, fully-known state. Inputs are read from config;
-// the Apply func fills computed attrs; all attrs end up known (no unknowns).
-func (r Resource) applied(cfg map[string]tftypes.Value, counter int64) (tftypes.Value, []*tfprotov5.Diagnostic) {
+// a computed attr already decided at plan (configured, carried from prior, or
+// defaulted) keeps its planned value, and the Apply func fills the rest. All
+// attrs end up known (no unknowns).
+func (r Resource) applied(cfg, planned map[string]tftypes.Value, counter int64) (tftypes.Value, []*tfprotov5.Diagnostic) {
 	inputs := map[string]string{}
 	for name, a := range r.Attrs {
 		if a.Computed && !a.Optional {
@@ -127,8 +154,8 @@ func (r Resource) applied(cfg map[string]tftypes.Value, counter int64) (tftypes.
 	out := make(map[string]tftypes.Value, len(r.Attrs))
 	for name, a := range r.Attrs {
 		if a.Computed {
-			if v, ok := cfg[name]; ok && v.IsKnown() && !v.IsNull() {
-				out[name] = v // user-supplied optional+computed value preserved
+			if isSet(planned, name) {
+				out[name] = planned[name]
 				continue
 			}
 			out[name] = tftypes.NewValue(a.Type, computed[name])
