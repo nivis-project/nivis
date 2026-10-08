@@ -8,6 +8,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-09
+
+### Added
+- Nivis now tells you, once, when a run creates a state or ledger file in your
+  working directory, naming the paths and that they must not be committed. Both
+  can hold secrets that came back from a provider, and the ledger is where
+  sensitive outputs are kept in plaintext by design. The notice appears only when
+  a run creates the files, not on every run, and `--log-level quiet` suppresses it
+  with the rest of Nivis's narrative.
+
 ### Fixed
 - A provider's schema default now applies to an optional-computed attribute you
   leave unset. Nivis was sending the protocol's "unknown" value for such an
@@ -19,6 +29,12 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   error surfaced wherever the provider eventually used it, not where it was
   caused. Any provider declaring a default was affected.
 
+- The repository's own ignore rules for those files had stopped matching anything
+  after the project was renamed, so a state document or ledger could be committed
+  from a nivis checkout. If you have either committed in your own repository,
+  removing it from `.gitignore`'s reach is not enough: take it out of the
+  repository and rotate what it held.
+
 ### Security
 - `google.golang.org/grpc` is updated from 1.83.1 to 1.83.2, which carries the
   fix for GHSA-2v4p-qf9q-27wj. The crash that advisory describes is in gRPC's
@@ -28,21 +44,6 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   release was exposed, so this is hygiene rather than a fix you need to act on.
   The update pulls newer `golang.org/x/net`, `x/sys`, `x/term` and `x/text` with
   it, as grpc 1.83.2 requires them.
-
-### Added
-- Nivis now tells you, once, when a run creates a state or ledger file in your
-  working directory, naming the paths and that they must not be committed. Both
-  can hold secrets that came back from a provider, and the ledger is where
-  sensitive outputs are kept in plaintext by design. The notice appears only when
-  a run creates the files, not on every run, and `--log-level quiet` suppresses it
-  with the rest of Nivis's narrative.
-
-### Fixed
-- The repository's own ignore rules for those files had stopped matching anything
-  after the project was renamed, so a state document or ledger could be committed
-  from a nivis checkout. If you have either committed in your own repository,
-  removing it from `.gitignore`'s reach is not enough: take it out of the
-  repository and rotate what it held.
 
 ## [0.9.0] - 2026-09-25
 
@@ -427,7 +428,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/nivis-project/nivis/releases/tag/v0.9.1
 [0.9.0]: https://github.com/nivis-project/nivis/releases/tag/v0.9.0
 [0.8.0]: https://github.com/nivis-project/nivis/releases/tag/v0.8.0
 [0.7.0]: https://github.com/nivis-project/nivis/releases/tag/v0.7.0
