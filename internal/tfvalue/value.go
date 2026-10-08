@@ -105,16 +105,17 @@ func isUnresolved(v interface{}) bool {
 }
 
 // EncodeConfig builds a DynamicValue (msgpack) for the given config against the
-// resource object type. Attributes present in the schema but absent from config
-// become null; computed attributes the user didn't set become unknown (the
-// provider fills them); unresolved __ref/__derived leaves become unknown.
-func EncodeConfig(objType tftypes.Object, computed map[string]bool, config map[string]interface{}) (*tfplugin6.DynamicValue, error) {
+// resource object type. An attribute absent from config becomes null, whatever
+// the schema says about it being computed: null is how a provider reads "the
+// user said nothing", and it is the condition under which its schema defaults
+// apply. Unknown in a Config object means only that the configuration sets the
+// attribute to something not resolved yet, so unresolved __ref/__derived leaves
+// become unknown and nothing else does.
+func EncodeConfig(objType tftypes.Object, config map[string]interface{}) (*tfplugin6.DynamicValue, error) {
 	vals := map[string]tftypes.Value{}
 	for name, attrType := range objType.AttributeTypes {
 		raw, present := config[name]
 		switch {
-		case !present && computed[name]:
-			vals[name] = tftypes.NewValue(attrType, tftypes.UnknownValue)
 		case !present:
 			vals[name] = tftypes.NewValue(attrType, nil)
 		case isUnresolved(raw):
@@ -240,8 +241,8 @@ func valueToGo(v tftypes.Value) (interface{}, bool, error) {
 //   - attributes set in config use the config value (unresolved __ref/__derived
 //     leaves become unknown);
 //   - computed attributes absent from config take their PRIOR value — sending
-//     unknown here (as EncodeConfig rightly does for a create) makes SDKv2
-//     providers see a phantom "will change" diff, and when such an attribute is
+//     unknown here makes SDKv2 providers see a phantom "will change" diff, and
+//     when such an attribute is
 //     also ForceNew (aws_iam_role.name_prefix,
 //     aws_lambda_permission.statement_id_prefix, ...) the provider flags
 //     requires-replace on every plan of an UNCHANGED resource (perpetual -/+);

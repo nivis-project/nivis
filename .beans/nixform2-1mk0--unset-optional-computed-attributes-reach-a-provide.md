@@ -1,11 +1,11 @@
 ---
 # nixform2-1mk0
 title: Unset optional-computed attributes reach a provider as unknown, so its schema defaults never fire
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-09-14T21:54:22Z
-updated_at: 2026-10-08T22:02:32Z
+updated_at: 2026-10-08T22:40:20Z
 ---
 
 A provider that declares a schema default for an optional-computed attribute
@@ -105,3 +105,57 @@ computed attributes. The `!present && computed[name]` branch dates from
 non-empty `computed` map to `EncodeConfig`, so it is unspecified and
 untested. The "rightly" comment on `ProposedMsgPack` was written later and
 assumed the create path was correct; it is not evidence.
+
+
+## OpenSpec
+
+`encode-config-sends-null` (spec-driven; proposal, design, spec delta on
+`executor`, tasks). Validated, not yet implemented. Unblocked: nixform2-msl4
+shipped as commit 5ed8bf6.
+
+
+## Summary of Changes
+
+`EncodeConfig` now sends null for an attribute absent from config, whatever its
+computedness, and the `computed` parameter is gone from its signature. Unknown
+in a `Config` object once again means only what it should: the configuration
+sets the attribute to something not resolved yet.
+
+`schemaRaw.computed` stays, because `ProposedMsgPack` needs it for the update
+path. That code was correct and is untouched.
+
+### The v5 twin
+
+The proposal assumed the v5 backend called `tfvalue.EncodeConfig`. It does not:
+`internal/provider/v5/tfvalue5.go` carried its own `encodeConfig` with the
+same branch, copied. Both are fixed. Fixing only the v6 path would have left v5
+providers broken while the bean read closed.
+
+### The split proved itself
+
+Before inverting it, `TestDeltaDefaultBlockedByEncoderUnknown` failed with the
+message written for it in nixform2-msl4: "EncodeConfig now sends null and the
+default fires. nixform2-1mk0 is fixed, so invert this test". The substrate
+detected the fix rather than being told about it. That is what the two-change
+split was for.
+
+### Verification
+
+`go test ./...` green including `tests/e2e` (112s). The falsification checks
+the tasks demanded all held: `internal/plugin/integration_test.go`,
+`v5_test.go` and `tests/` are unedited, and the plan still reports
+`[endpoints id meta]` unknown, so the default rule did not leak into
+computed-only attributes. Both protocol versions covered.
+
+`internal/tfvalue` gained eight tests that pass a config exercising computed
+attributes, which no test did before. They assert the decoded msgpack rather
+than the Go call. That absence is how the defect survived from commit
+`2e8f547`.
+
+### Remaining, and not ours
+
+The bean's last todo (nivis-demos dropping the explicit `tunnel_command` and
+`profile` in stack 040) belongs to the nivis-demos repository. It is now
+unblocked there but is not part of this change.
+
+OpenSpec change: `encode-config-sends-null`.

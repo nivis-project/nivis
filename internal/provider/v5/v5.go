@@ -66,7 +66,7 @@ func (b *Backend) Configure(ctx context.Context, config map[string]interface{}) 
 	if err != nil {
 		return fmt.Errorf("provider config schema: %w", err)
 	}
-	cfgDV, err := encodeConfig(objType, map[string]bool{}, config)
+	cfgDV, err := encodeConfig(objType, config)
 	if err != nil {
 		return fmt.Errorf("encode provider config: %w", err)
 	}
@@ -208,7 +208,7 @@ func (b *Backend) GetDataSourceSchema(ctx context.Context, dataSourceType string
 
 func (b *Backend) ReadDataSource(ctx context.Context, req provider.ReadDataSourceRequest) (provider.ReadDataSourceResult, error) {
 	raw := req.Schema.Raw.(schemaRaw)
-	cfgDV, err := encodeConfig(raw.objType, raw.computed, req.ResolvedCfg)
+	cfgDV, err := encodeConfig(raw.objType, req.ResolvedCfg)
 	if err != nil {
 		return provider.ReadDataSourceResult{}, fmt.Errorf("encode config: %w", err)
 	}
@@ -232,7 +232,7 @@ func (b *Backend) ReadDataSource(ctx context.Context, req provider.ReadDataSourc
 
 func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.PlanResult, error) {
 	raw := req.Schema.Raw.(schemaRaw)
-	cfgDV, err := encodeConfig(raw.objType, raw.computed, req.ResolvedCfg)
+	cfgDV, err := encodeConfig(raw.objType, req.ResolvedCfg)
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("encode config: %w", err)
 	}
@@ -300,7 +300,7 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 
 func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provider.ApplyResult, error) {
 	raw := req.Schema.Raw.(schemaRaw)
-	cfgDV, err := encodeConfig(raw.objType, raw.computed, req.ResolvedCfg)
+	cfgDV, err := encodeConfig(raw.objType, req.ResolvedCfg)
 	if err != nil {
 		return provider.ApplyResult{}, fmt.Errorf("encode config: %w", err)
 	}

@@ -71,13 +71,14 @@ func isUnresolved(v interface{}) bool {
 	return ref || der || sref
 }
 
-func encodeConfig(objType tftypes.Object, computed map[string]bool, config map[string]interface{}) (*tfplugin5.DynamicValue, error) {
+// encodeConfig is the v5 twin of tfvalue.EncodeConfig: an attribute absent from
+// config becomes null whatever its computedness, and unknown means only that the
+// configuration sets the attribute to something not resolved yet.
+func encodeConfig(objType tftypes.Object, config map[string]interface{}) (*tfplugin5.DynamicValue, error) {
 	vals := map[string]tftypes.Value{}
 	for name, attrType := range objType.AttributeTypes {
 		raw, present := config[name]
 		switch {
-		case !present && computed[name]:
-			vals[name] = tftypes.NewValue(attrType, tftypes.UnknownValue)
 		case !present:
 			vals[name] = tftypes.NewValue(attrType, nil)
 		case isUnresolved(raw):

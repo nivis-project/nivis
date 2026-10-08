@@ -78,17 +78,13 @@ func TestDeltaCollectionsRoundTrip(t *testing.T) {
 	}
 }
 
-// TestDeltaDefaultBlockedByEncoderUnknown pins bean nixform2-1mk0 at the
-// integration level. The fake now applies a declared default only where config
-// is null, as terraform-plugin-framework does. tfvalue.EncodeConfig still sends
-// unknown for an attribute absent from config but computed in the schema, and
-// unknown is not null, so the default does not fire and tier reaches apply
-// empty. That is the defect, reproduced through a real spawn.
-//
-// The next change makes EncodeConfig send null. When it lands this test INVERTS:
-// tier must then be "standard" at plan and after apply. Failing here is the
-// signal to update it, not to loosen the provider.
-func TestDeltaDefaultBlockedByEncoderUnknown(t *testing.T) {
+// TestDeltaDefaultReachesApply is the integration-level proof for bean
+// nixform2-1mk0. tier is optional+computed with a declared default and is absent
+// from config, so EncodeConfig sends null, the provider applies its default at
+// plan, and the value survives into the applied state. Before the encoder sent
+// null this test's predecessor asserted the defect: tier stayed unknown through
+// plan and arrived empty at apply.
+func TestDeltaDefaultReachesApply(t *testing.T) {
 	bin := buildProvider(t, "provider-delta")
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
 	ctx := context.Background()
@@ -111,9 +107,15 @@ func TestDeltaDefaultBlockedByEncoderUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v", err)
 	}
-	if !contains(pr.UnknownAfterApply, "tier") {
-		t.Fatalf("tier is NOT unknown at plan: EncodeConfig now sends null and the default fires. "+
-			"nixform2-1mk0 is fixed, so invert this test (want tier=standard). Got unknowns %v", pr.UnknownAfterApply)
+	if contains(pr.UnknownAfterApply, "tier") {
+		t.Fatalf("tier is unknown at plan: the declared default did not fire; got unknowns %v", pr.UnknownAfterApply)
+	}
+	// The computed-only attrs must still be unknown: the default rule must not
+	// have leaked into attributes the user cannot set.
+	for _, want := range []string{"id", "endpoints", "meta"} {
+		if !contains(pr.UnknownAfterApply, want) {
+			t.Errorf("expected %q unknown at plan; got %v", want, pr.UnknownAfterApply)
+		}
 	}
 
 	ar, err := client.Apply(ctx, provider.ApplyRequest{
@@ -122,8 +124,8 @@ func TestDeltaDefaultBlockedByEncoderUnknown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
-	if got := ar.Attrs["tier"]; got != nil && got != "" {
-		t.Fatalf("tier = %#v after apply; expected the defect (empty), so nixform2-1mk0 may be fixed: invert this test", got)
+	if got := ar.Attrs["tier"]; got != "standard" {
+		t.Errorf("tier = %#v after apply, want \"standard\": the default did not survive", got)
 	}
 }
 

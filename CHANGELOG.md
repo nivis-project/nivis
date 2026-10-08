@@ -8,6 +8,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- A provider's schema default now applies to an optional-computed attribute you
+  leave unset. Nivis was sending the protocol's "unknown" value for such an
+  attribute, where Terraform sends null. A provider reads null as "the user said
+  nothing", which is the condition under which it fills in its default; unknown
+  means "the user set something I cannot see yet", which suppresses it. The
+  default therefore never fired and the attribute reached the provider empty.
+  This failed late and quietly: an empty string is a plausible value, so the
+  error surfaced wherever the provider eventually used it, not where it was
+  caused. Any provider declaring a default was affected.
+
 ### Security
 - `google.golang.org/grpc` is updated from 1.83.1 to 1.83.2, which carries the
   fix for GHSA-2v4p-qf9q-27wj. The crash that advisory describes is in gRPC's

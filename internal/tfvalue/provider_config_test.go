@@ -54,7 +54,7 @@ func TestProviderConfigRoundTrip(t *testing.T) {
 		},
 	}
 
-	dv, err := EncodeConfig(objType, map[string]bool{}, config)
+	dv, err := EncodeConfig(objType, config)
 	if err != nil {
 		t.Fatalf("EncodeConfig: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestProviderConfigOmittedBecomesNull(t *testing.T) {
 	}
 
 	// Only region set; profile omitted.
-	dv, err := EncodeConfig(objType, map[string]bool{}, map[string]interface{}{"region": "eu-west-1"})
+	dv, err := EncodeConfig(objType, map[string]interface{}{"region": "eu-west-1"})
 	if err != nil {
 		t.Fatalf("EncodeConfig with omitted attr: %v", err)
 	}

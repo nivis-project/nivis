@@ -74,7 +74,7 @@ func (b *Backend) Configure(ctx context.Context, config map[string]interface{}) 
 		return fmt.Errorf("provider config schema: %w", err)
 	}
 	// No computed provider-config attrs at configure time; all attrs are inputs.
-	cfgDV, err := tfvalue.EncodeConfig(objType, map[string]bool{}, config)
+	cfgDV, err := tfvalue.EncodeConfig(objType, config)
 	if err != nil {
 		return fmt.Errorf("encode provider config: %w", err)
 	}
@@ -217,7 +217,7 @@ func (b *Backend) GetDataSourceSchema(ctx context.Context, dataSourceType string
 
 func (b *Backend) ReadDataSource(ctx context.Context, req provider.ReadDataSourceRequest) (provider.ReadDataSourceResult, error) {
 	raw := req.Schema.Raw.(schemaRaw)
-	cfgDV, err := tfvalue.EncodeConfig(raw.objType, raw.computed, req.ResolvedCfg)
+	cfgDV, err := tfvalue.EncodeConfig(raw.objType, req.ResolvedCfg)
 	if err != nil {
 		return provider.ReadDataSourceResult{}, fmt.Errorf("encode config: %w", err)
 	}
@@ -241,7 +241,7 @@ func (b *Backend) ReadDataSource(ctx context.Context, req provider.ReadDataSourc
 
 func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.PlanResult, error) {
 	raw := req.Schema.Raw.(schemaRaw)
-	cfgDV, err := tfvalue.EncodeConfig(raw.objType, raw.computed, req.ResolvedCfg)
+	cfgDV, err := tfvalue.EncodeConfig(raw.objType, req.ResolvedCfg)
 	if err != nil {
 		return provider.PlanResult{}, fmt.Errorf("encode config: %w", err)
 	}
@@ -256,7 +256,8 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 	// merge prior values into unset computed attributes (Terraform core's
 	// objchange.ProposedNew), or SDKv2 providers see phantom changes and flag
 	// ForceNew computed attrs as requires-replace on every plan. On a create
-	// (no prior) the config encoding — unknown for unset computed — is correct.
+	// there is no prior to merge, so Terraform's proposed-new IS the config and
+	// reusing the config encoding is correct.
 	proposed := cfgDV
 	if req.Prior != nil {
 		mp, perr := tfvalue.ProposedMsgPack(raw.objType, raw.computed, req.ResolvedCfg, req.Prior)
@@ -303,7 +304,7 @@ func (b *Backend) Plan(ctx context.Context, req provider.PlanRequest) (provider.
 
 func (b *Backend) Apply(ctx context.Context, req provider.ApplyRequest) (provider.ApplyResult, error) {
 	raw := req.Schema.Raw.(schemaRaw)
-	cfgDV, err := tfvalue.EncodeConfig(raw.objType, raw.computed, req.ResolvedCfg)
+	cfgDV, err := tfvalue.EncodeConfig(raw.objType, req.ResolvedCfg)
 	if err != nil {
 		return provider.ApplyResult{}, fmt.Errorf("encode config: %w", err)
 	}
