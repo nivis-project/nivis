@@ -51,6 +51,13 @@ func SchemaFor(ctx context.Context, client provider.Client, resourceType string)
 // as unknown by the backend) against its prior state (nil for a new resource).
 // It returns the planned state for apply, the implied operation, and a
 // human-readable summary.
+//
+// A REPLACEMENT is planned twice. The operation can only be decided against the
+// real prior state, because that is what the provider compares to report
+// requires-replace. But the object holding those prior values is about to be
+// destroyed, so planning its replacement against it inherits computed values the
+// config never set and that will not exist afterwards. The second plan uses a
+// null prior, which is what Terraform does and what a create would see.
 func Plan(ctx context.Context, client provider.Client, rs provider.ResourceSchema, node *ir.ResourceNode, resolvedCfg map[string]interface{}, prior map[string]interface{}) (Result, error) {
 	pr, err := client.Plan(ctx, provider.PlanRequest{
 		Schema:      rs,
@@ -72,11 +79,26 @@ func Plan(ctx context.Context, client provider.Client, rs provider.ResourceSchem
 	default:
 		op = OpUpdate
 	}
+
+	planned, unknown := pr.PlannedState, pr.UnknownAfterApply
+	if op == OpReplace {
+		cr, err := client.Plan(ctx, provider.PlanRequest{
+			Schema:      rs,
+			TypeName:    node.Resource.Type,
+			ResolvedCfg: resolvedCfg,
+			Prior:       nil,
+		})
+		if err != nil {
+			return Result{}, fmt.Errorf("plan the create half of replacing %q: %w", node.Resource.ID, err)
+		}
+		planned, unknown = cr.PlannedState, cr.UnknownAfterApply
+	}
+
 	return Result{
-		PlannedState:      pr.PlannedState,
-		UnknownAfterApply: pr.UnknownAfterApply,
+		PlannedState:      planned,
+		UnknownAfterApply: unknown,
 		Op:                op,
-		Human:             renderPlan(node.Resource.ID, op, pr.UnknownAfterApply),
+		Human:             renderPlan(node.Resource.ID, op, unknown),
 	}, nil
 }
 

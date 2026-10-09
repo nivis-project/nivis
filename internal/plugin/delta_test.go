@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/plan"
 	"github.com/nivis-project/nivis/internal/plugin"
 	"github.com/nivis-project/nivis/internal/provider"
 )
@@ -166,14 +168,14 @@ func TestDeltaConfiguredValueBeatsDefault(t *testing.T) {
 }
 
 // TestDeltaForceNewInputIsReplaced drives the REAL provider-delta binary and
-// proves a replacement can now be reached through the protocol at all: apply
-// once, change the force-new input, and the plan reports a replacement.
+// proves a replacement is reachable through the protocol: apply once, change the
+// force-new input, and the provider reports requires-replace.
 //
-// It also records the defect in bean nixform2-aur6. `group` is optional and
-// computed, the config never sets it, and the provider chose its value at the
-// first apply. The replacement's planned state therefore inherits that value
-// from the object about to be destroyed, instead of leaving it unknown as a
-// create would. The next change makes it unknown; this test inverts then.
+// It also pins the CLIENT-layer contract, which is correct and must not change:
+// at this layer an unset computed attr takes its prior value, because that is
+// what keeps an in-place update from showing a phantom diff. The
+// replacement-specific correction happens one layer up, where the operation is
+// known. See TestDeltaReplaceDoesNotInheritFromTheDestroyedObject.
 func TestDeltaForceNewInputIsReplaced(t *testing.T) {
 	bin := buildProvider(t, "provider-delta")
 	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
@@ -221,11 +223,12 @@ func TestDeltaForceNewInputIsReplaced(t *testing.T) {
 		t.Fatalf("expected a replacement when the force-new input changed; got unknowns %v", rp.UnknownAfterApply)
 	}
 
-	// The defect: `group` is inherited from the object about to be destroyed,
-	// so it is NOT reported as known after apply.
+	// At this layer `group` keeps its prior value, which is the update contract.
+	// Deciding that a replacement should not inherit it needs the operation, which
+	// only the plan engine knows.
 	if contains(rp.UnknownAfterApply, "group") {
-		t.Fatalf("group is unknown after apply: the create half is planned against a null prior now. "+
-			"nixform2-aur6 is fixed, so invert this test (want group unknown). Got %v", rp.UnknownAfterApply)
+		t.Errorf("group is unknown at the client layer; an unset computed attr must take its "+
+			"prior value here, or an in-place update shows a phantom diff. Got %v", rp.UnknownAfterApply)
 	}
 }
 
@@ -269,5 +272,75 @@ func TestDeltaUnchangedForceNewInputIsNotReplaced(t *testing.T) {
 	}
 	if rp.RequiresReplace {
 		t.Errorf("unchanged config planned as a replacement")
+	}
+}
+
+// TestDeltaReplaceDoesNotInheritFromTheDestroyedObject is the integration proof
+// for bean nixform2-aur6. It goes through plan.Plan, which is where the
+// operation is decided and therefore where the create half of a replacement is
+// planned against a null prior. Driving client.Plan directly would not show it:
+// at that layer carrying prior values into unset computed attrs is correct, and
+// is what keeps an in-place update from showing a phantom diff.
+func TestDeltaReplaceDoesNotInheritFromTheDestroyedObject(t *testing.T) {
+	bin := buildProvider(t, "provider-delta")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	ctx := context.Background()
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+
+	client, err := mgr.Client("delta", bin, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	rs, err := client.GetSchema(ctx, "delta_thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := &ir.ResourceNode{Resource: ir.Resource{
+		ID: "delta.delta_thing.t", Provider: "delta", Type: "delta_thing", Name: "t",
+	}}
+
+	// Create once so `group` lands in state with a provider-chosen value the
+	// configuration never set. This is the AWS `security_groups` shape.
+	cfg := map[string]interface{}{"label": "L", "image": "ami-old"}
+	pr, err := plan.Plan(ctx, client, rs, node, cfg, nil)
+	if err != nil {
+		t.Fatalf("plan create: %v", err)
+	}
+	ar, err := client.Apply(ctx, provider.ApplyRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg, PlannedState: pr.PlannedState,
+	})
+	if err != nil {
+		t.Fatalf("apply create: %v", err)
+	}
+	group, _ := ar.Attrs["group"].(string)
+	if group == "" {
+		t.Fatalf("group empty after create; the provider should have filled it: %#v", ar.Attrs)
+	}
+
+	// Change the force-new input and plan against the stored object.
+	changed := map[string]interface{}{"label": "L", "image": "ami-new"}
+	rp, err := plan.Plan(ctx, client, rs, node, changed, ar.Attrs)
+	if err != nil {
+		t.Fatalf("plan replace: %v", err)
+	}
+	if rp.Op != plan.OpReplace {
+		t.Fatalf("Op = %v, want a replacement", rp.Op)
+	}
+	if !contains(rp.UnknownAfterApply, "group") {
+		t.Errorf("group is not known-after-apply: the create half inherited %q from the object "+
+			"about to be destroyed; got unknowns %v", group, rp.UnknownAfterApply)
+	}
+
+	// Applying the create half must not receive the inherited value either.
+	na, err := client.Apply(ctx, provider.ApplyRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: changed, PlannedState: rp.PlannedState,
+	})
+	if err != nil {
+		t.Fatalf("apply replace: %v", err)
+	}
+	if got, _ := na.Attrs["group"].(string); got == group {
+		t.Errorf("group = %q after the replacement, the same value the destroyed object had", got)
 	}
 }

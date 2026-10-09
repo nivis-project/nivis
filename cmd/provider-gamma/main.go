@@ -24,12 +24,15 @@ var GammaWidget = fakeproviderv5.Resource{
 	TypeName: "gamma_widget",
 	Attrs: map[string]fakeproviderv5.Attr{
 		"size":   {Type: tftypes.String, Required: true},
+		"image":  {Type: tftypes.String, Optional: true, ForceNew: true},
+		"group":  {Type: tftypes.String, Optional: true, Computed: true},
 		"id":     {Type: tftypes.String, Computed: true},
 		"result": {Type: tftypes.String, Computed: true},
 	},
 	Apply: func(inputs map[string]string, counter int64) (map[string]string, []*tfprotov5.Diagnostic) {
 		size := inputs["size"]
 		return map[string]string{
+			"group":  fmt.Sprintf("gamma-group-%d", counter),
 			"id":     fmt.Sprintf("gamma-%d", counter),
 			"result": fmt.Sprintf("widget:%s:%d", size, counter),
 		}, nil

@@ -1,11 +1,11 @@
 ---
 # nixform2-aur6
 title: A replacement carries the destroyed object's computed attributes into the new one
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-09-14T20:38:32Z
-updated_at: 2026-10-09T08:23:25Z
+updated_at: 2026-10-09T10:15:25Z
 ---
 
 Replacing `aws_instance.target` in nivis-demos `040_tunnel_target` failed:
@@ -124,3 +124,55 @@ spawned provider. Substrate first.
 
 `replace-plans-the-create-half-against-null` (spec-driven; proposal, design,
 spec delta on `executor`, tasks). Validated, not implemented.
+
+
+## Summary of Changes
+
+`plan.Plan` now plans a replacement twice. The first plan carries the real
+prior and decides the operation, because requires-replace cannot be detected
+without a prior. The second carries a nil prior and supplies the
+`PlannedState` and `UnknownAfterApply`, because the object holding those
+computed values is about to be destroyed. This is what OpenTofu does.
+
+`internal/phase` needed no change at all: `applyOne` already handed
+`pr.PlannedState` to the create half and already passed `prior=nil` as the
+apply's PriorState. Correcting the one function that conflated the two jobs
+corrected the apply and `nivis plan` together.
+
+`ProposedMsgPack` is untouched. Carrying prior values into unset computed
+attrs is correct for an update and prevents the perpetual -/+ it was written to
+kill. Only its reuse for the create half was wrong, which is what todo 3
+already concluded.
+
+### A correction to the previous change
+
+nixform2-mbp1 left `TestDeltaForceNewInputIsReplaced` labelled as pinning this
+defect, with a message saying this change would invert it. That was wrong. It
+drives `client.Plan` directly, where carrying prior into unset computed attrs
+is correct and permanent. It passed before and after the fix, proving nothing
+about this bug. Its framing is corrected, and the real proof is
+`TestDeltaReplaceDoesNotInheritFromTheDestroyedObject`, which goes through
+`plan.Plan`.
+
+### Verification
+
+Tests proved to discriminate by disabling the fix: the spawned test then fails
+with `group = "delta-group-0"` inherited from the destroyed object and
+reaching apply, exactly the AWS shape; the unit tests fail on
+`plan calls = 1, want 2`.
+
+Six unit tests in `internal/plan` cover the call pattern (two calls for a
+replacement, one for create/update/no-op), that the op still reports a
+replacement, that the report now names what the create half recomputes, that an
+update still plans against its prior, and that a failure in the second plan is
+an error rather than a silent fall back.
+
+Spawned proof on both protocol versions. `cmd/provider-gamma" gained the same
+force-new and provider-filled attributes `delta_thing` has, so the v5
+backend's requires-replace plumbing and nil-prior encoding are driven end to
+end for the first time.
+
+`go test ./...` green including `tests/e2e`, with `internal/phase`,
+`internal/tfvalue` and `tests/` untouched.
+
+OpenSpec change: `replace-plans-the-create-half-against-null`.

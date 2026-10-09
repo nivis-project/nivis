@@ -7,6 +7,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/nivis-project/nivis/internal/ir"
+	"github.com/nivis-project/nivis/internal/plan"
 	"github.com/nivis-project/nivis/internal/plugin"
 	"github.com/nivis-project/nivis/internal/provider"
 )
@@ -65,5 +67,60 @@ func TestV5NegotiationAndRoundTrip(t *testing.T) {
 	}
 	if ar.Attrs["result"] != "widget:big:0" {
 		t.Errorf("result = %v, want widget:big:0", ar.Attrs["result"])
+	}
+}
+
+// TestV5ReplaceDoesNotInheritFromTheDestroyedObject drives the REAL v5 fake
+// through plan.Plan. The replacement correction lives in the plan engine, which
+// is protocol-neutral, but the v5 backend has its own requires-replace plumbing
+// and its own nil-prior encoding, and neither was reached by a spawned test
+// before. See the delta_thing twin for the v6 side.
+func TestV5ReplaceDoesNotInheritFromTheDestroyedObject(t *testing.T) {
+	bin := buildProvider(t, "provider-gamma")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	ctx := context.Background()
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+
+	client, err := mgr.Client("gamma", bin, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("spawn/handshake (v5): %v", err)
+	}
+	rs, err := client.GetSchema(ctx, "gamma_widget")
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := &ir.ResourceNode{Resource: ir.Resource{
+		ID: "gamma.gamma_widget.w", Provider: "gamma", Type: "gamma_widget", Name: "w",
+	}}
+
+	cfg := map[string]interface{}{"size": "big", "image": "ami-old"}
+	pr, err := plan.Plan(ctx, client, rs, node, cfg, nil)
+	if err != nil {
+		t.Fatalf("plan create: %v", err)
+	}
+	ar, err := client.Apply(ctx, provider.ApplyRequest{
+		Schema: rs, TypeName: "gamma_widget", ResolvedCfg: cfg, PlannedState: pr.PlannedState,
+	})
+	if err != nil {
+		t.Fatalf("apply create: %v", err)
+	}
+	group, _ := ar.Attrs["group"].(string)
+	if group == "" {
+		t.Fatalf("group empty after create: %#v", ar.Attrs)
+	}
+
+	changed := map[string]interface{}{"size": "big", "image": "ami-new"}
+	rp, err := plan.Plan(ctx, client, rs, node, changed, ar.Attrs)
+	if err != nil {
+		t.Fatalf("plan replace: %v", err)
+	}
+	if rp.Op != plan.OpReplace {
+		t.Fatalf("Op = %v, want a replacement", rp.Op)
+	}
+	if !contains(rp.UnknownAfterApply, "group") {
+		t.Errorf("group is not known-after-apply: the v5 create half inherited %q from the "+
+			"object about to be destroyed; got unknowns %v", group, rp.UnknownAfterApply)
 	}
 }

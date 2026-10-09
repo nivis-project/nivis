@@ -8,6 +8,18 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Replacing a resource no longer carries the destroyed object's
+  provider-computed attributes into its replacement. Nivis planned the new
+  object against the old one, so attributes the configuration never set, and
+  which the provider had filled in, were sent as if you had asked for them. On
+  AWS this put a dying instance's `security_groups` into the launch of its
+  replacement, which only set `vpc_security_group_ids`, and EC2 refused it.
+  It looked transient: applying again after the destroy had run succeeded,
+  because by then there was no old object left to inherit from. `nivis plan`
+  also reports a replacement honestly now, showing the attributes the provider
+  will recompute as known after apply instead of claiming their old values.
+
 ## [0.9.1] - 2026-10-09
 
 ### Added
