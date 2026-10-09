@@ -164,3 +164,110 @@ func TestDeltaConfiguredValueBeatsDefault(t *testing.T) {
 		t.Errorf("tier = %#v after apply, want \"premium\"", got)
 	}
 }
+
+// TestDeltaForceNewInputIsReplaced drives the REAL provider-delta binary and
+// proves a replacement can now be reached through the protocol at all: apply
+// once, change the force-new input, and the plan reports a replacement.
+//
+// It also records the defect in bean nixform2-aur6. `group` is optional and
+// computed, the config never sets it, and the provider chose its value at the
+// first apply. The replacement's planned state therefore inherits that value
+// from the object about to be destroyed, instead of leaving it unknown as a
+// create would. The next change makes it unknown; this test inverts then.
+func TestDeltaForceNewInputIsReplaced(t *testing.T) {
+	bin := buildProvider(t, "provider-delta")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	ctx := context.Background()
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+
+	client, err := mgr.Client("delta", bin, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	rs, err := client.GetSchema(ctx, "delta_thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create once, so `group` lands in state with a provider-chosen value the
+	// configuration never set.
+	cfg := map[string]interface{}{"label": "L", "image": "ami-old"}
+	pr, err := client.Plan(ctx, provider.PlanRequest{Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg})
+	if err != nil {
+		t.Fatalf("plan create: %v", err)
+	}
+	ar, err := client.Apply(ctx, provider.ApplyRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg, PlannedState: pr.PlannedState,
+	})
+	if err != nil {
+		t.Fatalf("apply create: %v", err)
+	}
+	group, _ := ar.Attrs["group"].(string)
+	if group == "" {
+		t.Fatalf("group is empty after create; the provider should have filled it: %#v", ar.Attrs)
+	}
+
+	// Change the force-new input, planning against the stored object.
+	changed := map[string]interface{}{"label": "L", "image": "ami-new"}
+	rp, err := client.Plan(ctx, provider.PlanRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: changed, Prior: ar.Attrs,
+	})
+	if err != nil {
+		t.Fatalf("plan replace: %v", err)
+	}
+	if !rp.RequiresReplace {
+		t.Fatalf("expected a replacement when the force-new input changed; got unknowns %v", rp.UnknownAfterApply)
+	}
+
+	// The defect: `group` is inherited from the object about to be destroyed,
+	// so it is NOT reported as known after apply.
+	if contains(rp.UnknownAfterApply, "group") {
+		t.Fatalf("group is unknown after apply: the create half is planned against a null prior now. "+
+			"nixform2-aur6 is fixed, so invert this test (want group unknown). Got %v", rp.UnknownAfterApply)
+	}
+}
+
+// TestDeltaUnchangedForceNewInputIsNotReplaced guards the other direction: the
+// force-new marker must not turn every plan of an existing resource into a
+// replacement.
+func TestDeltaUnchangedForceNewInputIsNotReplaced(t *testing.T) {
+	bin := buildProvider(t, "provider-delta")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	ctx := context.Background()
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+
+	client, err := mgr.Client("delta", bin, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	rs, err := client.GetSchema(ctx, "delta_thing")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := map[string]interface{}{"label": "L", "image": "ami-old"}
+	pr, err := client.Plan(ctx, provider.PlanRequest{Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg})
+	if err != nil {
+		t.Fatalf("plan create: %v", err)
+	}
+	ar, err := client.Apply(ctx, provider.ApplyRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg, PlannedState: pr.PlannedState,
+	})
+	if err != nil {
+		t.Fatalf("apply create: %v", err)
+	}
+
+	rp, err := client.Plan(ctx, provider.PlanRequest{
+		Schema: rs, TypeName: "delta_thing", ResolvedCfg: cfg, Prior: ar.Attrs,
+	})
+	if err != nil {
+		t.Fatalf("plan again: %v", err)
+	}
+	if rp.RequiresReplace {
+		t.Errorf("unchanged config planned as a replacement")
+	}
+}

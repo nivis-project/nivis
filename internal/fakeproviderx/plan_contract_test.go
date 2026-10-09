@@ -209,3 +209,109 @@ func TestPriorValueBeatsTheDefault(t *testing.T) {
 		t.Errorf("tier = %q, want legacy: a prior value must outrank the default", got)
 	}
 }
+
+var replaceType = tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+	"image": tftypes.String,
+	"label": tftypes.String,
+	"zone":  tftypes.String,
+	"id":    tftypes.String,
+}}
+
+func replaceDynamic(t *testing.T, vals map[string]tftypes.Value) *tfprotov6.DynamicValue {
+	t.Helper()
+	dv, err := tfprotov6.NewDynamicValue(replaceType, tftypes.NewValue(replaceType, vals))
+	if err != nil {
+		t.Fatalf("NewDynamicValue: %v", err)
+	}
+	return &dv
+}
+
+func replaceResource() fakeproviderx.Resource {
+	return fakeproviderx.Resource{
+		TypeName: "replace_thing",
+		Attrs: map[string]fakeproviderx.Attr{
+			"image": {Type: tftypes.String, Optional: true, ForceNew: true},
+			"label": {Type: tftypes.String, Optional: true},
+			"zone":  {Type: tftypes.String, Optional: true, Computed: true},
+			"id":    {Type: tftypes.String, Computed: true},
+		},
+		Apply: func(_ map[string]interface{}, n int64) map[string]interface{} {
+			return map[string]interface{}{
+				"id":   fmt.Sprintf("replace-%d", n),
+				"zone": fmt.Sprintf("zone-%d", n),
+			}
+		},
+	}
+}
+
+func replaceAttrs(image, label string) map[string]tftypes.Value {
+	return map[string]tftypes.Value{
+		"image": tftypes.NewValue(tftypes.String, image),
+		"label": tftypes.NewValue(tftypes.String, label),
+		"zone":  tftypes.NewValue(tftypes.String, nil),
+		"id":    tftypes.NewValue(tftypes.String, nil),
+	}
+}
+
+// planReplace plans cfg against prior; a nil prior models a create.
+func planReplace(t *testing.T, cfg map[string]tftypes.Value, prior map[string]tftypes.Value) *tfprotov6.PlanResourceChangeResponse {
+	t.Helper()
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	req := &tfprotov6.PlanResourceChangeRequest{
+		TypeName:         "replace_thing",
+		Config:           replaceDynamic(t, cfg),
+		ProposedNewState: replaceDynamic(t, cfg),
+	}
+	if prior != nil {
+		req.PriorState = replaceDynamic(t, prior)
+	}
+	resp, err := fakeproviderx.New(replaceResource()).PlanResourceChange(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp
+}
+
+func TestChangedForceNewAttrRequiresReplace(t *testing.T) {
+	prior := replaceAttrs("ami-old", "L")
+	prior["zone"] = tftypes.NewValue(tftypes.String, "zone-0")
+
+	resp := planReplace(t, replaceAttrs("ami-new", "L"), prior)
+
+	if len(resp.RequiresReplace) != 1 {
+		t.Fatalf("RequiresReplace = %v, want exactly the image attribute", resp.RequiresReplace)
+	}
+	if got := resp.RequiresReplace[0].String(); got != "AttributeName(\"image\")" {
+		t.Errorf("RequiresReplace[0] = %s, want the image attribute", got)
+	}
+}
+
+func TestUnchangedForceNewAttrDoesNotRequireReplace(t *testing.T) {
+	if resp := planReplace(t, replaceAttrs("ami-old", "L"), replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty: the force-new attr did not change", resp.RequiresReplace)
+	}
+}
+
+func TestChangedOrdinaryAttrDoesNotRequireReplace(t *testing.T) {
+	if resp := planReplace(t, replaceAttrs("ami-old", "NEW"), replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty: label is not force-new", resp.RequiresReplace)
+	}
+}
+
+// A create has no prior to differ from, so it can never require replacement.
+func TestCreateNeverRequiresReplace(t *testing.T) {
+	if resp := planReplace(t, replaceAttrs("ami-new", "L"), nil); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty on a create", resp.RequiresReplace)
+	}
+}
+
+// An attr absent from config is not a change. Were it treated as one, every
+// unset optional force-new attr would force a replacement on every plan.
+func TestAbsentForceNewAttrIsNotAChange(t *testing.T) {
+	cfg := replaceAttrs("ami-old", "L")
+	cfg["image"] = tftypes.NewValue(tftypes.String, nil)
+
+	if resp := planReplace(t, cfg, replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty: image is absent from config, not changed", resp.RequiresReplace)
+	}
+}

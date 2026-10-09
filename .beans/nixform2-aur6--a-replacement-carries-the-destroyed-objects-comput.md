@@ -3,8 +3,9 @@
 title: A replacement carries the destroyed object's computed attributes into the new one
 status: todo
 type: bug
+priority: normal
 created_at: 2026-09-14T20:38:32Z
-updated_at: 2026-09-14T20:38:32Z
+updated_at: 2026-10-09T08:23:25Z
 ---
 
 Replacing `aws_instance.target` in nivis-demos `040_tunnel_target` failed:
@@ -71,3 +72,55 @@ graph semantics of each.
 - [ ] Test: a resource with an optional-computed attribute the provider fills
       in on read, replaced while the prior object is still in state
 - [ ] Check whether the same carry-over affects requires-replace detection
+
+
+## Verified against OpenTofu (2026-10-09)
+
+OpenTofu does exactly this, and its comment names this bug
+(`internal/tofu/node_resource_abstract_instance.go`, `if action.IsReplace()`):
+
+> we want to produce a change object that shows our real prior object but has a
+> _new_ object that is built from a null prior object, since we're going to
+> delete the one that has all the computed values on it
+
+It re-plans with `PriorState: nullPriorVal` and a `ProposedNewState` rebuilt
+as `objchange.ProposedNew(schema, nullPriorVal, config)`. The re-plan happens
+in the PLAN walk, not at apply.
+
+## Todo 3 resolves as: no change needed
+
+"Check whether the same carry-over affects requires-replace detection." It
+does, and it must keep doing so. `ProposedMsgPack` carrying prior values into
+unset computed attributes is what stops SDKv2 providers flagging ForceNew
+computed attrs as requires-replace on every plan (the perpetual -/+ the function
+was written to kill). The rule is correct everywhere. The defect is that one
+plan result serves two callers needing opposite priors.
+
+## What the investigation settled
+
+- The fix belongs in `plan.Plan`, not the driver. `applyOne` already passes
+  `pr.PlannedState` and `prior=nil` to the create half, so correcting
+  `plan.Plan` fixes apply and report together with NO change in
+  `internal/phase`.
+- `nivis plan` has the same defect, quieter: its known-after-apply list comes
+  from the prior-carrying plan, so a replacement under-reports what will be
+  recomputed.
+- `client.Plan(Prior: nil)` already produces `ProposedNew(nullPrior, config)`,
+  because the backends set `proposed := cfgDV` when prior is nil. No new
+  encoding needed.
+- `UnknownAfterApply` is display-only (reaches `renderPlan` and nothing
+  functional). `NoOp` is guarded by `req.Prior != nil` so a second call
+  cannot fabricate one. Nivis carries no provider private state, so nothing is
+  lost by planning twice.
+- Duplicate diagnostics from the second call are latent only: `plan.Result`
+  has no diagnostics field today. Constraint recorded on nixform2-8btx.
+
+## Blocked on nixform2-mbp1
+
+No fake can signal RequiresReplace, so the defect is not reproducible through a
+spawned provider. Substrate first.
+
+## OpenSpec
+
+`replace-plans-the-create-half-against-null` (spec-driven; proposal, design,
+spec delta on `executor`, tasks). Validated, not implemented.

@@ -12,13 +12,15 @@ import (
 // role flags drives behavior: Computed attrs are unknown at plan and filled by
 // Apply; Required/Optional attrs are user-supplied inputs. Default is a plain Go
 // value applied at plan when an Optional+Computed attr is absent from config;
-// nil means none.
+// nil means none. ForceNew marks an attr whose change against a non-null prior
+// requires the resource to be replaced rather than updated in place.
 type Attr struct {
 	Type     tftypes.Type
 	Required bool
 	Optional bool
 	Computed bool
 	Default  interface{}
+	ForceNew bool
 }
 
 // Resource is a fake resource definition: a type name, its attribute set, and a
@@ -168,4 +170,28 @@ func (r Resource) applied(cfg, planned map[string]tftypes.Value, counter int64) 
 		}
 	}
 	return tftypes.NewValue(r.objType(), out), diags
+}
+
+// requiresReplace lists the ForceNew attrs whose configured value differs from
+// the prior value. A null prior is a create, which never replaces; an attr
+// absent from config is not a change, or every unset optional ForceNew attr
+// would force a replacement on every plan.
+func (r Resource) requiresReplace(cfg, prior map[string]tftypes.Value) []*tftypes.AttributePath {
+	if prior == nil {
+		return nil
+	}
+	var paths []*tftypes.AttributePath
+	for name, a := range r.Attrs {
+		if !a.ForceNew {
+			continue
+		}
+		cv, ok := cfg[name]
+		if !ok || cv.IsNull() || !cv.IsKnown() {
+			continue
+		}
+		if pv, ok := prior[name]; !ok || !cv.Equal(pv) {
+			paths = append(paths, tftypes.NewAttributePath().WithAttributeName(name))
+		}
+	}
+	return paths
 }

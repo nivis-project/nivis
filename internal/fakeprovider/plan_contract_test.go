@@ -187,3 +187,134 @@ func TestPriorValueBeatsTheDefault(t *testing.T) {
 		t.Errorf("tier = %q, want legacy: a prior value must outrank the default", got)
 	}
 }
+
+// replaceType adds a force-new attr to the contract shape.
+var replaceType = objType(map[string]tftypes.Type{
+	"image": tftypes.String,
+	"label": tftypes.String,
+	"zone":  tftypes.String,
+	"id":    tftypes.String,
+})
+
+func replaceResource() fakeprovider.Resource {
+	return fakeprovider.Resource{
+		TypeName: "replace_thing",
+		Attrs: map[string]fakeprovider.Attr{
+			"image": {Type: tftypes.String, Optional: true, ForceNew: true},
+			"label": {Type: tftypes.String, Optional: true},
+			"zone":  {Type: tftypes.String, Optional: true, Computed: true},
+			"id":    {Type: tftypes.String, Computed: true},
+		},
+		Apply: func(_ map[string]string, n int64) (map[string]string, []*tfprotov6.Diagnostic) {
+			return map[string]string{
+				"id":   fmt.Sprintf("replace-%d", n),
+				"zone": fmt.Sprintf("zone-%d", n),
+			}, nil
+		},
+	}
+}
+
+func replaceAttrs(image, label string) map[string]tftypes.Value {
+	return map[string]tftypes.Value{
+		"image": tftypes.NewValue(tftypes.String, image),
+		"label": tftypes.NewValue(tftypes.String, label),
+		"zone":  tftypes.NewValue(tftypes.String, nil),
+		"id":    tftypes.NewValue(tftypes.String, nil),
+	}
+}
+
+// planReplace plans cfg against prior; a nil prior models a create.
+func planReplace(t *testing.T, cfg map[string]tftypes.Value, prior map[string]tftypes.Value) *tfprotov6.PlanResourceChangeResponse {
+	t.Helper()
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	req := &tfprotov6.PlanResourceChangeRequest{
+		TypeName:         "replace_thing",
+		Config:           dynamic(t, replaceType, cfg),
+		ProposedNewState: dynamic(t, replaceType, cfg),
+	}
+	if prior != nil {
+		req.PriorState = dynamic(t, replaceType, prior)
+	}
+	resp, err := fakeprovider.New(replaceResource()).PlanResourceChange(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, resp.Diagnostics)
+	return resp
+}
+
+func TestChangedForceNewAttrRequiresReplace(t *testing.T) {
+	prior := replaceAttrs("ami-old", "L")
+	prior["zone"] = tftypes.NewValue(tftypes.String, "zone-0")
+
+	resp := planReplace(t, replaceAttrs("ami-new", "L"), prior)
+
+	if len(resp.RequiresReplace) != 1 {
+		t.Fatalf("RequiresReplace = %v, want exactly the image attribute", resp.RequiresReplace)
+	}
+	if got := resp.RequiresReplace[0].String(); got != "AttributeName(\"image\")" {
+		t.Errorf("RequiresReplace[0] = %s, want the image attribute", got)
+	}
+}
+
+func TestUnchangedForceNewAttrDoesNotRequireReplace(t *testing.T) {
+	if resp := planReplace(t, replaceAttrs("ami-old", "L"), replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty: the force-new attr did not change", resp.RequiresReplace)
+	}
+}
+
+func TestChangedOrdinaryAttrDoesNotRequireReplace(t *testing.T) {
+	if resp := planReplace(t, replaceAttrs("ami-old", "NEW"), replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty: label is not force-new", resp.RequiresReplace)
+	}
+}
+
+// A create has no prior to differ from, so it can never require replacement.
+func TestCreateNeverRequiresReplace(t *testing.T) {
+	if resp := planReplace(t, replaceAttrs("ami-new", "L"), nil); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty on a create", resp.RequiresReplace)
+	}
+}
+
+// An attr absent from config is not a change. Were it treated as one, every
+// unset optional force-new attr would force a replacement on every plan.
+func TestAbsentForceNewAttrIsNotAChange(t *testing.T) {
+	prior := replaceAttrs("ami-old", "L")
+	cfg := replaceAttrs("ami-old", "L")
+	cfg["image"] = tftypes.NewValue(tftypes.String, nil)
+
+	if resp := planReplace(t, cfg, prior); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty: image is absent from config, not changed", resp.RequiresReplace)
+	}
+}
+
+// The provider-filled attr must reach prior state holding a value the config
+// never set. That is the precondition for the defect in bean nixform2-aur6.
+func TestProviderFilledAttrIsUnknownAtPlanAndSetAtApply(t *testing.T) {
+	ctx := context.Background()
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	srv := fakeprovider.New(replaceResource())
+	config := dynamic(t, replaceType, replaceAttrs("ami-old", "L"))
+
+	plan, err := srv.PlanResourceChange(ctx, &tfprotov6.PlanResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, ProposedNewState: config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, plan.Diagnostics)
+	if decodeState(t, plan.PlannedState, replaceType)["zone"].IsKnown() {
+		t.Fatalf("zone known at plan; it has no default and must be unknown")
+	}
+
+	apply, err := srv.ApplyResourceChange(ctx, &tfprotov6.ApplyResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, PlannedState: plan.PlannedState,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, apply.Diagnostics)
+	if got := str(t, decodeState(t, apply.NewState, replaceType)["zone"]); got != "zone-0" {
+		t.Errorf("zone = %q after apply, want zone-0 chosen by the provider", got)
+	}
+}

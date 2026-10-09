@@ -177,12 +177,26 @@ func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResour
 	if err != nil {
 		return nil, err
 	}
+	priorVal, err := decode(req.PriorState, r.objType())
+	if err != nil {
+		return nil, err
+	}
+	var priorAttrs map[string]tftypes.Value
+	if !priorVal.IsNull() {
+		priorAttrs, err = asObject(priorVal)
+		if err != nil {
+			return nil, err
+		}
+	}
 	planned := r.planned(cfg, proposedAttrs)
 	dv, err := encode(r.objType(), planned)
 	if err != nil {
 		return nil, err
 	}
-	return &tfprotov6.PlanResourceChangeResponse{PlannedState: dv}, nil
+	return &tfprotov6.PlanResourceChangeResponse{
+		PlannedState:    dv,
+		RequiresReplace: r.requiresReplace(cfg, priorAttrs),
+	}, nil
 }
 
 func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyResourceChangeRequest) (*tfprotov6.ApplyResourceChangeResponse, error) {

@@ -23,12 +23,15 @@ import (
 
 // Attr is a rich-typed resource attribute. Default is a plain Go value applied
 // at plan when an Optional+Computed attr is absent from config; nil means none.
+// ForceNew marks an attr whose change against a non-null prior requires the
+// resource to be replaced rather than updated in place.
 type Attr struct {
 	Type     tftypes.Type
 	Required bool
 	Optional bool
 	Computed bool
 	Default  interface{}
+	ForceNew bool
 }
 
 // Resource is a rich fake resource: a type name, its attributes, and a pure
@@ -148,6 +151,17 @@ func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResour
 	if err != nil {
 		return nil, err
 	}
+	priorVal, err := decodeOrNull(req.PriorState, s.r.objType())
+	if err != nil {
+		return nil, err
+	}
+	var prior map[string]tftypes.Value
+	if !priorVal.IsNull() {
+		prior, err = s.decode(req.PriorState)
+		if err != nil {
+			return nil, err
+		}
+	}
 	out := map[string]tftypes.Value{}
 	for name, a := range s.r.Attrs {
 		v, err := planAttr(name, a, cfg, proposed)
@@ -160,7 +174,34 @@ func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResour
 	if err != nil {
 		return nil, err
 	}
-	return &tfprotov6.PlanResourceChangeResponse{PlannedState: dv}, nil
+	return &tfprotov6.PlanResourceChangeResponse{
+		PlannedState:    dv,
+		RequiresReplace: requiresReplace(s.r.Attrs, cfg, prior),
+	}, nil
+}
+
+// requiresReplace lists the ForceNew attrs whose configured value differs from
+// the prior value. A null prior is a create, which never replaces; an attr
+// absent from config is not a change, or every unset optional ForceNew attr
+// would force a replacement on every plan.
+func requiresReplace(attrs map[string]Attr, cfg, prior map[string]tftypes.Value) []*tftypes.AttributePath {
+	if prior == nil {
+		return nil
+	}
+	var paths []*tftypes.AttributePath
+	for name, a := range attrs {
+		if !a.ForceNew {
+			continue
+		}
+		cv, ok := cfg[name]
+		if !ok || cv.IsNull() || !cv.IsKnown() {
+			continue
+		}
+		if pv, ok := prior[name]; !ok || !cv.Equal(pv) {
+			paths = append(paths, tftypes.NewAttributePath().WithAttributeName(name))
+		}
+	}
+	return paths
 }
 
 // planAttr decides one attribute of the planned state. Values come from

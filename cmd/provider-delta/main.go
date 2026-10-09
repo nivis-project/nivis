@@ -29,7 +29,9 @@ var DeltaThing = fakeproviderx.Resource{
 	TypeName: "delta_thing",
 	Attrs: map[string]fakeproviderx.Attr{
 		"label":     {Type: tftypes.String, Optional: true},
+		"image":     {Type: tftypes.String, Optional: true, ForceNew: true},
 		"tier":      {Type: tftypes.String, Optional: true, Computed: true, Default: "standard"},
+		"group":     {Type: tftypes.String, Optional: true, Computed: true},
 		"tags":      {Type: tftypes.Map{ElementType: tftypes.String}, Optional: true},
 		"ports":     {Type: tftypes.List{ElementType: tftypes.Number}, Optional: true},
 		"id":        {Type: tftypes.String, Computed: true},
@@ -58,6 +60,7 @@ var DeltaThing = fakeproviderx.Resource{
 			}
 		}
 		return map[string]interface{}{
+			"group":     fmt.Sprintf("delta-group-%d", counter),
 			"id":        fmt.Sprintf("delta-%d", counter),
 			"endpoints": endpoints,
 			"meta":      map[string]interface{}{"region": region, "count": count},

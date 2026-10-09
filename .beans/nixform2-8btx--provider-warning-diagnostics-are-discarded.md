@@ -5,7 +5,7 @@ status: todo
 type: bug
 priority: normal
 created_at: 2026-09-10T21:02:40Z
-updated_at: 2026-09-11T13:15:14Z
+updated_at: 2026-10-09T08:19:59Z
 parent: nixform2-kovh
 ---
 
@@ -56,3 +56,21 @@ this way: as a downstream API error with no link back to the cause.
       repeats on every phase and every refresh, and must not drown the output
 - [ ] Test with a fake provider that returns a warning on Plan and on Apply, and
       assert the warning reaches the console while the run still succeeds
+
+
+## Constraint discovered while exploring nixform2-aur6 (2026-10-09)
+
+Whoever fixes this must know that a replacement will soon plan TWICE: once
+against the real prior to decide the op, once against a null prior to produce
+the create half's state (nixform2-aur6, OpenSpec
+`replace-plans-the-create-half-against-null`).
+
+OpenTofu suppresses the second call's diagnostics unless they contain an error,
+because the warnings are the same warnings the first call already produced
+(`node_resource_abstract_instance.go`, "we break from the usual pattern here
+and only append these new diagnostics if there's at least one error inside").
+
+Today this is latent: `plan.Result` has no Diagnostics field, so
+`plan.Plan` drops them all. The moment warnings are surfaced, every
+replacement will double-print every provider warning unless the same rule is
+applied. Error-severity diagnostics from the second call must still surface.
