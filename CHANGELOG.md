@@ -9,6 +9,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- If the create half of a replacement fails, state no longer claims the
+  destroyed resource still exists. Nivis destroyed the old object and relied on
+  the new one being written over its state entry, so a failed create, an expired
+  credential or an interrupted run left the state document describing something
+  that was gone. With refresh on this healed itself on the next run; with
+  `--refresh=false` it did not, and reverting your configuration afterwards
+  would report the resource as up to date while it no longer existed. The entry
+  is now cleared as soon as the old object is destroyed.
+
+### Fixed
 - Replacing a resource no longer carries the destroyed object's
   provider-computed attributes into its replacement. Nivis planned the new
   object against the old one, so attributes the configuration never set, and

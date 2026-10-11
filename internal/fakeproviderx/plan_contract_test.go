@@ -376,3 +376,59 @@ func proposedFrom(cfg, prior map[string]tftypes.Value) map[string]tftypes.Value 
 	}
 	return out
 }
+
+// Failure injection exists so the executor's failure paths can be reached
+// through a spawned provider. See internal/fakeprovider for the rationale.
+func TestInjectedApplyFailure(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "apply:replace_thing")
+	srv := fakeproviderx.New(replaceResource())
+	config := replaceDynamic(t, replaceAttrs("ami-old", "L"))
+
+	for i := range 2 {
+		resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov6.ApplyResourceChangeRequest{
+			TypeName: "replace_thing", Config: config, PlannedState: config,
+		})
+		if err != nil {
+			t.Fatalf("call %d: %v", i, err)
+		}
+		if len(resp.Diagnostics) == 0 || resp.Diagnostics[0].Severity != tfprotov6.DiagnosticSeverityError {
+			t.Fatalf("call %d: want an error diagnostic, got %v", i, resp.Diagnostics)
+		}
+	}
+}
+
+func TestInjectionIsOffByDefault(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "")
+	srv := fakeproviderx.New(replaceResource())
+	config := replaceDynamic(t, replaceAttrs("ami-old", "L"))
+
+	resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov6.ApplyResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, PlannedState: config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range resp.Diagnostics {
+		if d.Severity == tfprotov6.DiagnosticSeverityError {
+			t.Fatalf("unexpected error diagnostic: %s", d.Summary)
+		}
+	}
+}
+
+func TestInjectionIsAddressedByOperationAndType(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "apply:other_thing")
+	srv := fakeproviderx.New(replaceResource())
+	config := replaceDynamic(t, replaceAttrs("ami-old", "L"))
+
+	resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov6.ApplyResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, PlannedState: config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range resp.Diagnostics {
+		if d.Severity == tfprotov6.DiagnosticSeverityError {
+			t.Fatalf("unexpected error diagnostic: %s", d.Summary)
+		}
+	}
+}

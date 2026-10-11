@@ -378,3 +378,55 @@ func proposedFrom(cfg, prior map[string]tftypes.Value) map[string]tftypes.Value 
 	}
 	return out
 }
+
+// Failure injection exists so the executor's failure paths can be reached
+// through a spawned provider. Every fake otherwise succeeds at everything, and
+// a failure path that cannot be exercised is one whose behaviour is assumed.
+func TestInjectedApplyFailure(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "apply:replace_thing")
+	srv := fakeprovider.New(replaceResource())
+	config := dynamic(t, replaceType, replaceAttrs("ami-old", "L"))
+
+	// Deterministic: the same request fails identically twice.
+	for i := range 2 {
+		resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov6.ApplyResourceChangeRequest{
+			TypeName: "replace_thing", Config: config, PlannedState: config,
+		})
+		if err != nil {
+			t.Fatalf("call %d: %v", i, err)
+		}
+		if len(resp.Diagnostics) == 0 || resp.Diagnostics[0].Severity != tfprotov6.DiagnosticSeverityError {
+			t.Fatalf("call %d: want an error diagnostic, got %v", i, resp.Diagnostics)
+		}
+	}
+}
+
+func TestInjectionIsOffByDefault(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "")
+	srv := fakeprovider.New(replaceResource())
+	config := dynamic(t, replaceType, replaceAttrs("ami-old", "L"))
+
+	resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov6.ApplyResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, PlannedState: config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, resp.Diagnostics)
+}
+
+// Injection is addressed by operation AND resource type, so one provider can
+// succeed at a destroy and fail the apply that follows it within one run.
+func TestInjectionIsAddressedByOperationAndType(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "apply:other_thing")
+	srv := fakeprovider.New(replaceResource())
+	config := dynamic(t, replaceType, replaceAttrs("ami-old", "L"))
+
+	resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov6.ApplyResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, PlannedState: config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, resp.Diagnostics)
+}

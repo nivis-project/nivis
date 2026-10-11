@@ -571,6 +571,14 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		}); err != nil {
 			return nil, plan.OpReplace, fmt.Errorf("replace %q: destroy prior: %w", node.Resource.ID, err)
 		}
+		// The prior object is gone, so its state entry is now false. Remove it
+		// BEFORE creating the replacement: if the create fails or the run is
+		// interrupted, state must not describe an object that no longer exists.
+		// Recovery must not depend on --refresh being on, which is the only thing
+		// that heals it otherwise. internal/destroy does the same, per resource.
+		if err := d.Store.Delete(node.Resource.ID); err != nil {
+			return nil, plan.OpReplace, fmt.Errorf("replace %q: destroyed the prior resource but could not clear its state entry: %w", node.Resource.ID, err)
+		}
 		outs, err := apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, nil, d.Store)
 		return outs, plan.OpReplace, err
 	default:

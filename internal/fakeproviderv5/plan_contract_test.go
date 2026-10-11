@@ -388,3 +388,51 @@ func proposedFrom(cfg, prior map[string]tftypes.Value) map[string]tftypes.Value 
 	}
 	return out
 }
+
+// Failure injection exists so the executor's failure paths can be reached
+// through a spawned provider. See the v6 twin for the rationale.
+func TestInjectedApplyFailure(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "apply:replace_thing")
+	srv := fakeproviderv5.New(replaceResource())
+	config := replaceDynamic(t, replaceAttrs("ami-old", "L"))
+
+	for i := range 2 {
+		resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov5.ApplyResourceChangeRequest{
+			TypeName: "replace_thing", Config: config, PlannedState: config,
+		})
+		if err != nil {
+			t.Fatalf("call %d: %v", i, err)
+		}
+		if len(resp.Diagnostics) == 0 || resp.Diagnostics[0].Severity != tfprotov5.DiagnosticSeverityError {
+			t.Fatalf("call %d: want an error diagnostic, got %v", i, resp.Diagnostics)
+		}
+	}
+}
+
+func TestInjectionIsOffByDefault(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "")
+	srv := fakeproviderv5.New(replaceResource())
+	config := replaceDynamic(t, replaceAttrs("ami-old", "L"))
+
+	resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov5.ApplyResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, PlannedState: config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, resp.Diagnostics)
+}
+
+func TestInjectionIsAddressedByOperationAndType(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_FAIL", "apply:other_thing")
+	srv := fakeproviderv5.New(replaceResource())
+	config := replaceDynamic(t, replaceAttrs("ami-old", "L"))
+
+	resp, err := srv.ApplyResourceChange(context.Background(), &tfprotov5.ApplyResourceChangeRequest{
+		TypeName: "replace_thing", Config: config, PlannedState: config,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	noErr(t, resp.Diagnostics)
+}

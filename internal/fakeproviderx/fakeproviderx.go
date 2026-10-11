@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync/atomic"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -260,6 +261,16 @@ func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyReso
 		}
 		return &tfprotov6.ApplyResourceChangeResponse{NewState: dv}, nil
 	}
+	// Injection happens HERE, after the destroy branch: in the protocol a destroy
+	// IS ApplyResourceChange with a null planned state, so checking before this
+	// point would fail destroys too.
+	if failInjected("apply", req.TypeName) {
+		return &tfprotov6.ApplyResourceChangeResponse{Diagnostics: []*tfprotov6.Diagnostic{{
+			Severity: tfprotov6.DiagnosticSeverityError,
+			Summary:  "Injected apply failure",
+			Detail:   "TERRAE_NIVIS_FAKE_FAIL requested that apply fail for " + req.TypeName + ".",
+		}}}, nil
+	}
 	cfg, err := s.decode(req.Config)
 	if err != nil {
 		return nil, err
@@ -404,4 +415,23 @@ func (s *Server) RenewEphemeralResource(context.Context, *tfprotov6.RenewEphemer
 }
 func (s *Server) CloseEphemeralResource(context.Context, *tfprotov6.CloseEphemeralResourceRequest) (*tfprotov6.CloseEphemeralResourceResponse, error) {
 	return &tfprotov6.CloseEphemeralResourceResponse{Diagnostics: []*tfprotov6.Diagnostic{unimpl("CloseEphemeralResource")}}, nil
+}
+
+// --- failure injection (test-only) -------------------------------------------
+
+// failInjected reads TERRAE_NIVIS_FAKE_FAIL, a comma-separated list of
+// "<operation>:<typename>" entries. Unset means no injection, which is why no
+// existing test is affected. See internal/fakeprovider for the rationale.
+func failInjected(op, typeName string) bool {
+	spec := os.Getenv("TERRAE_NIVIS_FAKE_FAIL")
+	if spec == "" {
+		return false
+	}
+	want := op + ":" + typeName
+	for _, e := range strings.Split(spec, ",") {
+		if strings.TrimSpace(e) == want {
+			return true
+		}
+	}
+	return false
 }

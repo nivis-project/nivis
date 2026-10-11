@@ -6,6 +6,8 @@ package fakeprovider
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -208,6 +210,7 @@ func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyReso
 	if d != nil {
 		return &tfprotov6.ApplyResourceChangeResponse{Diagnostics: []*tfprotov6.Diagnostic{d}}, nil
 	}
+
 	// A null PlannedState means a destroy: return null new state.
 	planned, err := decode(req.PlannedState, r.objType())
 	if err != nil {
@@ -219,6 +222,14 @@ func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyReso
 			return nil, err
 		}
 		return &tfprotov6.ApplyResourceChangeResponse{NewState: dv}, nil
+	}
+	// Injection happens HERE, after the destroy branch: in the protocol a
+	// destroy IS ApplyResourceChange with a null planned state, so checking
+	// before this point would fail destroys too.
+	if failInjected("apply", req.TypeName) {
+		return &tfprotov6.ApplyResourceChangeResponse{Diagnostics: []*tfprotov6.Diagnostic{errDiag(
+			"Injected apply failure",
+			"TERRAE_NIVIS_FAKE_FAIL requested that apply fail for "+req.TypeName+".")}}, nil
 	}
 	cfgVal, err := decode(req.Config, r.objType())
 	if err != nil {
@@ -352,4 +363,27 @@ func (s *Server) RenewEphemeralResource(_ context.Context, _ *tfprotov6.RenewEph
 
 func (s *Server) CloseEphemeralResource(_ context.Context, _ *tfprotov6.CloseEphemeralResourceRequest) (*tfprotov6.CloseEphemeralResourceResponse, error) {
 	return &tfprotov6.CloseEphemeralResourceResponse{Diagnostics: []*tfprotov6.Diagnostic{unimplemented("CloseEphemeralResource")}}, nil
+}
+
+// --- failure injection (test-only) -------------------------------------------
+
+// failInjection reads TERRAE_NIVIS_FAKE_FAIL, a comma-separated list of
+// "<operation>:<typename>" entries (e.g. "apply:delta_thing,destroy:beta_record").
+// Unset means no injection, which is why no existing test is affected.
+//
+// It exists because every fake succeeds at everything, so the executor's failure
+// paths cannot be reached through a spawned provider. A failure path that cannot
+// be exercised is one whose behaviour is assumed rather than known.
+func failInjected(op, typeName string) bool {
+	spec := os.Getenv("TERRAE_NIVIS_FAKE_FAIL")
+	if spec == "" {
+		return false
+	}
+	want := op + ":" + typeName
+	for _, e := range strings.Split(spec, ",") {
+		if strings.TrimSpace(e) == want {
+			return true
+		}
+	}
+	return false
 }
