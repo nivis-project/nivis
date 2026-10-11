@@ -232,7 +232,7 @@ func replaceResource() fakeproviderx.Resource {
 		Attrs: map[string]fakeproviderx.Attr{
 			"image": {Type: tftypes.String, Optional: true, ForceNew: true},
 			"label": {Type: tftypes.String, Optional: true},
-			"zone":  {Type: tftypes.String, Optional: true, Computed: true},
+			"zone":  {Type: tftypes.String, Optional: true, Computed: true, ForceNew: true},
 			"id":    {Type: tftypes.String, Computed: true},
 		},
 		Apply: func(_ map[string]interface{}, n int64) map[string]interface{} {
@@ -253,6 +253,16 @@ func replaceAttrs(image, label string) map[string]tftypes.Value {
 	}
 }
 
+// priorAttrs is a stored object: like a config, but with the provider-filled
+// computed attr carrying the value the provider chose. A computed attr is not
+// null in state, and a fixture that leaves it null makes an unknown planned
+// value differ from it for reasons the test is not about.
+func priorAttrs(image, label string) map[string]tftypes.Value {
+	p := replaceAttrs(image, label)
+	p["zone"] = tftypes.NewValue(tftypes.String, "zone-0")
+	return p
+}
+
 // planReplace plans cfg against prior; a nil prior models a create.
 func planReplace(t *testing.T, cfg map[string]tftypes.Value, prior map[string]tftypes.Value) *tfprotov6.PlanResourceChangeResponse {
 	t.Helper()
@@ -260,7 +270,7 @@ func planReplace(t *testing.T, cfg map[string]tftypes.Value, prior map[string]tf
 	req := &tfprotov6.PlanResourceChangeRequest{
 		TypeName:         "replace_thing",
 		Config:           replaceDynamic(t, cfg),
-		ProposedNewState: replaceDynamic(t, cfg),
+		ProposedNewState: replaceDynamic(t, proposedFrom(cfg, prior)),
 	}
 	if prior != nil {
 		req.PriorState = replaceDynamic(t, prior)
@@ -273,8 +283,7 @@ func planReplace(t *testing.T, cfg map[string]tftypes.Value, prior map[string]tf
 }
 
 func TestChangedForceNewAttrRequiresReplace(t *testing.T) {
-	prior := replaceAttrs("ami-old", "L")
-	prior["zone"] = tftypes.NewValue(tftypes.String, "zone-0")
+	prior := priorAttrs("ami-old", "L")
 
 	resp := planReplace(t, replaceAttrs("ami-new", "L"), prior)
 
@@ -287,13 +296,13 @@ func TestChangedForceNewAttrRequiresReplace(t *testing.T) {
 }
 
 func TestUnchangedForceNewAttrDoesNotRequireReplace(t *testing.T) {
-	if resp := planReplace(t, replaceAttrs("ami-old", "L"), replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
+	if resp := planReplace(t, replaceAttrs("ami-old", "L"), priorAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
 		t.Errorf("RequiresReplace = %v, want empty: the force-new attr did not change", resp.RequiresReplace)
 	}
 }
 
 func TestChangedOrdinaryAttrDoesNotRequireReplace(t *testing.T) {
-	if resp := planReplace(t, replaceAttrs("ami-old", "NEW"), replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
+	if resp := planReplace(t, replaceAttrs("ami-old", "NEW"), priorAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
 		t.Errorf("RequiresReplace = %v, want empty: label is not force-new", resp.RequiresReplace)
 	}
 }
@@ -305,13 +314,65 @@ func TestCreateNeverRequiresReplace(t *testing.T) {
 	}
 }
 
-// An attr absent from config is not a change. Were it treated as one, every
-// unset optional force-new attr would force a replacement on every plan.
-func TestAbsentForceNewAttrIsNotAChange(t *testing.T) {
+// A force-new attr whose planned value is UNKNOWN must replace: unknown differs
+// from a known prior. This is what a cascade through an unresolved reference
+// depends on, and it is what terraform-plugin-framework does
+// (!PlanValue.Equal(StateValue)) and SDKv2 does (RequiresNew on NewComputed).
+func TestUnknownForceNewAttrRequiresReplace(t *testing.T) {
+	prior := priorAttrs("ami-old", "L")
+	cfg := replaceAttrs("ami-old", "L")
+	cfg["image"] = tftypes.NewValue(tftypes.String, tftypes.UnknownValue)
+
+	if resp := planReplace(t, cfg, prior); len(resp.RequiresReplace) != 1 {
+		t.Errorf("RequiresReplace = %v, want the image attr: an unknown planned value differs from a known prior", resp.RequiresReplace)
+	}
+}
+
+// A force-new attr REMOVED from config plans as null against a known prior, so
+// it must replace. The old rule skipped null config and missed this.
+func TestRemovedForceNewAttrRequiresReplace(t *testing.T) {
+	prior := priorAttrs("ami-old", "L")
 	cfg := replaceAttrs("ami-old", "L")
 	cfg["image"] = tftypes.NewValue(tftypes.String, nil)
 
-	if resp := planReplace(t, cfg, replaceAttrs("ami-old", "L")); len(resp.RequiresReplace) != 0 {
-		t.Errorf("RequiresReplace = %v, want empty: image is absent from config, not changed", resp.RequiresReplace)
+	if resp := planReplace(t, cfg, prior); len(resp.RequiresReplace) != 1 {
+		t.Errorf("RequiresReplace = %v, want the image attr: removing a force-new attr is a change", resp.RequiresReplace)
 	}
+}
+
+// The case the deleted scenario was really protecting: an optional+computed
+// force-new attr the config never sets does NOT replace, because its planned
+// value carries the prior forward and the two compare equal. No exclusion is
+// needed for this; comparing the planned value is enough.
+func TestUnsetOptionalComputedForceNewDoesNotRequireReplace(t *testing.T) {
+	prior := priorAttrs("ami-old", "L")
+	cfg := replaceAttrs("ami-old", "L") // zone absent from config
+
+	if resp := planReplace(t, cfg, prior); len(resp.RequiresReplace) != 0 {
+		t.Errorf("RequiresReplace = %v, want empty: zone is carried forward, not changed", resp.RequiresReplace)
+	}
+}
+
+// proposedFrom models what the executor sends as ProposedNewState: the config,
+// with a prior value merged into any computed attr the config does not set.
+// Without that merge an unset optional-computed attr would plan as unknown and
+// look like a change on every plan, which is not what a provider sees.
+func proposedFrom(cfg, prior map[string]tftypes.Value) map[string]tftypes.Value {
+	out := map[string]tftypes.Value{}
+	for k, v := range cfg {
+		out[k] = v
+	}
+	if prior == nil {
+		return out
+	}
+	for _, name := range []string{"zone", "id"} {
+		cv, ok := out[name]
+		if ok && cv.IsKnown() && !cv.IsNull() {
+			continue
+		}
+		if pv, ok := prior[name]; ok && pv.IsKnown() && !pv.IsNull() {
+			out[name] = pv
+		}
+	}
+	return out
 }

@@ -176,15 +176,22 @@ func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResour
 	}
 	return &tfprotov6.PlanResourceChangeResponse{
 		PlannedState:    dv,
-		RequiresReplace: requiresReplace(s.r.Attrs, cfg, prior),
+		RequiresReplace: requiresReplace(s.r.Attrs, out, prior),
 	}, nil
 }
 
-// requiresReplace lists the ForceNew attrs whose configured value differs from
-// the prior value. A null prior is a create, which never replaces; an attr
-// absent from config is not a change, or every unset optional ForceNew attr
-// would force a replacement on every plan.
-func requiresReplace(attrs map[string]Attr, cfg, prior map[string]tftypes.Value) []*tftypes.AttributePath {
+// requiresReplace lists the ForceNew attrs whose PLANNED value differs from the
+// prior value, which is what a real provider compares: terraform-plugin-framework
+// replaces when !PlanValue.Equal(StateValue), and SDKv2 sets RequiresNew on
+// `Old != New || NewComputed`. A null prior is a create, which never replaces.
+//
+// There is deliberately no exclusion for a null or unknown planned value. An
+// unknown differs from a known prior and must replace, which is what a cascade
+// through an unresolved reference depends on; a planned null against a known
+// prior is a ForceNew attr removed from config, which must replace too. An unset
+// optional-computed attr does not replace without any exclusion, because its
+// planned value carries the prior forward and the two compare equal.
+func requiresReplace(attrs map[string]Attr, planned, prior map[string]tftypes.Value) []*tftypes.AttributePath {
 	if prior == nil {
 		return nil
 	}
@@ -193,15 +200,20 @@ func requiresReplace(attrs map[string]Attr, cfg, prior map[string]tftypes.Value)
 		if !a.ForceNew {
 			continue
 		}
-		cv, ok := cfg[name]
-		if !ok || cv.IsNull() || !cv.IsKnown() {
-			continue
-		}
-		if pv, ok := prior[name]; !ok || !cv.Equal(pv) {
+		if !valueAt(planned, name, a.Type).Equal(valueAt(prior, name, a.Type)) {
 			paths = append(paths, tftypes.NewAttributePath().WithAttributeName(name))
 		}
 	}
 	return paths
+}
+
+// valueAt reads an attr from a decoded object, treating an absent key as null so
+// a missing entry and an explicit null compare equal.
+func valueAt(attrs map[string]tftypes.Value, name string, t tftypes.Type) tftypes.Value {
+	if v, ok := attrs[name]; ok {
+		return v
+	}
+	return tftypes.NewValue(t, nil)
 }
 
 // planAttr decides one attribute of the planned state. Values come from

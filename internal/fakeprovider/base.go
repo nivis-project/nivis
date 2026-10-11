@@ -189,13 +189,17 @@ func (s *Server) PlanResourceChange(_ context.Context, req *tfprotov6.PlanResour
 		}
 	}
 	planned := r.planned(cfg, proposedAttrs)
+	plannedAttrs, err := asObject(planned)
+	if err != nil {
+		return nil, err
+	}
 	dv, err := encode(r.objType(), planned)
 	if err != nil {
 		return nil, err
 	}
 	return &tfprotov6.PlanResourceChangeResponse{
 		PlannedState:    dv,
-		RequiresReplace: r.requiresReplace(cfg, priorAttrs),
+		RequiresReplace: r.requiresReplace(plannedAttrs, priorAttrs),
 	}, nil
 }
 
