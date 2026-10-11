@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-11
+
 ### Changed
 - A replacement that would destroy a resource other resources still depend on is
   now refused by name, before anything is destroyed, instead of being attempted
@@ -461,7 +463,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/nivis-project/nivis/releases/tag/v0.9.2
 [0.9.1]: https://github.com/nivis-project/nivis/releases/tag/v0.9.1
 [0.9.0]: https://github.com/nivis-project/nivis/releases/tag/v0.9.0
 [0.8.0]: https://github.com/nivis-project/nivis/releases/tag/v0.8.0
