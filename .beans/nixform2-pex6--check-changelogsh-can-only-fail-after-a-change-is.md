@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-09-14T13:56:47Z
-updated_at: 2026-09-14T13:56:47Z
+updated_at: 2026-10-11T12:18:43Z
 ---
 
 Discovered while shipping `stream-run-progress` (bean nixform2-7gdt) and cutting
@@ -94,3 +94,37 @@ Nothing states this. `docs/RELEASING.md` shows `Changelog: Added datasources
 
 All three are the same family: presence checks that are green at the moment
 they should be red.
+
+
+## A concrete consequence, hit on 2026-10-11 while cutting v0.9.2
+
+Problem 2 is worse than "punishes the natural phrasing": the matching rule
+makes a well-formed changelog IMPOSSIBLE whenever one release carries two
+entries in the same category.
+
+The fingerprint is the first five words of the `Changelog:` value INCLUDING the
+category word, matched against the normalized file. So
+`Changelog: Fixed - replacing a resource no longer...` fingerprints as
+"fixed - replacing a resource", and that string only appears when the bullet
+DIRECTLY FOLLOWS its `### Fixed` heading (the normalizer runs the heading and
+the bullet together).
+
+With two Fixed entries under one `### Fixed` heading, the second can never
+match. The gate therefore requires:
+
+    ### Fixed
+    - first entry
+
+    ### Fixed
+    - second entry
+
+which Keep a Changelog does not allow and which reads as a mistake in the
+published release notes. I merged the duplicate headings before cutting v0.9.1,
+and had to revert that merge before cutting v0.9.2 because the gate failed.
+
+## Fix direction
+
+Fingerprint the entry text WITHOUT the leading category word, and verify the
+category separately by checking which `###` section the matched bullet falls
+under. Both facts are available; conflating them into one substring search is
+what creates the constraint.
