@@ -1,13 +1,13 @@
 ---
 # nixform2-hpmb
 title: A replacement's destroy is attempted even when resources in state still depend on it
-status: todo
+status: completed
 type: bug
 priority: normal
 tags:
     - discovered
 created_at: 2026-10-11T10:02:38Z
-updated_at: 2026-10-11T10:05:43Z
+updated_at: 2026-10-11T11:35:44Z
 ---
 
 Discovered while exploring nixform2-nwnf on 2026-10-11. This is the cheap guard
@@ -58,3 +58,41 @@ Open design point resolved: the check belongs in the driver, not `plan.Plan`.
 `plan.Plan` has the client, schema, node, config and prior, and has neither the
 IR graph nor the state store. `applyOne` and `PlanReport` have both. One
 helper, two callers, so apply and plan cannot disagree.
+
+
+## Summary of Changes
+
+`DAG.Dependents` is the reverse reachability of `Deps`, in IR order so a
+message is stable. `Driver.heldBy` intersects it with the state store, and the
+refusal sits beside the `preventDestroy` guard in `applyOne`, before the
+destroy. `PlanReport` sets `PlanItem.HeldBy` for a replacement, and
+`nivis plan` reports it without failing.
+
+The open design point resolved as recorded: the check needs the IR graph and the
+state store together, `plan.Plan` has neither, and `applyOne` and
+`PlanReport` have both. One helper, two callers.
+
+### A `__derived` holder is covered for free
+
+`graph.Build` already records a derived leaf as a real ordering dependency
+("create after, destroy before") from the refs captured at ingest, so a holder
+reached only through a Nix-computed value is not missed. Pinned by
+`TestDependentsIncludesDerivedHolders`.
+
+### Verification
+
+The three-layer chain from nixform2-nwnf now has a test; it had none.
+Replacing the middle while the top holds it is refused, naming both, with the
+middle resource's prior object intact and state unchanged. Proved to
+discriminate: with the guard removed the test fails with "expected the
+replacement to be refused while top holds middle".
+
+Also covered: a resource nothing depends on still replaces; a dependent declared
+in configuration but absent from state does not block (presence in STATE is the
+test); and the plan reports the blockage while leaving state untouched.
+
+`go test ./...` green including `tests/e2e`, with
+`internal/phase/replace_test.go` and `tests/` unedited and `internal/plan`
+and `internal/tfvalue` untouched.
+
+OpenSpec change: `refuse-a-replacement-that-orphans-dependents`.

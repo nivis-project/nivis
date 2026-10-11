@@ -8,6 +8,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- A replacement that would destroy a resource other resources still depend on is
+  now refused by name, before anything is destroyed, instead of being attempted
+  and failing later with a provider API error. Replacing a resource destroys the
+  old object first, so anything still holding it blocks the replacement; Nivis
+  knows which resources those are and now says so, naming them, rather than
+  relaying a message about a cloud identifier you never typed. `nivis plan`
+  reports the same thing, so it is visible before a run that would change other
+  things on the way to failing. Making such a replacement succeed is separate
+  work.
+
 ### Fixed
 - If the create half of a replacement fails, state no longer claims the
   destroyed resource still exists. Nivis destroyed the old object and relied on

@@ -260,6 +260,12 @@ type PlanItem struct {
 	ID   string
 	Type string
 	Op   plan.Op
+	// HeldBy names the resources that depend on this one and exist in state.
+	// It is set only for a replacement, where it means the replacement cannot
+	// proceed: destroying the prior object is the first half of a replacement,
+	// and these resources are still holding it. Reported rather than failed, so
+	// a user sees it before starting a run that would change other things.
+	HeldBy []string
 }
 
 // PlanReport evaluates the configuration once with the stored outputs injected
@@ -387,6 +393,9 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 				return nil, err
 			}
 			item.Op = pr.Op
+			if pr.Op == plan.OpReplace {
+				item.HeldBy = d.heldBy(g, id)
+			}
 		} else if found {
 			// In state but not resolvable this pass — treat as an update pending.
 			item.Op = plan.OpUpdate
@@ -564,6 +573,17 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		if node.Resource.Meta != nil && node.Resource.Meta.Lifecycle != nil && node.Resource.Meta.Lifecycle.PreventDestroy {
 			return nil, plan.OpReplace, fmt.Errorf("replace of %q requires destroying it, but lifecycle.preventDestroy is set", node.Resource.ID)
 		}
+		// A replacement destroys the prior object. Resources that still hold it
+		// must release it first, and the executor knows which do: the graph says
+		// who references it, the store says which of those exist. Refusing here
+		// is the difference between naming them and relaying a provider's API
+		// error about an id the user never typed.
+		if holders := d.heldBy(g, node.Resource.ID); len(holders) > 0 {
+			return nil, plan.OpReplace, fmt.Errorf(
+				"cannot replace %q: it must be destroyed first, but these resources still depend on it and exist: %s.\n"+
+					"A replacement cannot destroy an object while other resources hold it. Remove or destroy the dependents first, or change the configuration so %q is not replaced",
+				node.Resource.ID, strings.Join(holders, ", "), node.Resource.ID)
+		}
 		if _, err := client.Destroy(ctx, provider.DestroyRequest{
 			Schema:   rs,
 			TypeName: node.Resource.Type,
@@ -586,6 +606,44 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		outs, err := apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, prior, d.Store)
 		return outs, pr.Op, err
 	}
+}
+
+// heldBy reports which resources depend on the given id, directly or
+// transitively, AND are present in state. Those are the resources holding the
+// object a replacement would destroy.
+//
+// Presence in state is the test, not presence in the graph: a resource declared
+// in the configuration but never applied holds nothing. A dependent that exists
+// in the cloud but not in state cannot be known about here, and the provider
+// still refuses those.
+//
+// Order follows the IR, so the message is stable. A graph that cannot be built
+// yields no holders rather than an error: this is a guard on a destructive step,
+// and the caller is already past the point where the graph was validated.
+func (d *Driver) heldBy(g *ir.Graph, id string) []string {
+	dag, err := graph.Build(g)
+	if err != nil {
+		return nil
+	}
+	dependents := dag.Dependents(id)
+	if len(dependents) == 0 {
+		return nil
+	}
+	stored, err := d.Store.List()
+	if err != nil {
+		return nil
+	}
+	exists := make(map[string]bool, len(stored))
+	for _, rs := range stored {
+		exists[rs.ID] = true
+	}
+	var held []string
+	for _, dep := range dependents {
+		if exists[dep] {
+			held = append(held, dep)
+		}
+	}
+	return held
 }
 
 // realiseBuilds realises the build outputs a node's config referenced, in the

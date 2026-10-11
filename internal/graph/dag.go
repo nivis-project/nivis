@@ -115,6 +115,43 @@ func (d *DAG) Deps(id string) []string { return d.deps[id] }
 // Nodes returns the resource ids in IR (deterministic) order.
 func (d *DAG) Nodes() []string { return append([]string{}, d.nodes...) }
 
+// Dependents returns every id that depends on the given one, directly or
+// transitively, in deterministic (IR) order. It is the reverse reachability of
+// Deps: "who is holding this".
+//
+// It answers the question a replacement has to ask before destroying a prior
+// object. Note that a __derived leaf contributes here too, because Build records
+// it as a real ordering dependency ("create after, destroy before") from the
+// refs captured at ingest, so a holder reached through a Nix-computed value is
+// not missed.
+func (d *DAG) Dependents(id string) []string {
+	seen := map[string]bool{}
+	var walk func(string)
+	walk = func(target string) {
+		for _, n := range d.nodes {
+			if seen[n] {
+				continue
+			}
+			for _, dep := range d.deps[n] {
+				if dep == target {
+					seen[n] = true
+					walk(n)
+					break
+				}
+			}
+		}
+	}
+	walk(id)
+
+	var out []string
+	for _, n := range d.nodes { // IR order, so a message is stable
+		if seen[n] && n != id {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
 // ApplyOrder returns ids in a deterministic dependency order (every resource
 // after the ones it depends on) via Kahn's algorithm over the ready set.
 func (d *DAG) ApplyOrder() []string {

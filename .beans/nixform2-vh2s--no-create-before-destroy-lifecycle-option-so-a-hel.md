@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-10-11T10:02:38Z
-updated_at: 2026-10-11T10:02:38Z
+updated_at: 2026-10-11T11:31:42Z
 ---
 
 Discovered while exploring nixform2-nwnf on 2026-10-11.
@@ -49,3 +49,12 @@ the old object last.
 - Crash safety: a run interrupted between the create and the deferred destroy
   must not leak the old object silently. nixform2-sw6c establishes the invariant
   this has to honour.
+
+
+## Note from nixform2-hpmb (2026-10-11)
+
+The refusal message shipped by nixform2-hpmb deliberately does NOT name
+`createBeforeDestroy`, because it does not exist. When this lands, that
+message should name it as the remedy: it is in `applyOne`'s OpReplace branch
+and reads "Remove or destroy the dependents first, or change the configuration
+so X is not replaced".

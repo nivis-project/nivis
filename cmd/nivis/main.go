@@ -342,6 +342,7 @@ func planCmd() *cobra.Command {
 			r.Close()
 			out := newOutput(cmd.OutOrStdout())
 			changes := 0
+			var blocked []phase.PlanItem
 			for _, it := range items {
 				switch it.Op {
 				case plan.OpNoop:
@@ -352,10 +353,20 @@ func planCmd() *cobra.Command {
 				case plan.OpReplace:
 					out.replace(it.ID, it.Type)
 					changes++
+					if len(it.HeldBy) > 0 {
+						blocked = append(blocked, it)
+					}
 				default:
 					out.create(it.ID, it.Type)
 					changes++
 				}
+			}
+			// A replacement destroys the prior object first, so a resource that
+			// still holds it blocks the apply. Said here, it is seen before a run
+			// that would change other things on the way to failing.
+			for _, it := range blocked {
+				out.printf("\n! %s cannot be replaced: %s still depend(s) on it and exist(s).\n", it.ID, strings.Join(it.HeldBy, ", "))
+				out.printf("  A replacement cannot destroy an object while other resources hold it.\n")
 			}
 			if changes == 0 {
 				out.printf("\nNo changes. %d resource(s) up to date.\n", len(items))
