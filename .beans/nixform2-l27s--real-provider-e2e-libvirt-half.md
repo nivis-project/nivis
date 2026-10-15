@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-10-15T19:45:43Z
-updated_at: 2026-10-15T19:45:43Z
+updated_at: 2026-10-15T19:52:36Z
 parent: nixform2-q29p
 ---
 
@@ -42,3 +42,18 @@ half would carry more of the weight.
 - The two providers do not naturally depend on each other. Either a synthetic
   Nix-side consumer combining both outputs (what the headline test already
   does), or postgres inside the libvirt guest (nested-nested, do not).
+
+
+## No write-only attributes here (measured 2026-10-15)
+
+libvirt has none: 0 hits for `WriteOnly` in the provider source, and 0 in the
+12,430 lines of domain docs. The only "sensitive" mention is
+`launch_security`, a feature description rather than an attribute flag.
+
+That fits what it manages. Its whole resource set is infrastructure shape, not
+credentials: `cloudinit_disk`, `combustion`, `domain`, `ignition`,
+`network`, `pool`, `volume`. A local hypervisor issues no secrets.
+
+So the division of labour with the postgres half is now measured rather than
+asserted: libvirt brings nesting, the cascade and async; it contributes nothing
+to nixform2-l0th or to nixform2-3utj requirement 1.

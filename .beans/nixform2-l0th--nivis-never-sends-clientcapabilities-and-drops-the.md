@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-10-15T19:47:50Z
-updated_at: 2026-10-15T19:47:50Z
+updated_at: 2026-10-15T19:52:36Z
 blocking:
     - nixform2-3utj
 ---
@@ -60,3 +60,23 @@ Whether `aws_iam_access_key.secret` and `ses_smtp_password_v4` are declared
 write-only by the AWS provider. If they are, 3utj's hardest requirement is
 mostly a matter of honouring the protocol. If they are not, seeding may still be
 needed for them specifically, and that is a much narrower feature.
+
+
+## Vehicles for testing this (2026-10-15)
+
+| provider  | write-only                                  |
+|-----------|---------------------------------------------|
+| postgres  | `password_wo`, confirmed in schema source |
+| libvirt   | none: 0 in source, 0 in 12,430 doc lines    |
+| vault     | 66 code-search hits                         |
+| minio     | 23                                          |
+| keycloak  | 13                                          |
+
+The last three are raw code-search counts including tests and non-schema uses,
+so they indicate the feature is used rather than how many attributes declare it.
+Only postgres is confirmed at the schema level.
+
+Postgres is therefore the vehicle via nixform2-jkeh. If a second is wanted once
+the behaviour is understood, vault looks richest and minio was already the
+runner-up candidate in nixform2-q29p for its S3 semantics. Verify at the schema
+level before relying on either.
