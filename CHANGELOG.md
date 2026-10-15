@@ -8,6 +8,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- A state read that fails now reports the backend error instead of being
+  treated as "there is no state". A denied credential, an unreachable bucket or
+  a transient backend error made `nivis plan` report every resource as a create
+  and `nivis output` report its outputs as unresolved, naming neither the
+  backend nor the failure. Both now fail with the backend's own error. The same
+  applied to the guard that refuses a replacement whose destroy would orphan
+  dependents: unable to read state it concluded nothing depended on the
+  resource, so it now refuses rather than proceeding. A first run with no state
+  document is unaffected.
+
 ## [0.9.2] - 2026-10-11
 
 ### Changed

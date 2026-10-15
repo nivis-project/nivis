@@ -278,11 +278,17 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 		d.Ledger = ledger.New()
 	}
 	// Seed the ledger from stored state so refs to already-applied resources
-	// resolve (a re-plan of an applied graph is then fully known).
-	if stored, err := d.Store.List(); err == nil {
-		for _, rs := range stored {
-			d.Ledger.Append(rs.ID, rs.Attrs)
-		}
+	// resolve (a re-plan of an applied graph is then fully known). A failure
+	// here is reported rather than skipped: "I cannot read your state" and
+	// "there is no state" lead to opposite conclusions, and silently choosing
+	// the second reports every resource as a create. A state document that does
+	// not exist yet is not a failure; the store returns it as empty.
+	stored, err := d.Store.List()
+	if err != nil {
+		return nil, fmt.Errorf("read state to seed the outputs ledger: %w", err)
+	}
+	for _, rs := range stored {
+		d.Ledger.Append(rs.ID, rs.Attrs)
 	}
 	irJSON, err := d.evalPhase(ctx, 0)
 	if err != nil {
@@ -394,7 +400,11 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 			}
 			item.Op = pr.Op
 			if pr.Op == plan.OpReplace {
-				item.HeldBy = d.heldBy(g, id)
+				held, herr := d.heldBy(g, id)
+				if herr != nil {
+					return nil, herr
+				}
+				item.HeldBy = held
 			}
 		} else if found {
 			// In state but not resolvable this pass — treat as an update pending.
@@ -418,10 +428,12 @@ func (d *Driver) ResolveOutputs(ctx context.Context) (map[string]interface{}, er
 	if d.Ledger == nil {
 		d.Ledger = ledger.New()
 	}
-	if stored, err := d.Store.List(); err == nil {
-		for _, rs := range stored {
-			d.Ledger.Append(rs.ID, rs.Attrs)
-		}
+	stored, err := d.Store.List()
+	if err != nil {
+		return nil, fmt.Errorf("read state to seed the outputs ledger: %w", err)
+	}
+	for _, rs := range stored {
+		d.Ledger.Append(rs.ID, rs.Attrs)
 	}
 	irJSON, err := d.Eval.Eval(ctx, d.Ledger)
 	if err != nil {
@@ -578,7 +590,13 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		// who references it, the store says which of those exist. Refusing here
 		// is the difference between naming them and relaying a provider's API
 		// error about an id the user never typed.
-		if holders := d.heldBy(g, node.Resource.ID); len(holders) > 0 {
+		holders, err := d.heldBy(g, node.Resource.ID)
+		if err != nil {
+			return nil, plan.OpReplace, fmt.Errorf(
+				"cannot replace %q: its dependents could not be determined, so destroying it is not safe: %w",
+				node.Resource.ID, err)
+		}
+		if len(holders) > 0 {
 			return nil, plan.OpReplace, fmt.Errorf(
 				"cannot replace %q: it must be destroyed first, but these resources still depend on it and exist: %s.\n"+
 					"A replacement cannot destroy an object while other resources hold it. Remove or destroy the dependents first, or change the configuration so %q is not replaced",
@@ -617,21 +635,23 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 // in the cloud but not in state cannot be known about here, and the provider
 // still refuses those.
 //
-// Order follows the IR, so the message is stable. A graph that cannot be built
-// yields no holders rather than an error: this is a guard on a destructive step,
-// and the caller is already past the point where the graph was validated.
-func (d *Driver) heldBy(g *ir.Graph, id string) []string {
+// Order follows the IR, so the message is stable. A failure to answer is an
+// ERROR, not an empty list: this guards a destructive step, and not knowing
+// whether anything holds the object is not the same as knowing nothing does.
+// Refusing wrongly costs a retry; proceeding wrongly destroys live
+// infrastructure.
+func (d *Driver) heldBy(g *ir.Graph, id string) ([]string, error) {
 	dag, err := graph.Build(g)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("build the dependency graph: %w", err)
 	}
 	dependents := dag.Dependents(id)
 	if len(dependents) == 0 {
-		return nil
+		return nil, nil
 	}
 	stored, err := d.Store.List()
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("read state to find what depends on %q: %w", id, err)
 	}
 	exists := make(map[string]bool, len(stored))
 	for _, rs := range stored {
@@ -643,7 +663,7 @@ func (d *Driver) heldBy(g *ir.Graph, id string) []string {
 			held = append(held, dep)
 		}
 	}
-	return held
+	return held, nil
 }
 
 // realiseBuilds realises the build outputs a node's config referenced, in the
