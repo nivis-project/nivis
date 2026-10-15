@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-10-08T21:33:49Z
-updated_at: 2026-10-08T21:33:49Z
+updated_at: 2026-10-15T19:10:44Z
 ---
 
 Discovered while shipping `correct-env-constraints` (bean nixform2-irf4).
@@ -43,3 +43,12 @@ reason it was parked has evaporated. This is judgement per bean, not a sed.
 A wrong environment claim in the instruction file produced confident wrong
 plans. Correcting the file does not retract the plans already made on it. The
 cost of nixform2-irf4 is mostly here, in the deferrals, not in the sentence.
+
+
+## Progress
+
+- nixform2-znyj: done 2026-10-15. Re-scoped to its cheap tier, expensive tier
+  superseded by nixform2-q29p, and the false egress claim struck with the
+  measured replacement recorded.
+
+Still to re-read: nixform2-m83a, nixform2-8umq, nixform2-28sn.

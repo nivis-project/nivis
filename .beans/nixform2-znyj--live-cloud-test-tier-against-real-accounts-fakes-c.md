@@ -3,8 +3,9 @@
 title: Live cloud test tier against real accounts (fakes cannot prove AWS agrees)
 status: todo
 type: feature
+priority: normal
 created_at: 2026-09-24T15:59:10Z
-updated_at: 2026-09-24T15:59:10Z
+updated_at: 2026-10-15T19:10:44Z
 ---
 
 The hermetic suite proves MECHANISM. It cannot prove that the cloud agrees,
@@ -78,3 +79,49 @@ that worries me most.
 
 The expensive tier belongs with `nixform2-2vc3` (M2 real provider support). This
 bean is about establishing the cheap tier and the split above.
+
+
+## Re-scoped 2026-10-15: cheap tier only
+
+The expensive tier of this bean (real providers creating real infrastructure) is
+**superseded by nixform2-q29p**, which drives nivis against real third-party
+providers whose backends run inside a nixosTest: hermetic, in CI, feedback at
+commit time, no credentials, no spend, no teardown risk. It beats a scheduled
+live suite on every axis for the failure mode this bean was written about, and
+it answers this bean's own worry directly: "a scheduled suite nobody reads is
+worse than none, because it manufactures confidence."
+
+That tier was deferred here to nixform2-2vc3, which is now completed, so it was
+unowned and drifting.
+
+**What stays, and why it is not covered by q29p.** The cheap tier is real
+S3/KMS/STS with FAKE providers, testing nivis's own STATE BACKEND rather than
+any provider. The two cases this bean was written from are both backend work:
+
+- nixform2-rlbz: SSE-KMS deny policy, derived by reading terraform-aws-s3
+  source. If the Null condition had been misread, internal/fakes3 would have
+  agreed and every real write would have 403'd.
+- nixform2-nd2c: assume-role, with internal/fakests issuing the SigV4 key.
+
+Nothing in libvirt or postgres touches SigV4, KMS key policies or STS. MinIO
+would narrow the gap (real S3 API, real SigV4) without closing it, because its
+KMS is not AWS KMS semantics and its STS is not AWS STS, which are exactly these
+two cases.
+
+The golden-corpus idea stays here too: it targets AWS fidelity, which is this
+bean's axis.
+
+## Correction: the egress constraint cited above is false
+
+"This environment cannot run it. CLAUDE.md section 6: egress is allowlisted and
+the OpenTofu registry and Nix cache are unreachable."
+
+Both are reachable and were measured on 2026-10-09: cache.nixos.org,
+registry.opentofu.org, registry.terraform.io and proxy.golang.org all answer,
+and a provider artifact downloads end to end from its GitHub release. CLAUDE.md
+section 6 was corrected in commit caf8d75 (bean nixform2-irf4). This bean was
+one of the four nixform2-vy9f names as resting on the false claim.
+
+So the cost reasoning above needs re-reading: "live tests can never be part of
+the normal loop" was argued partly from a constraint that does not exist. What
+remains true is the money, the teardown risk and the credentials.
