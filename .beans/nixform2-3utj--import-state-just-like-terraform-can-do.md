@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T20:50:59Z
+updated_at: 2026-10-15T21:30:37Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -287,3 +287,74 @@ Once it lands, an imported Terraform state document can carry the
 provider happens to be configured. That assumption is exactly the "looks like
 it worked, first apply destroys production" failure this bean exists to
 prevent.
+
+
+## Every open question answered (2026-10-15)
+
+### The two in this bean
+
+**"Does refresh populate attributes correctly from a minimal attrs containing
+only the identity?"** It must, by construction, because that IS how import
+works. `schema.ImportStatePassthroughContext` is literally
+`return []*ResourceData{d}, nil`: only the ID is set. OpenTofu then refreshes
+(`node_resource_import.go:269`, `riNode.refresh(...)`). So the flow is
+import -> stub carrying little more than the id -> read -> full attributes ->
+state. A provider that cannot populate from the identity has broken import, not
+nivis.
+
+**"What should happen when a resource exists but its configuration differs from
+reality?"** Import reflects reality, and the next plan shows the drift. That is
+correct, and it is what this bean suspected. The protection against a WRONG
+import is not drift handling but an existence check, below.
+
+### Four more the exploration surfaced
+
+**An undeclared id must be refused.** Both `PlanReport` and `destroy.Run`
+iterate the CONFIG graph (`g.Order`, `dag.DestroyOrder()` with a
+`g.Nodes[id]` lookup that `continue`s on a miss). So a state entry whose id
+is not in the configuration is never planned, never applied, never destroyed. It
+appears in `nivis state list` and nowhere else. Writing one would be "an
+import that looks like it worked" in its quietest form: the user believes it is
+managed and nothing will ever touch it.
+
+**A multi-resource response must be refused.** `ImportResourceState` returns a
+LIST of `ImportedResource`, each with its own `TypeName`. OpenTofu invents
+addresses for the extras (overriding the type, suffixing the name `-1`,
+`-2`). nivis cannot: an invented id is not in the Nix config, so by the
+paragraph above it would be inert the moment it was written. Copying Terraform
+here would manufacture the exact silent failure requirement 4 exists to prevent.
+
+**Seeded attributes go AFTER the refresh.** Forced, not chosen: the refresh
+returns the provider's full view, which by definition excludes the
+never-returned attributes, so seeding first would be overwritten.
+
+**A non-existent object must be refused, NOT treated as a create.** OpenTofu
+checks after the refresh:
+
+    if state.Value.IsNull() {
+        "Cannot import non-existent remote object ... Only pre-existing
+         objects can be imported; check that the id is correct"
+    }
+
+This collides with nivis's existing behaviour. `Driver.priorState` turns an
+empty read into "deleted out of band" and plans a CREATE. Import must not
+reuse that path: for an import, an empty read means the id was wrong, and
+creating a duplicate of something that may well exist is the destructive
+outcome this bean is written against.
+
+### Requirement 3 is simpler than feared
+
+"Partial failure has to leave the state coherent" needs no machinery. Each
+import either writes one complete entry or none, so there is no partial entry to
+be coherent about. The successful ones stay imported; the failed ones are
+absent.
+
+### Prerequisites now all closed
+
+- nixform2-j02d: a plan can no longer silently report creates when the backend
+  is unreadable, so requirement 4's acceptance test is trustworthy.
+- nixform2-67gg: a schema version is recorded, so an imported Terraform document
+  can carry the `schema_version` it came with. NOTE nixform2-ff03: `nivis
+  refresh` still skips the upgrade and drops the version, and import's flow
+  ends in a refresh, so that bean should land first or import inherits the gap.
+- nixform2-jkeh: the harness exists for testing all of it.
