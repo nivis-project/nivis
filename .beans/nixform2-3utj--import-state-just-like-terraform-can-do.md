@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T21:41:02Z
+updated_at: 2026-10-15T21:51:13Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -411,3 +411,13 @@ OpenTofu's invented `name-1`, `name-2` addresses look more convenient and
 are not: in nivis they would match nothing in the config and be silently
 unmanaged, and even in Terraform the user must still go and write the
 configuration for them or the next plan proposes a destroy.
+
+
+## The refresh path is now safe (2026-10-15)
+
+nixform2-ff03 is fixed. `nivis refresh` upgrades stored state through the
+provider before reading it, refuses a version newer than the provider's, and
+records the current version. That matters here because import's flow ends in a
+refresh, so import would otherwise have inherited the gap.
+
+Nothing in this bean is open. It is ready to propose.

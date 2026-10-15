@@ -1,13 +1,13 @@
 ---
 # nixform2-ff03
 title: nivis refresh does not upgrade stored state, and drops the recorded schema version
-status: todo
+status: completed
 type: bug
 priority: high
 tags:
     - discovered
 created_at: 2026-10-15T21:30:11Z
-updated_at: 2026-10-15T21:30:11Z
+updated_at: 2026-10-15T21:54:08Z
 ---
 
 Found 2026-10-15 while exploring import (nixform2-3utj), one hour after
@@ -56,3 +56,39 @@ rather than letting it default to zero and relying on absent-means-current.
 Whether any other path writes `state.ResourceState` without the version.
 `internal/apply` sets it; the driver's replace path deletes rather than writes.
 A grep for `state.ResourceState{` is the audit.
+
+
+## Summary of Changes
+
+`Driver.upgradeStored` became `plan.UpgradeStored`, beside `SchemaFor`,
+which was already the precedent for a helper both the driver and refresh use. It
+takes the node plus the stored version and attributes, so `internal/plan`
+gains no dependency on `internal/state`. The driver's schema-version tests
+pass untouched, which is what proves the relocation was a relocation.
+
+`internal/refresh` now upgrades before reading, refuses a recorded version
+newer than the provider's, and records the current version explicitly rather
+than letting it default to zero.
+
+### The part that was specified rather than discovered
+
+Inserting the upgrade without moving `state.Drifted` would have introduced a
+NEW defect in the same change that fixed this one: comparing the pre-upgrade
+attributes against a fresh read reports the provider's own rename as
+infrastructure having changed underneath the user. The design called it out
+because it is invisible until the code is written, and the test fails loudly if
+anyone moves the comparison back: `drift reported for [p.t.r]` for a resource
+nothing had touched.
+
+### Verification
+
+All three key tests proved to discriminate. With the upgrade removed,
+`upgrade calls = 0, want 1` and the refusal does not fire. With drift compared
+pre-upgrade, the false alarm appears.
+
+Six new tests beside six pre-existing ones, all passing, none edited.
+`tests/` untouched. The audit this bean asked for still shows exactly two
+writers of `state.ResourceState`, and both now record a version, so the pair
+is closed.
+
+OpenSpec change: `refresh-honours-schema-versions`.

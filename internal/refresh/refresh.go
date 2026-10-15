@@ -54,7 +54,7 @@ func Run(ctx context.Context, g *ir.Graph, mgr Manager, store state.Store, opts 
 			Kind: progress.NodeStart, ID: rs.ID, Type: rs.Type, Refresh: true,
 		})
 		started := time.Now()
-		newAttrs, err := refreshOne(ctx, g, mgr, node, rs)
+		newAttrs, schemaVersion, upgraded, err := refreshOne(ctx, g, mgr, node, rs)
 		if err != nil {
 			err = fmt.Errorf("refresh %q: %w", rs.ID, err)
 			progress.Emit(opts.Observer, progress.Event{
@@ -63,8 +63,13 @@ func Run(ctx context.Context, g *ir.Graph, mgr Manager, store state.Store, opts 
 			})
 			return res, err
 		}
-		drifted := state.Drifted(rs.Attrs, newAttrs)
-		if err := store.Set(state.ResourceState{ID: rs.ID, Type: rs.Type, Attrs: newAttrs}); err != nil {
+		// Compare the UPGRADED attributes, not rs.Attrs: a schema upgrade changes
+		// the shape by design, and comparing the old shape against a fresh read
+		// reports the provider's rename as drift.
+		drifted := state.Drifted(upgraded, newAttrs)
+		if err := store.Set(state.ResourceState{
+			ID: rs.ID, Type: rs.Type, SchemaVersion: schemaVersion, Attrs: newAttrs,
+		}); err != nil {
 			err = fmt.Errorf("refresh %q: write state: %w", rs.ID, err)
 			progress.Emit(opts.Observer, progress.Event{
 				Kind: progress.NodeDone, ID: rs.ID, Type: rs.Type, Refresh: true,
@@ -84,23 +89,36 @@ func Run(ctx context.Context, g *ir.Graph, mgr Manager, store state.Store, opts 
 	return res, nil
 }
 
-func refreshOne(ctx context.Context, g *ir.Graph, mgr Manager, node *ir.ResourceNode, stored state.ResourceState) (map[string]interface{}, error) {
+// refreshOne returns the provider's current view, the schema version it
+// declares, and the stored attributes AFTER any upgrade (for the drift
+// comparison).
+func refreshOne(ctx context.Context, g *ir.Graph, mgr Manager, node *ir.ResourceNode, stored state.ResourceState) (map[string]interface{}, int64, map[string]interface{}, error) {
 	prov := g.Providers[node.Resource.Provider]
 	client, err := mgr.Client(node.Resource.Provider, prov.Source, prov.Config)
 	if err != nil {
-		return nil, err
+		return nil, 0, nil, err
 	}
 	rs, err := plan.SchemaFor(ctx, client, node.Resource.Type)
 	if err != nil {
-		return nil, err
+		return nil, 0, nil, err
+	}
+	// Upgrade before reading. Refresh is the command a user reaches for when
+	// they suspect state is stale, which is the same moment a provider is
+	// likely to have been upgraded, so this is the path where it matters most.
+	upgraded, err := plan.UpgradeStored(ctx, client, rs, node, stored.SchemaVersion, stored.Attrs)
+	if err != nil {
+		return nil, 0, nil, err
 	}
 	out, err := client.Read(ctx, provider.ReadRequest{
 		Schema:   rs,
 		TypeName: node.Resource.Type,
-		Stored:   stored.Attrs,
+		Stored:   upgraded,
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, nil, err
 	}
-	return out.Attrs, nil
+	// The UPGRADED attributes go back to the caller as well: drift must be
+	// judged against them, never against the pre-upgrade shape, or a provider's
+	// own rename reads as infrastructure having changed underneath the user.
+	return out.Attrs, rs.Version, upgraded, nil
 }

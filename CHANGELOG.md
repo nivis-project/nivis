@@ -9,6 +9,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- `nivis refresh` now upgrades stored state through the provider when the
+  provider's schema has moved on, instead of reading it as if nothing had
+  changed. Refresh is the command you reach for when you suspect state is
+  stale, which is the same moment a provider has usually been upgraded, so it
+  was the one path where the handling mattered most and was missing. A
+  refreshed resource also records the provider's current schema version, and a
+  provider's own attribute rename is no longer reported as drift.
+
+### Fixed
 - Upgrading a provider no longer silently mangles stored state. Nivis never
   recorded which schema version wrote a resource and never asked a provider to
   upgrade it, so attributes stored against an old schema were encoded against

@@ -560,7 +560,7 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	if stored, found, err := d.Store.Get(node.Resource.ID); err != nil {
 		return nil, plan.OpCreate, fmt.Errorf("read prior state for %q: %w", node.Resource.ID, err)
 	} else if found {
-		attrs, err := d.upgradeStored(ctx, client, rs, node, stored)
+		attrs, err := plan.UpgradeStored(ctx, client, rs, node, stored.SchemaVersion, stored.Attrs)
 		if err != nil {
 			return nil, plan.OpCreate, err
 		}
@@ -628,43 +628,6 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		outs, err := apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, prior, d.Store)
 		return outs, pr.Op, err
 	}
-}
-
-// upgradeStored brings a stored object up to the schema the provider declares
-// now, and is the one place that compares the two versions.
-//
-// An ABSENT recorded version means the state is already current, not version
-// zero: a document written before the field existed carries none, and asking a
-// provider to upgrade 0 -> N on current state invites it to do anything at all.
-//
-// A version NEWER than the provider's is refused rather than repaired. A
-// provider cannot downgrade its own state, so continuing would encode newer
-// attributes against an older schema: the same silent discarding, in the
-// direction a user has usually caused by pinning a provider backwards.
-func (d *Driver) upgradeStored(
-	ctx context.Context, client provider.Client, rs provider.ResourceSchema,
-	node *ir.ResourceNode, stored state.ResourceState,
-) (map[string]interface{}, error) {
-	if stored.SchemaVersion == 0 || stored.SchemaVersion == rs.Version {
-		return stored.Attrs, nil
-	}
-	if stored.SchemaVersion > rs.Version {
-		return nil, fmt.Errorf(
-			"state for %q was written at schema version %d by a newer %s provider than the one configured, which declares version %d.\n"+
-				"A provider cannot downgrade its own state. Upgrade the provider to work with this state",
-			node.Resource.ID, stored.SchemaVersion, node.Resource.Provider, rs.Version)
-	}
-	res, err := client.UpgradeState(ctx, provider.UpgradeStateRequest{
-		Schema:      rs,
-		TypeName:    node.Resource.Type,
-		FromVersion: stored.SchemaVersion,
-		Stored:      stored.Attrs,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("upgrade state for %q from schema version %d to %d: %w",
-			node.Resource.ID, stored.SchemaVersion, rs.Version, err)
-	}
-	return res.Attrs, nil
 }
 
 // heldBy reports which resources depend on the given id, directly or

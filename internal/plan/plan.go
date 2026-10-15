@@ -47,6 +47,49 @@ func SchemaFor(ctx context.Context, client provider.Client, resourceType string)
 	return client.GetSchema(ctx, resourceType)
 }
 
+// UpgradeStored brings a stored resource's attributes up to the schema the
+// provider declares now, and is the ONE place that compares the two versions.
+//
+// It lives here, beside SchemaFor, because both the phase driver and the refresh
+// path read stored state and both need this. It was a method on the driver
+// first, and the refresh path then went two hours without it (bean
+// nixform2-ff03); a second copy would have made the next divergence quieter
+// rather than louder.
+//
+// An ABSENT recorded version (zero) means the state is already current, not
+// version zero: a document written before the field existed carries none, and
+// asking a provider to upgrade 0 -> N on current state invites it to do
+// anything at all.
+//
+// A version NEWER than the provider's is refused rather than repaired. A
+// provider cannot downgrade its own state, so continuing would encode newer
+// attributes against an older schema.
+func UpgradeStored(
+	ctx context.Context, client provider.Client, rs provider.ResourceSchema,
+	node *ir.ResourceNode, storedVersion int64, storedAttrs map[string]interface{},
+) (map[string]interface{}, error) {
+	if storedVersion == 0 || storedVersion == rs.Version {
+		return storedAttrs, nil
+	}
+	if storedVersion > rs.Version {
+		return nil, fmt.Errorf(
+			"state for %q was written at schema version %d by a newer %s provider than the one configured, which declares version %d.\n"+
+				"A provider cannot downgrade its own state. Upgrade the provider to work with this state",
+			node.Resource.ID, storedVersion, node.Resource.Provider, rs.Version)
+	}
+	res, err := client.UpgradeState(ctx, provider.UpgradeStateRequest{
+		Schema:      rs,
+		TypeName:    node.Resource.Type,
+		FromVersion: storedVersion,
+		Stored:      storedAttrs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upgrade state for %q from schema version %d to %d: %w",
+			node.Resource.ID, storedVersion, rs.Version, err)
+	}
+	return res.Attrs, nil
+}
+
 // Plan plans a ready resource with its resolved config (unresolved refs encoded
 // as unknown by the backend) against its prior state (nil for a new resource).
 // It returns the planned state for apply, the implied operation, and a
