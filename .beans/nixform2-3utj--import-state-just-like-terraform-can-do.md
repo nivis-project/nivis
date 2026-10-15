@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T21:30:37Z
+updated_at: 2026-10-15T21:41:02Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -358,3 +358,56 @@ absent.
   refresh` still skips the upgrade and drops the version, and import's flow
   ends in a refresh, so that bean should land first or import inherits the gap.
 - nixform2-jkeh: the harness exists for testing all of it.
+
+
+## The multi-resource refusal, and why it costs little (2026-10-15)
+
+Refusing a multi-resource import response reads like a capability gap next to
+OpenTofu, which invents addresses for the extras. It is not, for two reasons.
+
+### It is rare
+
+Measured in `terraform-provider-aws`: `ImportStatePassthroughContext`
+appears 864 times; the multi-return pattern (`append(results`) appears about
+25 times, and some of those are not importers. S3 bucket and CloudFront
+distribution both use the single-import path. Route53 zone and IAM user could
+not be checked (the files have moved and the API rate limit was reached), so
+treat the exact figure as indicative rather than exact. The ratio is the point.
+
+### nivis changes the question anyway
+
+Every imported resource must be declared in the Nix configuration regardless,
+because an undeclared state entry is never planned, applied or destroyed. So a
+migration writes Nix for every resource either way, and import fills state for
+things already declared.
+
+That splits the multi-resource case in two:
+
+- the sub-objects have their own import ids: declare each, import each. No loss,
+  and it is where Terraform's own guidance now points.
+- the sub-objects are reachable ONLY through the parent: this is the one case
+  where refusing costs something, and it is a subset of an already rare pattern.
+
+### The alternative is already shipped, and this bean named it
+
+"state push plus refresh can already do this today with hand-written state
+documents." For the rare parent-only case: declare the resources in Nix, write
+their state entries with `state push`, and `refresh` fills the attributes
+from the provider.
+
+So the refusal is not "nivis cannot import this". It is "the safe path will
+not invent addresses for you; here is what came back, and here is the
+lower-level tool".
+
+### Design consequence for the message
+
+The refusal SHALL carry the extras' type names and attributes, not just a count.
+That turns a dead end into a one-step manual path: the user sees exactly what the
+provider returned, declares those resources, and either imports them
+individually or pushes their state. Naming `state push` in the message is part
+of the design rather than a docs afterthought.
+
+OpenTofu's invented `name-1`, `name-2` addresses look more convenient and
+are not: in nivis they would match nothing in the config and be silently
+unmanaged, and even in Terraform the user must still go and write the
+configuration for them or the next plan proposes a destroy.
