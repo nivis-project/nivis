@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T19:47:35Z
+updated_at: 2026-10-15T19:55:08Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -219,3 +219,48 @@ write-only but is nonetheless never returned, which is the
 `aws_iam_access_key.secret` case. Whether AWS declares it write-only is worth
 checking before deciding, and is now a concrete question rather than a design
 preference.
+
+
+## Correction: write-only does NOT cover the AWS case (2026-10-15)
+
+The section above concluded that requirement 1 "resolves toward the protocol"
+and that seeding would be a second mechanism for a solved problem. That is right
+for postgres's `password_wo` and WRONG for the case this bean was written
+from.
+
+`terraform-provider-aws`, `internal/service/iam/access_key.go`:
+
+    "secret":               { Type: TypeString, Computed: true, Sensitive: true },
+    "ses_smtp_password_v4": { Type: TypeString, Computed: true, Sensitive: true },
+
+Computed and Sensitive, NOT WriteOnly. `Read` sets only `create_date`,
+`status` and `user`; it never restores either secret.
+
+The provider's own test annotation at line 36 admits the problem:
+
+    // @Testing(importIgnore="...;secret;ses_smtp_password_v4;encrypted_ses_smtp_password_v4")
+
+AWS's own test framework special-cases these on import because they do not come
+back.
+
+### Two different shapes, and only one is in the protocol
+
+| | write-only (`password_wo`) | computed-and-gone (`secret`) |
+|---|---|---|
+| value comes from | configuration | the provider, once, at create |
+| declared in schema | yes, `WriteOnly` | nothing marks it |
+| after an import | correctly absent from state | silently absent, nothing says why |
+
+Supporting write-only (nixform2-l0th) remains worth doing on its own merits, but
+it would not fix importing an `aws_iam_access_key`. Nothing in the schema tells
+a client that `secret` can never be read back: the information is not in the
+protocol at all.
+
+So seeding, or something like it, IS needed for requirement 1. The narrower
+question that remains is whether nivis can distinguish the two cases
+automatically, or whether the manifest has to say which attributes are seeded.
+Given this bean's own "prefer refusing over guessing", the manifest saying so
+explicitly looks right.
+
+Cost note: answering this needed no credentials. A provider schema is readable
+without configuring it, and in this case the answer was in the provider source.

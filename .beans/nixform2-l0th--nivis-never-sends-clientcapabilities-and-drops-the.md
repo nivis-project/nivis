@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-10-15T19:47:50Z
-updated_at: 2026-10-15T19:52:36Z
+updated_at: 2026-10-15T19:55:08Z
 blocking:
     - nixform2-3utj
 ---
@@ -80,3 +80,18 @@ Postgres is therefore the vehicle via nixform2-jkeh. If a second is wanted once
 the behaviour is understood, vault looks richest and minio was already the
 runner-up candidate in nixform2-q29p for its S3 semantics. Verify at the schema
 level before relying on either.
+
+
+## Scope: this does not cover the AWS import case (2026-10-15)
+
+Checked while sizing nixform2-3utj. `aws_iam_access_key.secret` and
+`ses_smtp_password_v4` are `Computed: true, Sensitive: true` and NOT
+`WriteOnly` (`terraform-provider-aws`,
+`internal/service/iam/access_key.go`). `Read` never restores them, and the
+provider's own test annotation lists them under `importIgnore`.
+
+So supporting write-only is worth doing for its own reasons (a provider that
+declares it expects the client to have opted in, and nivis currently compares
+and stores such attributes like any other), but it does not solve 3utj
+requirement 1. That case is a different shape: a value the provider produced
+once and will never return, with nothing in the schema marking it.
