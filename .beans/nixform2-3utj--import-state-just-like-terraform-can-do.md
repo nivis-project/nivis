@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T19:17:57Z
+updated_at: 2026-10-15T19:47:35Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -178,3 +178,44 @@ Combined with the finding above (nivis never calls `UpgradeResourceState`,
 `state.ResourceState` records no version), importing a Terraform state written
 at an older provider schema stays unexercised. It needs a provider with a
 version bump, or it is a known hole to state plainly in the proposal.
+
+
+## Acceptance test prerequisite closed (2026-10-15)
+
+nixform2-j02d is fixed (commit 76779d7). Requirement 4 above ("after importing,
+plan must report no changes") now rests on a plan that cannot silently report
+every resource as a create when the state backend is unreadable. Before this, a
+denied credential during import verification would have looked exactly like an
+import that did nothing.
+
+
+## The write-only question is answered (2026-10-15)
+
+Spiked against the real `cyrilgdn/postgresql` provider via nixform2-jkeh.
+
+**The protocol already solves requirement 1, and nivis ignores it.**
+
+- `ClientCapabilities.WriteOnlyAttributesAllowed` (`tfplugin5.pb.go:842`):
+  the client opts in. nivis never sends `ClientCapabilities` at all.
+- `Schema_Attribute.WriteOnly` (`tfplugin5.pb.go:2453`): "the attribute
+  value will be provided via configuration and must be omitted from plan and
+  state response objects". nivis drops the flag.
+
+Both fields are in nivis's own generated protobuf for v5 and v6. Neither is
+referenced anywhere else in the codebase.
+
+So the design fork in requirement 1 (invent nivis-side seeding, versus support
+the protocol feature) resolves toward the protocol: an attribute that must be
+provided by configuration and omitted from state is EXACTLY what requirement 1
+describes, and providers already declare it. `postgresql_role.password_wo` is
+a live example.
+
+Seeding would be a second, parallel mechanism for a problem the protocol already
+models, and it would not help a provider that declares write-only attributes
+and expects the client to have opted in.
+
+What seeding might still be needed for: an attribute that is NOT declared
+write-only but is nonetheless never returned, which is the
+`aws_iam_access_key.secret` case. Whether AWS declares it write-only is worth
+checking before deciding, and is now a concrete question rather than a design
+preference.

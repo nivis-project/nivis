@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-10-15T19:10:28Z
-updated_at: 2026-10-15T19:17:42Z
+updated_at: 2026-10-15T19:45:24Z
 ---
 
 A hermetic CI tier that drives nivis against REAL third-party providers whose
@@ -163,3 +163,24 @@ state-upgrade path at all. See 3utj: nivis never calls
 `UpgradeResourceState` and `state.ResourceState` records no version.
 Importing a Terraform state written at an older provider schema remains
 unexercised. It needs a provider with a version bump, or it is a known hole.
+
+
+## Split into two halves (2026-10-15)
+
+The two halves carry completely different risk and the import work depends only
+on the first, so they are separate beans under this one. This bean stays as the
+umbrella holding the research.
+
+- **postgres half**: no bet. postgresql is in nixpkgs with two existing
+  nixosTests, the provider is on the registry at protocol 5. Mostly wiring.
+  Answers four things empirically that would otherwise be reasoned about in
+  nixform2-3utj: whether nivis handles `WriteOnly` at all, 3utj's open
+  question 1 (does refresh populate from minimal attrs), whether the registry
+  path works for a non-AWS provider, and whether the clean-plan assertion is
+  mechanically sound against a real provider.
+- **libvirt half**: carries the whole TCG / DHCP-lease bet and the incus
+  fallback decision.
+
+Substrate before design: reasoning about whether nivis handles a protocol
+feature is exactly what produced nixform2-1mk0, aur6, msl4 and cjxz. A real
+provider settles it.
