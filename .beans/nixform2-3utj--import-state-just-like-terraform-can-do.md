@@ -1,11 +1,11 @@
 ---
 # nixform2-3utj
 title: import state, just like terraform can do
-status: draft
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T21:51:13Z
+updated_at: 2026-10-15T22:01:08Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -421,3 +421,22 @@ records the current version. That matters here because import's flow ends in a
 refresh, so import would otherwise have inherited the gap.
 
 Nothing in this bean is open. It is ready to propose.
+
+
+## Proposed (2026-10-16)
+
+OpenSpec change `import-existing-resources` (spec-driven; proposal, design,
+spec deltas on a NEW `import` capability plus `fake-providers` and `cli`,
+tasks). Validated, not implemented. 49 tasks.
+
+Import is its own capability rather than part of `executor`: it neither plans
+nor applies, it has its own command and its own safety rules, and it needs its
+own document.
+
+Four refusals, each from a measured fact rather than caution: an undeclared id,
+a multi-resource response, an empty read, and a resource already in state.
+
+Explicitly not in scope: generating Nix configuration from what was imported.
+Every resource must already be declared, which is what makes the first refusal
+enforceable. For the migration this bean came from, that means its 200 resources
+need Nix written for them either way; import fills state for what is declared.
