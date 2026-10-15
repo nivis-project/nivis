@@ -4,6 +4,9 @@
 package fakeprovider
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
@@ -27,9 +30,23 @@ type Attr struct {
 // pure Apply func that computes the values of the Computed attributes from the
 // (known) input attributes plus a counter value. The generic protocol methods
 // below turn this into tfprotov6 behavior.
+// Rename is one attribute rename introduced AT a schema version: state written
+// at any version below `AtVersion` carries the value under `From`, and the
+// current schema calls it `To`.
+type Rename struct {
+	AtVersion int64
+	From      string
+	To        string
+}
+
 type Resource struct {
 	TypeName string
 	Attrs    map[string]Attr
+	// Renames declares the schema changes this resource has been through, so
+	// UpgradeResourceState can carry an old value across rather than dropping
+	// it. A fake with none upgrades by doing nothing, which is the honest
+	// behaviour for a resource whose schema never changed.
+	Renames []Rename
 	// Apply receives the known input values (by attr name; absent/null inputs
 	// are omitted) and the counter value for this apply, and returns the
 	// computed string values keyed by attr name. Must be pure and deterministic.
@@ -57,9 +74,10 @@ func (r Resource) schema() *tfprotov6.Schema {
 			Computed: a.Computed,
 		})
 	}
+	v := schemaVersion()
 	return &tfprotov6.Schema{
-		Version: 1,
-		Block:   &tfprotov6.SchemaBlock{Version: 1, Attributes: sas},
+		Version: v,
+		Block:   &tfprotov6.SchemaBlock{Version: v, Attributes: sas},
 	}
 }
 
@@ -206,4 +224,61 @@ func valueAt(attrs map[string]tftypes.Value, name string, t tftypes.Type) tftype
 		return v
 	}
 	return tftypes.NewValue(t, nil)
+}
+
+// --- schema version (test-only seam) -----------------------------------------
+
+// schemaVersion is the version a fake reports for its resources. It defaults to
+// 1, which is what the fakes have always hardcoded, so nothing changes unless a
+// test asks. TERRAE_NIVIS_FAKE_SCHEMA_VERSION selects another.
+//
+// It is selectable at RUN time because that is the only way a hermetic test can
+// produce state written at an older version and then meet a provider declaring
+// a newer one, within one run of the suite. The fakes are separate binaries, so
+// the choice has to cross a process boundary, and the environment is the channel
+// already used for TERRAE_NIVIS_FAKE_COUNTER and TERRAE_NIVIS_FAKE_FAIL.
+func schemaVersion() int64 {
+	if s := os.Getenv("TERRAE_NIVIS_FAKE_SCHEMA_VERSION"); s != "" {
+		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return v
+		}
+	}
+	return 1
+}
+
+// renamesFrom returns the renames that apply to state written at `from`: every
+// rename introduced at a version ABOVE it. State at the current version gets
+// none, which is why an equal-version upgrade is a no-op even when one is asked
+// for.
+func (r Resource) renamesFrom(from int64) []Rename {
+	var out []Rename
+	for _, ren := range r.Renames {
+		if ren.AtVersion > from {
+			out = append(out, ren)
+		}
+	}
+	return out
+}
+
+// encodeAttrs builds a DynamicValue from a plain attribute map, dropping keys
+// the current schema no longer has and nulling those it gained. That is correct
+// HERE, unlike in the executor: an upgrade's whole job is to reshape old state
+// to the current schema, and anything the renames did not carry across is gone
+// by the provider's own declaration.
+func encodeAttrs(objType tftypes.Object, decl map[string]Attr, attrs map[string]interface{}) (*tfprotov6.DynamicValue, error) {
+	vals := map[string]tftypes.Value{}
+	for name, a := range decl {
+		raw, ok := attrs[name]
+		if !ok || raw == nil {
+			vals[name] = tftypes.NewValue(a.Type, nil)
+			continue
+		}
+		s, isStr := raw.(string)
+		if !isStr {
+			vals[name] = tftypes.NewValue(a.Type, nil)
+			continue
+		}
+		vals[name] = tftypes.NewValue(a.Type, s)
+	}
+	return encode(objType, tftypes.NewValue(objType, vals))
 }

@@ -61,7 +61,8 @@ func (r Resource) schema() *tfprotov6.Schema {
 			Required: a.Required, Optional: a.Optional, Computed: a.Computed,
 		})
 	}
-	return &tfprotov6.Schema{Version: 1, Block: &tfprotov6.SchemaBlock{Version: 1, Attributes: sas}}
+	v := schemaVersion()
+	return &tfprotov6.Schema{Version: v, Block: &tfprotov6.SchemaBlock{Version: v, Attributes: sas}}
 }
 
 // Counter is the seedable deterministic counter (TERRAE_NIVIS_FAKE_COUNTER).
@@ -434,4 +435,24 @@ func failInjected(op, typeName string) bool {
 		}
 	}
 	return false
+}
+
+// --- schema version (test-only seam) -----------------------------------------
+
+// schemaVersion is the version a fake reports for its resources. It defaults to
+// 1, which is what the fakes have always hardcoded, so nothing changes unless a
+// test asks. TERRAE_NIVIS_FAKE_SCHEMA_VERSION selects another.
+//
+// See internal/fakeprovider for the rationale. It is selectable at RUN time because that is the only way a hermetic test can
+// produce state written at an older version and then meet a provider declaring
+// a newer one, within one run of the suite. The fakes are separate binaries, so
+// the choice has to cross a process boundary, and the environment is the channel
+// already used for TERRAE_NIVIS_FAKE_COUNTER and TERRAE_NIVIS_FAKE_FAIL.
+func schemaVersion() int64 {
+	if s := os.Getenv("TERRAE_NIVIS_FAKE_SCHEMA_VERSION"); s != "" {
+		if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return v
+		}
+	}
+	return 1
 }

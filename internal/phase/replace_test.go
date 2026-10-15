@@ -208,3 +208,9 @@ func TestApplyOneReplaceRefusedByPreventDestroy(t *testing.T) {
 		t.Errorf("preventDestroy must not destroy; destroyCalls=%d", c.destroyCalls)
 	}
 }
+
+// UpgradeState satisfies provider.Client. These stubs model resources whose
+// schema never changed, so an upgrade is the identity.
+func (c *recordClient) UpgradeState(_ context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
+	return provider.UpgradeStateResult{Attrs: req.Stored}, nil
+}

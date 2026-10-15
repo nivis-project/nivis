@@ -182,3 +182,9 @@ func TestReplaceSurfacesAFailureInTheSecondPlan(t *testing.T) {
 		t.Errorf("error = %q, want it to name the create half and the resource", got)
 	}
 }
+
+// UpgradeState satisfies provider.Client. These stubs model resources whose
+// schema never changed, so an upgrade is the identity.
+func (c *recordingClient) UpgradeState(_ context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
+	return provider.UpgradeStateResult{Attrs: req.Stored}, nil
+}

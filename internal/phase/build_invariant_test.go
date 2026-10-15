@@ -211,3 +211,9 @@ func TestApplyStillLearnsWhatToBuild(t *testing.T) {
 		t.Errorf("realised %+v, want the resource's build output with its derivation", got)
 	}
 }
+
+// UpgradeState satisfies provider.Client. These stubs model resources whose
+// schema never changed, so an upgrade is the identity.
+func (r *cfgRecorder) UpgradeState(_ context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
+	return provider.UpgradeStateResult{Attrs: req.Stored}, nil
+}

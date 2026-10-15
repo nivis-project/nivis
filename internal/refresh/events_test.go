@@ -228,3 +228,9 @@ func (c *stubClient) Destroy(context.Context, provider.DestroyRequest) (provider
 }
 
 var errNotUsed = errors.New("stubClient: this method is not reachable from a refresh")
+
+// UpgradeState satisfies provider.Client. This stub models a resource whose
+// schema never changed, so an upgrade is the identity.
+func (c *stubClient) UpgradeState(_ context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
+	return provider.UpgradeStateResult{Attrs: req.Stored}, nil
+}

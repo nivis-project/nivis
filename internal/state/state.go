@@ -22,6 +22,16 @@ type ResourceState struct {
 	ID    string                 `json:"id"`
 	Type  string                 `json:"type"`
 	Attrs map[string]interface{} `json:"attrs"`
+	// SchemaVersion is the schema version the provider declared for this
+	// resource type when these attributes were written.
+	//
+	// ABSENT MEANS "the provider's current version", not zero. A document
+	// written before this field existed carries no version, and reading it as
+	// zero would ask the provider to upgrade state that is already current.
+	// Omitted when zero so such documents keep round-tripping unchanged, and so
+	// an older nivis (which does not know the field) still reads what this one
+	// writes.
+	SchemaVersion int64 `json:"schemaVersion,omitempty"`
 }
 
 // Store is the state backend seam.

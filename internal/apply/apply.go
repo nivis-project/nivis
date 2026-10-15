@@ -38,9 +38,13 @@ func Apply(
 		return nil, err
 	}
 	if err := store.Set(state.ResourceState{
-		ID:    node.Resource.ID,
-		Type:  node.Resource.Type,
-		Attrs: res.Attrs,
+		ID:   node.Resource.ID,
+		Type: node.Resource.Type,
+		// Record the schema version these attributes were written against, so a
+		// later run can tell whether the provider has moved on and ask it to
+		// upgrade rather than encoding them against a schema they predate.
+		SchemaVersion: rs.Version,
+		Attrs:         res.Attrs,
 	}); err != nil {
 		return nil, fmt.Errorf("persist state for %q: %w", node.Resource.ID, err)
 	}

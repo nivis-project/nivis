@@ -9,6 +9,19 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- Upgrading a provider no longer silently mangles stored state. Nivis never
+  recorded which schema version wrote a resource and never asked a provider to
+  upgrade it, so attributes stored against an old schema were encoded against
+  the new one: an attribute the provider had renamed was dropped and reappeared
+  as empty, which made a plan propose changing, or replacing, infrastructure
+  nobody had touched. Nivis now records the schema version with each resource
+  and asks the provider to upgrade when it has moved on. State written by a
+  NEWER provider than the one configured is refused rather than guessed at,
+  since a provider cannot downgrade its own state. Existing state files are
+  unaffected: they carry no version, are read as current, and behave exactly as
+  before.
+
+### Fixed
 - A state read that fails now reports the backend error instead of being
   treated as "there is no state". A denied credential, an unreachable bucket or
   a transient backend error made `nivis plan` report every resource as a create

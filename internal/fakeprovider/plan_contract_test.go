@@ -430,3 +430,88 @@ func TestInjectionIsAddressedByOperationAndType(t *testing.T) {
 	}
 	noErr(t, resp.Diagnostics)
 }
+
+// upgradeResource declares a v2 in which `label` was renamed from `tag`, so an
+// upgrade has something real to carry across rather than re-encoding.
+func upgradeResource() fakeprovider.Resource {
+	return fakeprovider.Resource{
+		TypeName: "upgrade_thing",
+		Attrs: map[string]fakeprovider.Attr{
+			"label": {Type: tftypes.String, Optional: true},
+			"id":    {Type: tftypes.String, Computed: true},
+		},
+		Renames: []fakeprovider.Rename{{AtVersion: 2, From: "tag", To: "label"}},
+		Apply: func(_ map[string]string, n int64) (map[string]string, []*tfprotov6.Diagnostic) {
+			return map[string]string{"id": fmt.Sprintf("upgrade-%d", n)}, nil
+		},
+	}
+}
+
+var upgradeType = objType(map[string]tftypes.Type{
+	"label": tftypes.String,
+	"id":    tftypes.String,
+})
+
+func TestDeclaredSchemaVersionIsReported(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_SCHEMA_VERSION", "2")
+	resp, err := fakeprovider.New(upgradeResource()).GetProviderSchema(
+		context.Background(), &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := resp.ResourceSchemas["upgrade_thing"].Version; got != 2 {
+		t.Errorf("schema version = %d, want 2", got)
+	}
+}
+
+// Unset keeps the 1 the fakes have always hardcoded, which is why no existing
+// test changes.
+func TestSchemaVersionUnsetKeepsOne(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_SCHEMA_VERSION", "")
+	resp, err := fakeprovider.New(upgradeResource()).GetProviderSchema(
+		context.Background(), &tfprotov6.GetProviderSchemaRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := resp.ResourceSchemas["upgrade_thing"].Version; got != 1 {
+		t.Errorf("schema version = %d, want 1 when unset", got)
+	}
+}
+
+// The upgrade must TRANSFORM. Re-encoding at the current type, which is what the
+// fakes did before, cannot carry a renamed value across.
+func TestUpgradeCarriesARenamedAttribute(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_SCHEMA_VERSION", "2")
+	resp, err := fakeprovider.New(upgradeResource()).UpgradeResourceState(
+		context.Background(), &tfprotov6.UpgradeResourceStateRequest{
+			TypeName: "upgrade_thing",
+			Version:  1,
+			RawState: &tfprotov6.RawState{JSON: []byte(`{"tag":"kept","id":"upgrade-0"}`)},
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := decodeState(t, resp.UpgradedState, upgradeType)
+	if got := str(t, st["label"]); got != "kept" {
+		t.Errorf("label = %q after upgrading from v1, want the value stored under tag", got)
+	}
+}
+
+// The REQUEST decides which version to upgrade from. A fake that assumed one
+// would agree with a caller that sent the wrong version.
+func TestUpgradeHonoursTheRequestedVersion(t *testing.T) {
+	t.Setenv("TERRAE_NIVIS_FAKE_SCHEMA_VERSION", "2")
+	resp, err := fakeprovider.New(upgradeResource()).UpgradeResourceState(
+		context.Background(), &tfprotov6.UpgradeResourceStateRequest{
+			TypeName: "upgrade_thing",
+			Version:  2, // already current: the rename must NOT be applied
+			RawState: &tfprotov6.RawState{JSON: []byte(`{"label":"already","id":"upgrade-0"}`)},
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := decodeState(t, resp.UpgradedState, upgradeType)
+	if got := str(t, st["label"]); got != "already" {
+		t.Errorf("label = %q, want it left alone when the state is already current", got)
+	}
+}

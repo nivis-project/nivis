@@ -5,6 +5,7 @@ package fakeprovider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -272,13 +273,29 @@ func (s *Server) UpgradeResourceState(_ context.Context, req *tfprotov6.UpgradeR
 	if req.RawState == nil {
 		return &tfprotov6.UpgradeResourceStateResponse{}, nil
 	}
-	v, err := req.RawState.Unmarshal(r.objType())
-	if err != nil {
-		return nil, err
+	// Decode the raw JSON OURSELVES rather than via RawState.Unmarshal against
+	// the current object type. That helper interprets the bytes as a type the
+	// caller names, and the whole point of an upgrade is that the state was
+	// written under a DIFFERENT shape, which is exactly what the current type
+	// cannot describe. Its own documentation warns the encoding is lossy.
+	attrs := map[string]interface{}{}
+	if len(req.RawState.JSON) > 0 {
+		if err := json.Unmarshal(req.RawState.JSON, &attrs); err != nil {
+			return nil, fmt.Errorf("upgrade %q: raw state is not JSON: %w", req.TypeName, err)
+		}
 	}
-	dv, err := encode(r.objType(), v)
+	// Apply the renames declared for the version the request names. The REQUEST
+	// decides, not the fake: a fake that assumed a version would agree with a
+	// caller that sent the wrong one.
+	for _, ren := range r.renamesFrom(req.Version) {
+		if v, ok := attrs[ren.From]; ok {
+			attrs[ren.To] = v
+			delete(attrs, ren.From)
+		}
+	}
+	dv, err := encodeAttrs(r.objType(), r.Attrs, attrs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("upgrade %q: %w", req.TypeName, err)
 	}
 	return &tfprotov6.UpgradeResourceStateResponse{UpgradedState: dv}, nil
 }

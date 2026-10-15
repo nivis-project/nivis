@@ -1,13 +1,13 @@
 ---
 # nixform2-67gg
 title: 'A provider schema upgrade silently corrupts state: no version recorded, UpgradeResourceState never called'
-status: todo
+status: completed
 type: bug
 priority: high
 tags:
     - discovered
 created_at: 2026-10-15T20:46:19Z
-updated_at: 2026-10-15T20:50:59Z
+updated_at: 2026-10-15T21:07:52Z
 blocking:
     - nixform2-3utj
 ---
@@ -95,3 +95,57 @@ and an upgrader is needed first. Same pattern as nixform2-msl4, mbp1 and cjxz.
 OpenSpec change: `honour-provider-schema-versions` (spec-driven; proposal,
 design, spec deltas on `executor` and `fake-providers`, tasks). Validated,
 not implemented.
+
+
+## Summary of Changes
+
+`provider.ResourceSchema` carries the schema version, captured in both
+backends. `state.ResourceState` records it. Before a stored object is used as
+prior state the two are compared: equal makes no call, older calls the
+provider's upgrade, newer is refused.
+
+A new `UpgradeState` on `provider.Client`, implemented by v5 and v6. nivis
+sends the JSON side of `RawState` and never flatmap: it has never written
+flatmap state.
+
+### The decision that made it safe
+
+A missing `schemaVersion` means CURRENT, not zero. Every fake declares
+`Version: 1` today, so state written now was written at 1; reading it as 0
+would ask providers to upgrade already-current state. Assuming current leaves
+every existing document behaving exactly as before, which is the bar for
+changing a state format in a tool that manages live infrastructure.
+
+### Substrate first, again
+
+The fakes could not express a schema change: they declared `Version: 1`
+hardcoded and their `UpgradeResourceState` decoded at the CURRENT object type
+and re-encoded, which only works when nothing changed. They now declare a
+version selectable at run time (`TERRAE_NIVIS_FAKE_SCHEMA_VERSION`, unset
+keeps 1) and carry declared renames, decoding the raw JSON themselves and
+applying the transformation for the version the REQUEST names.
+
+### A stub that passed for the wrong reason
+
+`TestRenamedAttributeDoesNotBecomeAChange` passed with the comparison
+reverted, because its stub reported a no-op for any non-nil prior regardless of
+whether the state had been upgraded. Fixed to notice. Only then did reverting
+produce `resource resolved as 1` (OpUpdate), which is the change-out-of-nothing
+the bug produces.
+
+Third time this session the falsification step caught a test that could not
+fail.
+
+### Verification
+
+`go test ./...` green. Both directions discriminate. A document carrying the
+field restores; one without round-trips without gaining it; an unknown field is
+ignored rather than rejected, which is what lets an older nivis read what this
+one writes. The real-provider VM test passes, and since `postgresql_role`
+declares no schema version it exercises the missing-version path against a
+genuine third-party provider.
+
+Widening `provider.Client` broke six test stubs: a compile break, not a moved
+expectation. Each gained an identity implementation.
+
+OpenSpec change: `honour-provider-schema-versions`.

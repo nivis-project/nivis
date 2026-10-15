@@ -6,6 +6,7 @@ package v5
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -125,6 +126,7 @@ func (b *Backend) GetSchema(ctx context.Context, resourceType string) (provider.
 		TypeName: resourceType,
 		Attrs:    attrs,
 		Blocks:   nestedBlocks(sch.GetBlock()),
+		Version:  sch.GetVersion(),
 		Raw:      schemaRaw{objType: objType, computed: computed},
 	}, nil
 }
@@ -202,6 +204,7 @@ func (b *Backend) GetDataSourceSchema(ctx context.Context, dataSourceType string
 	return provider.ResourceSchema{
 		TypeName: dataSourceType,
 		Attrs:    attrs,
+		Version:  sch.GetVersion(),
 		Raw:      schemaRaw{objType: objType, computed: computed},
 	}, nil
 }
@@ -418,4 +421,33 @@ func normDiags(in []*tfplugin5.Diagnostic) []provider.Diagnostic {
 		out = append(out, provider.Diagnostic{Severity: sev, Summary: d.GetSummary(), Detail: d.GetDetail()})
 	}
 	return out
+}
+
+// UpgradeState is the v5 twin of the v6 backend's: it asks the provider to bring
+// stored attributes written at an older schema version up to the one it declares
+// now. Only the JSON side of RawState is produced; nivis has never written
+// flatmap state.
+func (b *Backend) UpgradeState(ctx context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
+	raw := req.Schema.Raw.(schemaRaw)
+	js, err := json.Marshal(req.Stored)
+	if err != nil {
+		return provider.UpgradeStateResult{}, fmt.Errorf("encode stored state as JSON: %w", err)
+	}
+	resp, err := b.client.UpgradeResourceState(ctx, &tfplugin5.UpgradeResourceState_Request{
+		TypeName: req.TypeName,
+		Version:  req.FromVersion,
+		RawState: &tfplugin5.RawState{Json: js},
+	})
+	if err != nil {
+		return provider.UpgradeStateResult{}, fmt.Errorf("UpgradeResourceState: %w", err)
+	}
+	diags := normDiags(resp.GetDiagnostics())
+	if err := provider.DiagError(diags); err != nil {
+		return provider.UpgradeStateResult{}, err
+	}
+	attrs, err := decodeState(raw.objType, resp.GetUpgradedState())
+	if err != nil {
+		return provider.UpgradeStateResult{}, fmt.Errorf("decode upgraded state: %w", err)
+	}
+	return provider.UpgradeStateResult{Attrs: attrs, Diagnostics: diags}, nil
 }

@@ -6,6 +6,7 @@ package v6
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -133,6 +134,7 @@ func (b *Backend) GetSchema(ctx context.Context, resourceType string) (provider.
 		TypeName: resourceType,
 		Attrs:    attrs,
 		Blocks:   nestedBlocks(sch.GetBlock()),
+		Version:  sch.GetVersion(),
 		Raw:      schemaRaw{objType: objType, computed: computed},
 	}, nil
 }
@@ -211,6 +213,7 @@ func (b *Backend) GetDataSourceSchema(ctx context.Context, dataSourceType string
 	return provider.ResourceSchema{
 		TypeName: dataSourceType,
 		Attrs:    attrs,
+		Version:  sch.GetVersion(),
 		Raw:      schemaRaw{objType: objType, computed: computed},
 	}, nil
 }
@@ -435,4 +438,32 @@ func priorState6(objType tftypes.Object, prior map[string]interface{}) (*tfplugi
 		return tfvalue.NullState(objType)
 	}
 	return tfvalue.EncodeState(objType, prior)
+}
+
+// UpgradeState asks the provider to bring stored attributes written at an older
+// schema version up to the one it declares now. nivis sends the JSON side of
+// RawState and never flatmap: it has never written flatmap state and never will.
+func (b *Backend) UpgradeState(ctx context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
+	raw := req.Schema.Raw.(schemaRaw)
+	js, err := json.Marshal(req.Stored)
+	if err != nil {
+		return provider.UpgradeStateResult{}, fmt.Errorf("encode stored state as JSON: %w", err)
+	}
+	resp, err := b.client.UpgradeResourceState(ctx, &tfplugin6.UpgradeResourceState_Request{
+		TypeName: req.TypeName,
+		Version:  req.FromVersion,
+		RawState: &tfplugin6.RawState{Json: js},
+	})
+	if err != nil {
+		return provider.UpgradeStateResult{}, fmt.Errorf("UpgradeResourceState: %w", err)
+	}
+	diags := normDiags(resp.GetDiagnostics())
+	if err := provider.DiagError(diags); err != nil {
+		return provider.UpgradeStateResult{}, err
+	}
+	attrs, err := tfvalue.DecodeState(raw.objType, resp.GetUpgradedState())
+	if err != nil {
+		return provider.UpgradeStateResult{}, fmt.Errorf("decode upgraded state: %w", err)
+	}
+	return provider.UpgradeStateResult{Attrs: attrs, Diagnostics: diags}, nil
 }

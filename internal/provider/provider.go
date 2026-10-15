@@ -61,8 +61,13 @@ type NestedBlock struct {
 // ResourceSchema is a resource type's normalized schema.
 type ResourceSchema struct {
 	TypeName string
-	Attrs    []Attr
-	Blocks   []NestedBlock // nested blocks (with nesting mode), for codegen
+	// Version is the schema version the provider declares for this resource
+	// type. It is recorded with stored state so a later run can tell whether the
+	// provider has moved on, and ask it to upgrade rather than encoding old
+	// attributes against a new schema.
+	Version int64
+	Attrs   []Attr
+	Blocks  []NestedBlock // nested blocks (with nesting mode), for codegen
 	// raw is an opaque, backend-specific handle (e.g. the parsed object type)
 	// the backend needs to encode/decode values for this resource. Callers do
 	// not interpret it; they pass it back via PlanRequest/ApplyRequest.Schema.
@@ -93,6 +98,21 @@ type PlanResult struct {
 	// nothing unknown and no replace — i.e. nothing to do. The executor skips
 	// ApplyResourceChange for a no-op. Always false for a create.
 	NoOp        bool
+	Diagnostics []Diagnostic
+}
+
+// UpgradeStateRequest / UpgradeStateResult: bring stored attributes up to the
+// provider's current schema.
+type UpgradeStateRequest struct {
+	Schema      ResourceSchema
+	TypeName    string
+	FromVersion int64
+	// Stored is the attribute map as it sits in state.
+	Stored map[string]interface{}
+}
+
+type UpgradeStateResult struct {
+	Attrs       map[string]interface{}
 	Diagnostics []Diagnostic
 }
 
@@ -173,6 +193,11 @@ type Client interface {
 	// ReadDataSource reads a datasource from its resolved config.
 	ReadDataSource(ctx context.Context, req ReadDataSourceRequest) (ReadDataSourceResult, error)
 	Destroy(ctx context.Context, req DestroyRequest) (DestroyResult, error)
+	// UpgradeState asks the provider to bring stored attributes written at
+	// `fromVersion` up to the schema it declares now. Only the provider knows how
+	// its own schema changed, which is why the executor must not attempt this
+	// itself.
+	UpgradeState(ctx context.Context, req UpgradeStateRequest) (UpgradeStateResult, error)
 }
 
 // DiagError converts error-severity diagnostics into a Go error (nil if none).

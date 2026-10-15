@@ -148,3 +148,9 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+// UpgradeState satisfies provider.Client. These stubs model resources whose
+// schema never changed, so an upgrade is the identity.
+func (c *stubClient) UpgradeState(_ context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
+	return provider.UpgradeStateResult{Attrs: req.Stored}, nil
+}
