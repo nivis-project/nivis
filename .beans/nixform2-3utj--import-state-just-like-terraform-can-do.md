@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T19:55:08Z
+updated_at: 2026-10-15T20:23:41Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -264,3 +264,12 @@ explicitly looks right.
 
 Cost note: answering this needed no credentials. A provider schema is readable
 without configuring it, and in this case the answer was in the provider source.
+
+
+## The harness exists (2026-10-15)
+
+`real-postgres-provider-e2e` landed a nixosTest that drives nivis against the
+real `cyrilgdn/postgresql` provider, offline, in 13 seconds (bean
+nixform2-jkeh). `tests/vm/postgres.nix` and `nix/example/postgres.nix` are
+the shape to extend: adding a resource or an assertion is now a few lines rather
+than a new tier.

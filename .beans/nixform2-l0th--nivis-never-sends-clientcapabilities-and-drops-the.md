@@ -7,7 +7,7 @@ priority: normal
 tags:
     - discovered
 created_at: 2026-10-15T19:47:50Z
-updated_at: 2026-10-15T19:55:08Z
+updated_at: 2026-10-15T20:23:41Z
 blocking:
     - nixform2-3utj
 ---
@@ -95,3 +95,12 @@ declares it expects the client to have opted in, and nivis currently compares
 and stores such attributes like any other), but it does not solve 3utj
 requirement 1. That case is a different shape: a value the provider produced
 once and will never return, with nothing in the schema marking it.
+
+
+## The harness exists (2026-10-15)
+
+`real-postgres-provider-e2e` landed a nixosTest that drives nivis against the
+real `cyrilgdn/postgresql` provider, offline, in 13 seconds (bean
+nixform2-jkeh). `tests/vm/postgres.nix` and `nix/example/postgres.nix` are
+the shape to extend: adding a resource or an assertion is now a few lines rather
+than a new tier.

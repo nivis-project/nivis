@@ -248,6 +248,12 @@
         # `--var count=N` declares N resources, so the note collapse is
         # exercisable. See docs/GETTING-STARTED.md ("Provider notes").
         providerLog = import ./nix/example/provider-log.nix { inherit nivis; };
+        # A real third-party provider (postgresql) driven entirely offline: the
+        # provider is a store path rather than a registry address, so the VM tier
+        # can exercise the executor against a provider that does not share our
+        # reading of the protocol. A TEST FIXTURE, not a suggested use case.
+        # See nix/example/postgres.nix and bean nixform2-q29p.
+        postgres = import ./nix/example/postgres.nix { inherit nivis; };
         # A real-provider example (AWS S3 bucket) — drive with `nivis ... --attr
         # nivis.aws`; creates a real resource (see nix/example/aws.nix).
         aws = import ./nix/example/aws.nix { inherit nivis; };
@@ -287,6 +293,24 @@
 
       # `nix flake check` runs these: build, tests, coverage floors, gofmt.
       checks = forAllSystems mkChecks;
+
+      # The real-provider VM tier. Deliberately OUTSIDE `checks`: `nix flake
+      # check` is what scripts/ship-change.sh runs on every change shipped, and a
+      # VM boot belongs where it is paid once per push. Built as its own CI step:
+      #   nix build .#vm-tests-postgres
+      # See tests/vm/postgres.nix and bean nixform2-q29p.
+      vmTests = forAllSystems (
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        {
+          postgres = import ./tests/vm/postgres.nix {
+            inherit pkgs self;
+            nivisCli = mkCli system;
+          };
+        }
+      );
 
       # CLI app: `nix run .#nivis -- …` (codegen: `nix run .#nivis -- gen …`).
       apps = forAllSystems (

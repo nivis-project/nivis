@@ -57,3 +57,17 @@ jobs:
       # builds the site).
       - name: Docs checks
         run: bash tests/check-docs-ssot.sh
+
+      # The real-provider tier: nivis driven against an unmodified
+      # cyrilgdn/postgresql and a real postgresql, inside a VM with no network
+      # and no credentials. It exists because the in-repo fakes encode our own
+      # reading of the provider protocol, so a misreading yields a fake that
+      # agrees with it (see bean nixform2-q29p).
+      #
+      # It is a step rather than a flake check for a DIFFERENT reason from the
+      # two above: those cannot run in the flake sandbox at all, while this one
+      # could and should not. `nix flake check` is what scripts/ship-change.sh
+      # runs on every change shipped, and a VM boot belongs where it is paid
+      # once per push.
+      - name: Real-provider VM test (postgres)
+        run: nix build .#vmTests.x86_64-linux.postgres --no-link --print-build-logs

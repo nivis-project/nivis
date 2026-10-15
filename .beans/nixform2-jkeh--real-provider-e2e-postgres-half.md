@@ -1,11 +1,11 @@
 ---
 # nixform2-jkeh
 title: 'Real-provider e2e: postgres half'
-status: todo
+status: completed
 type: task
 priority: normal
 created_at: 2026-10-15T19:45:43Z
-updated_at: 2026-10-15T19:47:35Z
+updated_at: 2026-10-15T20:30:00Z
 parent: nixform2-q29p
 ---
 
@@ -95,3 +95,88 @@ A path source means the REGISTRY path is not exercised here. That was listed as
 one of the four questions this half answers; it is not. Resolve, download,
 verify and cache need their own test with network, which is a different tier.
 The other three stand.
+
+
+## Done 2026-10-15
+
+OpenSpec change `real-postgres-provider-e2e`. The harness exists: a nixosTest
+boots postgresql, nivis evaluates the flake OFFLINE, spawns the real
+`cyrilgdn/postgresql` 1.26.0 from a store path, creates a role, and the plan
+straight after is clean.
+
+**The premise held: no file under `internal/` or `cmd/` changed.** nivis
+already drove a real third-party provider; only the harness was missing.
+
+### Runtime, for the per-push versus scheduled decision
+
+**13.22 seconds** for the VM script. Per push is comfortably the right call; the
+fallback to a schedule is not needed.
+
+### What it covers, and what it deliberately does not
+
+Covers: nivis against an unmodified third-party provider, offline, with no
+credentials; the clean-plan acceptance criterion; and a drift subtest proving
+that criterion is a real signal rather than a constant.
+
+Does NOT cover, each kept out so the harness could be judged on its own:
+
+- the dependency chain (role -> database -> schema -> grant)
+- write-only attributes: nixform2-l0th
+- import: nixform2-3utj
+- libvirt and its TCG bet: nixform2-l27s
+- the registry path. A filesystem source bypasses it by design, which corrects
+  one of the four questions this bean originally claimed to answer.
+
+### One thing learned
+
+The first run failed on `password authentication failed for user postgres`:
+the provider connects over TCP and matched the default `::1/128 md5` rule, not
+the unix socket the fixture assumed. Everything before that already worked,
+including the offline flake evaluation, which was the part most likely to fail.
+
+
+## Summary of Changes
+
+A nixosTest drives nivis against the real, unmodified `cyrilgdn/postgresql`
+1.26.0 provider and a real postgresql, inside a VM with no network and no
+credentials. Four subtests:
+
+1. nivis applies against the real provider
+2. the role exists in postgresql, queried through psql rather than through nivis
+3. the plan straight after applying reports no changes
+4. that clean plan is a real signal: altering the role out of band makes the
+   next plan see it
+
+The fourth exists because task 4 could not be done as written. "Break the
+fixture" is impossible when the same fixture is both applied and planned: it
+stays self-consistent and the plan stays clean either way. Drift is the honest
+falsification, and without it the third subtest would also pass for a nivis that
+reported "No changes" unconditionally. Kept permanently rather than run once.
+
+### The premise held
+
+**No file under `internal/` or `cmd/` changed.** The proposal rested on nivis
+already driving a real third-party provider, and it did. Only the harness was
+missing. If that had turned out false, the design said to stop rather than work
+around it.
+
+### Where it runs
+
+Outside `checks`, as its own CI step. `nix flake check`'s set is identical
+before and after (`build, coverage, fake-providers, go-tests, gofmt`), so
+`scripts/ship-change.sh` is exactly as fast as before. The VM script takes
+**13.22 seconds**, so per push is comfortably right and the scheduled fallback
+is not needed.
+
+### Verification
+
+VM test green. `nix flake check` passes. `go test ./...` green and untouched.
+The provider is a store path, so the registry is deliberately not exercised.
+
+One failure on the way: the first run died on `password authentication failed
+for user postgres`, because the provider connects over TCP and matched the
+default `::1/128 md5` rule rather than the unix socket the fixture assumed.
+Everything before that already worked, including the offline flake evaluation,
+which was the part most likely to fail.
+
+OpenSpec change: `real-postgres-provider-e2e`.
