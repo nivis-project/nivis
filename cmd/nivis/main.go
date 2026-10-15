@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/nivis-project/nivis/internal/destroy"
+	"github.com/nivis-project/nivis/internal/importer"
 	"github.com/nivis-project/nivis/internal/ir"
 	"github.com/nivis-project/nivis/internal/ledger"
 	"github.com/nivis-project/nivis/internal/phase"
@@ -104,7 +105,7 @@ func main() {
 	// --target completes to the resource ids in state.
 	_ = root.RegisterFlagCompletionFunc("target", stateIDs)
 
-	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), stateCmd(), outputCmd(), genCmd(), forceUnlockCmd())
+	root.AddCommand(planCmd(), applyCmd(), destroyCmd(), refreshCmd(), importCmd(), stateCmd(), outputCmd(), genCmd(), forceUnlockCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -556,6 +557,82 @@ func refreshCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// importCmd adopts existing infrastructure into state. It creates nothing: the
+// only thing it writes is state, and it refuses anything it cannot do safely
+// rather than guessing, because `state push` can already write state by hand and
+// this earns its place only by being safer than that.
+func importCmd() *cobra.Command {
+	var manifestPath string
+	c := &cobra.Command{
+		Use:   "import",
+		Short: "Adopt existing infrastructure into state from a manifest",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			r, err := newRenderer(cmd.ErrOrStderr())
+			if err != nil {
+				return err
+			}
+			defer r.Close()
+			if manifestPath == "" {
+				return fmt.Errorf("--manifest is required: a JSON file mapping each nivis resource id to the provider's import id for it")
+			}
+			m, hasSeeds, err := importer.LoadManifest(manifestPath)
+			if err != nil {
+				return err
+			}
+			g, err := configGraph(cmd.Context())
+			if err != nil {
+				return err
+			}
+			store, err := openStore(cmd.Context(), r)
+			if err != nil {
+				return err
+			}
+			mgr, notes, err := newManager(r)
+			if err != nil {
+				return err
+			}
+			defer mgr.Close()
+			defer notes.Summary()
+
+			sum, err := importer.Run(cmd.Context(), g, mgr, store, m)
+			if err != nil {
+				return err
+			}
+			r.Close()
+			out := newOutput(cmd.OutOrStdout())
+
+			// Seeded values are credentials by definition: they exist because a
+			// provider returns them only at creation. A file holding them deserves
+			// the warning nivis already gives for the files it writes itself.
+			if hasSeeds {
+				out.printf("! %s seeds attribute values, so it holds credentials. Do not commit it.\n\n", manifestPath)
+			}
+
+			for _, res := range sum.Results {
+				if res.Imported {
+					out.printf("imported %s", res.ID)
+					if len(res.Seeded) > 0 {
+						out.printf(" (seeded: %s)", strings.Join(res.Seeded, ", "))
+					}
+					out.printf("\n")
+					continue
+				}
+				out.printf("REFUSED  %s: %v\n", res.ID, res.Err)
+			}
+			out.printf("\n%d imported, %d refused.\n", sum.Imported, sum.Refused)
+			if sum.Imported > 0 {
+				out.printf("Run `nivis plan` to check: a clean plan is the only proof the import was right.\n")
+			}
+			if sum.Refused > 0 {
+				return fmt.Errorf("%d of %d import(s) were refused", sum.Refused, len(sum.Results))
+			}
+			return nil
+		},
+	}
+	c.Flags().StringVar(&manifestPath, "manifest", "", "JSON file mapping a nivis resource id to its provider import id")
+	return c
 }
 
 func stateCmd() *cobra.Command {

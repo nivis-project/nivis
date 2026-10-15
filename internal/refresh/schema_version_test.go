@@ -186,3 +186,8 @@ func TestRefreshRecordsTheCurrentVersion(t *testing.T) {
 		t.Errorf("recorded version = %d, want 4", rs.SchemaVersion)
 	}
 }
+
+// Import satisfies provider.Client. These stubs are not used for import tests.
+func (c *versionedClient) Import(context.Context, provider.ImportRequest) (provider.ImportResult, error) {
+	return provider.ImportResult{}, nil
+}

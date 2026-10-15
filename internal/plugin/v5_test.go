@@ -124,3 +124,68 @@ func TestV5ReplaceDoesNotInheritFromTheDestroyedObject(t *testing.T) {
 			"object about to be destroyed; got unknowns %v", group, rp.UnknownAfterApply)
 	}
 }
+
+// TestV5ImportAndUpgradeState drives the REAL v5 fake through the two RPCs the
+// import work added to that backend. They are protocol-neutral in the executor
+// but each backend carries its own encoding, and the v5 side had no coverage
+// for either.
+func TestV5ImportAndUpgradeState(t *testing.T) {
+	bin := buildProvider(t, "provider-gamma")
+	t.Setenv("TERRAE_NIVIS_FAKE_COUNTER", "")
+	ctx := context.Background()
+
+	mgr := plugin.NewManager()
+	defer mgr.Close()
+
+	client, err := mgr.Client("gamma", bin, map[string]interface{}{})
+	if err != nil {
+		t.Fatalf("spawn/handshake (v5): %v", err)
+	}
+	rs, err := client.GetSchema(ctx, "gamma_widget")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Import returns a STUB carrying the identity, which is what a passthrough
+	// importer does and what the executor's import path has to handle.
+	imp, err := client.Import(ctx, provider.ImportRequest{
+		Schema: rs, TypeName: "gamma_widget", ImportID: "w-1",
+	})
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	if len(imp.Resources) != 1 {
+		t.Fatalf("imported %d resources, want 1", len(imp.Resources))
+	}
+	if got := imp.Resources[0].Attrs["id"]; got != "w-1" {
+		t.Errorf("imported id = %v, want w-1", got)
+	}
+	if imp.Resources[0].TypeName != "gamma_widget" {
+		t.Errorf("type = %q, want gamma_widget", imp.Resources[0].TypeName)
+	}
+
+	// The read after it populates the stub, which is the other half of the flow.
+	read, err := client.Read(ctx, provider.ReadRequest{
+		Schema: rs, TypeName: "gamma_widget", Stored: imp.Resources[0].Attrs,
+	})
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if len(read.Attrs) == 0 {
+		t.Fatalf("the read did not populate the imported stub")
+	}
+
+	// UpgradeState over the same backend. gamma declares no renames, so this is
+	// the identity, which is the honest behaviour for a schema that never
+	// changed and still exercises the encoding both ways.
+	up, err := client.UpgradeState(ctx, provider.UpgradeStateRequest{
+		Schema: rs, TypeName: "gamma_widget", FromVersion: 1,
+		Stored: map[string]interface{}{"id": "w-1", "size": "big"},
+	})
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	if up.Attrs["size"] != "big" {
+		t.Errorf("size = %v after upgrade, want big", up.Attrs["size"])
+	}
+}

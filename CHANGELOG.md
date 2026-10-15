@@ -8,6 +8,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `nivis import` adopts infrastructure that already exists into state, so a
+  running estate can be managed without being recreated. It takes a manifest
+  mapping each nivis resource id to the provider's own identifier, creates
+  nothing, and refuses rather than guessing: an id your configuration does not
+  declare, a provider returning more than one resource, an object that does not
+  exist, or a resource already in state. A manifest can also seed attributes a
+  provider returns only at creation and never again, such as an IAM access key's
+  secret, which no read can recover. A clean `nivis plan` afterwards is the proof
+  the import was right. See docs/IMPORT.md.
+
 ### Fixed
 - `nivis refresh` now upgrades stored state through the provider when the
   provider's schema has moved on, instead of reading it as if nothing had

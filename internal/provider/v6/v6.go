@@ -467,3 +467,31 @@ func (b *Backend) UpgradeState(ctx context.Context, req provider.UpgradeStateReq
 	}
 	return provider.UpgradeStateResult{Attrs: attrs, Diagnostics: diags}, nil
 }
+
+// Import adopts an existing object by the provider's own identifier. What comes
+// back is a stub: real providers commonly return only the identity and expect a
+// Read to populate the rest. A provider may return MORE than one resource, which
+// is why the result is a list rather than a single object.
+func (b *Backend) Import(ctx context.Context, req provider.ImportRequest) (provider.ImportResult, error) {
+	raw := req.Schema.Raw.(schemaRaw)
+	resp, err := b.client.ImportResourceState(ctx, &tfplugin6.ImportResourceState_Request{
+		TypeName: req.TypeName,
+		Id:       req.ImportID,
+	})
+	if err != nil {
+		return provider.ImportResult{}, fmt.Errorf("ImportResourceState: %w", err)
+	}
+	diags := normDiags(resp.GetDiagnostics())
+	if err := provider.DiagError(diags); err != nil {
+		return provider.ImportResult{}, err
+	}
+	var out []provider.ImportedResource
+	for _, ir := range resp.GetImportedResources() {
+		attrs, err := tfvalue.DecodeState(raw.objType, ir.GetState())
+		if err != nil {
+			return provider.ImportResult{}, fmt.Errorf("decode imported state: %w", err)
+		}
+		out = append(out, provider.ImportedResource{TypeName: ir.GetTypeName(), Attrs: attrs})
+	}
+	return provider.ImportResult{Resources: out, Diagnostics: diags}, nil
+}

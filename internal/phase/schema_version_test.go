@@ -206,3 +206,8 @@ func TestRenamedAttributeDoesNotBecomeAChange(t *testing.T) {
 			"so there is nothing to change", op)
 	}
 }
+
+// Import satisfies provider.Client. These stubs are not used for import tests.
+func (c *versionClient) Import(context.Context, provider.ImportRequest) (provider.ImportResult, error) {
+	return provider.ImportResult{}, nil
+}

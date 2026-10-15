@@ -10,6 +10,7 @@
 - [Reading output](./output.md)
 - [Variables](./variables.md)
 - [Datasources](./datasources.md)
+- [Importing existing infrastructure](./import.md)
 - [Remote state (S3)](./remote-state.md)
   - [Tutorial: remote state + locking](./TUTORIAL-REMOTE-STATE.md)
 - [Architecture & decisions](./design.md)

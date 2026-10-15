@@ -1,11 +1,11 @@
 ---
 # nixform2-3utj
 title: import state, just like terraform can do
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T22:01:08Z
+updated_at: 2026-10-15T22:32:02Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -440,3 +440,54 @@ Explicitly not in scope: generating Nix configuration from what was imported.
 Every resource must already be declared, which is what makes the first refusal
 enforceable. For the migration this bean came from, that means its 200 resources
 need Nix written for them either way; import fills state for what is declared.
+
+
+## Summary of Changes
+
+`nivis import --manifest` adopts existing infrastructure into state. It
+creates nothing, and it refuses rather than guessing in four cases, each one
+where carrying on would write state that looks right and is not:
+
+| refusal | what continuing would produce |
+|---|---|
+| an id the configuration does not declare | an entry nivis never plans, applies or destroys |
+| more than one resource returned | addresses nivis cannot invent, since they come from config |
+| an empty read | a CREATE of something that may already exist |
+| already in state | silent loss of what was there |
+
+Seeded values cover requirement 1 and are applied AFTER the read, because the
+read returns the provider's full view and would otherwise overwrite them. The
+result reports which attributes were seeded, so a reader can tell what nivis
+took on trust from what it observed.
+
+### Verified against a real provider
+
+In the VM tier: an existing `postgresql_role` is adopted into a fresh state
+file and the plan afterwards is clean; an id matching nothing is refused.
+`postgresql_role` uses `ImportStatePassthroughContext`, so this exercises
+the stub-then-read flow against a provider that does not share our assumptions.
+
+### Two tests that passed for the wrong reason
+
+The seeding-order test did not discriminate at first: the stub's read omitted
+the seeded attribute, so moving the seed before the read left it intact. A real
+read goes through `DecodeState`, which emits every schema attribute, so one
+the provider does not return comes back as nil, and that nil is what overwrites
+an early seed. Fixed, and reverting now gives `secret = <nil>`.
+
+The first VM import asserted a clean plan after importing a role named
+`adopted` while the fixture declares `appuser`. The plan correctly reported
+a difference. Rewritten to the real migration scenario: a role that exists and
+is absent from a fresh state file.
+
+### What this does NOT do
+
+It does not write Nix configuration. Every resource must be declared first,
+which is what makes the first refusal enforceable. The migration this bean came
+from still needs Nix written for its 200 resources; import fills state for what
+is declared.
+
+Requirement 3's "partial failure leaves state coherent" needed no machinery:
+each import writes one complete entry or none.
+
+OpenSpec change: `import-existing-resources`. Docs: `docs/IMPORT.md`.

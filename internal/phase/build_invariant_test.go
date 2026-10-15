@@ -217,3 +217,8 @@ func TestApplyStillLearnsWhatToBuild(t *testing.T) {
 func (r *cfgRecorder) UpgradeState(_ context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
 	return provider.UpgradeStateResult{Attrs: req.Stored}, nil
 }
+
+// Import satisfies provider.Client. These stubs are not used for import tests.
+func (r *cfgRecorder) Import(context.Context, provider.ImportRequest) (provider.ImportResult, error) {
+	return provider.ImportResult{}, nil
+}

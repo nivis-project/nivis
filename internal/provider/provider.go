@@ -101,6 +101,27 @@ type PlanResult struct {
 	Diagnostics []Diagnostic
 }
 
+// ImportRequest / ImportResult: adopt an existing object into state.
+type ImportRequest struct {
+	Schema   ResourceSchema
+	TypeName string
+	// ImportID is the provider's own identifier for the object. Opaque here: a
+	// Route53 zone id, an S3 bucket name, an IAM user name. The provider decides.
+	ImportID string
+}
+
+// ImportedResource is one object a provider returned for an import. A provider
+// may return several, each with its own type.
+type ImportedResource struct {
+	TypeName string
+	Attrs    map[string]interface{}
+}
+
+type ImportResult struct {
+	Resources   []ImportedResource
+	Diagnostics []Diagnostic
+}
+
 // UpgradeStateRequest / UpgradeStateResult: bring stored attributes up to the
 // provider's current schema.
 type UpgradeStateRequest struct {
@@ -193,6 +214,11 @@ type Client interface {
 	// ReadDataSource reads a datasource from its resolved config.
 	ReadDataSource(ctx context.Context, req ReadDataSourceRequest) (ReadDataSourceResult, error)
 	Destroy(ctx context.Context, req DestroyRequest) (DestroyResult, error)
+	// Import asks the provider to adopt an existing object by its own import
+	// identifier, which is opaque to nivis: the provider decides what it means.
+	// The result is a STUB, often carrying little more than the identity, which
+	// the caller populates with a Read.
+	Import(ctx context.Context, req ImportRequest) (ImportResult, error)
 	// UpgradeState asks the provider to bring stored attributes written at
 	// `fromVersion` up to the schema it declares now. Only the provider knows how
 	// its own schema changed, which is why the executor must not attempt this

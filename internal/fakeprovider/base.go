@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -260,8 +261,81 @@ func (s *Server) ApplyResourceChange(_ context.Context, req *tfprotov6.ApplyReso
 
 // ReadResource reconciles state. The fakes have no external store, so state is
 // returned unchanged (refresh is a no-op that preserves the round trip).
+// ReadResource echoes the state it is given, EXCEPT in the two cases an import
+// turns on.
+//
+// An import stub (an id set, every other attribute null) is POPULATED, because
+// that is what a real provider does: the import returns the identity and the
+// read fills in the rest. Without this a fake cannot model the stub-then-read
+// flow the executor has to handle.
+//
+// TERRAE_NIVIS_FAKE_IMPORT_MISSING names an id that reads as NOTHING, which is
+// how a provider reports that no such object exists. The executor must refuse
+// an import on that, rather than reading it as an out-of-band deletion and
+// planning a create.
 func (s *Server) ReadResource(_ context.Context, req *tfprotov6.ReadResourceRequest) (*tfprotov6.ReadResourceResponse, error) {
-	return &tfprotov6.ReadResourceResponse{NewState: req.CurrentState}, nil
+	r, d := s.lookup(req.TypeName)
+	if d != nil {
+		return &tfprotov6.ReadResourceResponse{Diagnostics: []*tfprotov6.Diagnostic{d}}, nil
+	}
+	cur, err := decode(req.CurrentState, r.objType())
+	if err != nil {
+		return nil, err
+	}
+	attrs, err := asObject(cur)
+	if err != nil {
+		return &tfprotov6.ReadResourceResponse{NewState: req.CurrentState}, nil
+	}
+	id := stringOf(attrs["id"])
+	if missing := os.Getenv("TERRAE_NIVIS_FAKE_IMPORT_MISSING"); missing != "" && id == missing {
+		dv, err := encode(r.objType(), tftypes.NewValue(r.objType(), nil))
+		if err != nil {
+			return nil, err
+		}
+		return &tfprotov6.ReadResourceResponse{NewState: dv}, nil
+	}
+	if !isImportStub(r, attrs) {
+		return &tfprotov6.ReadResourceResponse{NewState: req.CurrentState}, nil
+	}
+	filled, diags := r.applied(attrs, attrs, 0)
+	for _, dg := range diags {
+		if dg.Severity == tfprotov6.DiagnosticSeverityError {
+			return &tfprotov6.ReadResourceResponse{Diagnostics: diags}, nil
+		}
+	}
+	dv, err := encode(r.objType(), filled)
+	if err != nil {
+		return nil, err
+	}
+	return &tfprotov6.ReadResourceResponse{NewState: dv}, nil
+}
+
+// isImportStub reports whether the state looks like what an import returns: an
+// id, and nothing else set.
+func isImportStub(r Resource, attrs map[string]tftypes.Value) bool {
+	if !isSet(attrs, "id") {
+		return false
+	}
+	for name := range r.Attrs {
+		if name == "id" {
+			continue
+		}
+		if isSet(attrs, name) {
+			return false
+		}
+	}
+	return true
+}
+
+func stringOf(v tftypes.Value) string {
+	if !v.IsKnown() || v.IsNull() {
+		return ""
+	}
+	var s string
+	if err := v.As(&s); err != nil {
+		return ""
+	}
+	return s
 }
 
 // UpgradeResourceState passes raw state through decoded at the current schema.
@@ -310,8 +384,52 @@ func (s *Server) UpgradeResourceIdentity(_ context.Context, _ *tfprotov6.Upgrade
 	return &tfprotov6.UpgradeResourceIdentityResponse{Diagnostics: []*tfprotov6.Diagnostic{unimplemented("UpgradeResourceIdentity")}}, nil
 }
 
-func (s *Server) ImportResourceState(_ context.Context, _ *tfprotov6.ImportResourceStateRequest) (*tfprotov6.ImportResourceStateResponse, error) {
-	return &tfprotov6.ImportResourceStateResponse{Diagnostics: []*tfprotov6.Diagnostic{unimplemented("ImportResourceState")}}, nil
+// ImportResourceState models a passthrough importer: it returns a stub carrying
+// only the identity, which the caller then READS to populate. That is what real
+// providers do (schema.ImportStatePassthroughContext returns just the ID), and
+// it is the behaviour the executor's import path has to handle.
+//
+// TERRAE_NIVIS_FAKE_IMPORT_COUNT makes it return several resources for one
+// import, so the executor's refusal of that case can be exercised. A refusal
+// nothing can trigger is a refusal nobody knows works.
+//
+// An id this fake does not recognise still imports: the stub carries it, and the
+// READ that follows returns nothing, which is how a provider reports that the
+// object does not exist. importKnown decides which ids are real.
+func (s *Server) ImportResourceState(_ context.Context, req *tfprotov6.ImportResourceStateRequest) (*tfprotov6.ImportResourceStateResponse, error) {
+	r, d := s.lookup(req.TypeName)
+	if d != nil {
+		return &tfprotov6.ImportResourceStateResponse{Diagnostics: []*tfprotov6.Diagnostic{d}}, nil
+	}
+	n := importCount()
+	var out []*tfprotov6.ImportedResource
+	for i := 0; i < n; i++ {
+		vals := map[string]tftypes.Value{}
+		for name, a := range r.Attrs {
+			if name == "id" {
+				vals[name] = tftypes.NewValue(a.Type, req.ID)
+				continue
+			}
+			vals[name] = tftypes.NewValue(a.Type, nil)
+		}
+		dv, err := encode(r.objType(), tftypes.NewValue(r.objType(), vals))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, &tfprotov6.ImportedResource{TypeName: req.TypeName, State: dv})
+	}
+	return &tfprotov6.ImportResourceStateResponse{ImportedResources: out}, nil
+}
+
+// importCount is how many resources an import returns. One, unless
+// TERRAE_NIVIS_FAKE_IMPORT_COUNT says otherwise.
+func importCount() int {
+	if s := os.Getenv("TERRAE_NIVIS_FAKE_IMPORT_COUNT"); s != "" {
+		if v, err := strconv.Atoi(s); err == nil && v > 0 {
+			return v
+		}
+	}
+	return 1
 }
 
 func (s *Server) MoveResourceState(_ context.Context, _ *tfprotov6.MoveResourceStateRequest) (*tfprotov6.MoveResourceStateResponse, error) {

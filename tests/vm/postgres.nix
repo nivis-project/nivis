@@ -101,6 +101,41 @@ pkgs.testers.runNixOSTest {
         if "No changes" not in out:
             raise Exception("plan after apply was not clean:\n" + out)
 
+    with subtest("import adopts a role created outside nivis"):
+        # The acceptance criterion for nixform2-3utj, against a REAL provider:
+        # postgresql_role uses ImportStatePassthroughContext, so this exercises
+        # the stub-then-read flow against something that does not share our
+        # assumptions.
+        #
+        # The role already exists in postgres and is absent from the FRESH state
+        # file used below, which is the migration scenario exactly: existing
+        # infrastructure that nivis does not yet track. The imported object must
+        # match what the configuration declares, or the plan afterwards reports a
+        # real difference and the test would be asserting the wrong thing.
+        machine.succeed(
+            "cd /tmp && cat > /tmp/import.json <<'EOF'\n"
+            '{"imports":{"postgresql.postgresql_role.appuser":{"id":"appuser"}}}\n'
+            "EOF"
+        )
+        # A fresh state file, so the import is not refused as already-in-state.
+        imp = f"--flake {flake} --attr nivis.postgres --var provider_path={provider} --state /tmp/import-state.json"
+        machine.succeed(f"cd /tmp && {nivis} import {imp} --manifest /tmp/import.json 2>&1 | tee /tmp/import.log")
+
+        out = machine.succeed(f"cd /tmp && {nivis} plan {imp} 2>&1 | tee /tmp/import-plan.log")
+        if "No changes" not in out:
+            raise Exception("plan after importing was not clean:\n" + out)
+
+    with subtest("import refuses an id that matches nothing"):
+        machine.succeed(
+            "cd /tmp && cat > /tmp/bad.json <<'EOF'\n"
+            '{"imports":{"postgresql.postgresql_role.appuser":{"id":"no-such-role"}}}\n'
+            "EOF"
+        )
+        bad = f"--flake {flake} --attr nivis.postgres --var provider_path={provider} --state /tmp/bad-state.json"
+        out = machine.fail(f"cd /tmp && {nivis} import {bad} --manifest /tmp/bad.json 2>&1")
+        if "REFUSED" not in out:
+            raise Exception("importing a non-existent object was not refused:\n" + out)
+
     with subtest("the clean plan is a real signal, not a constant"):
         # Without this, the assertion above could pass for a nivis that reports
         # "No changes" unconditionally. Change the role behind nivis's back and

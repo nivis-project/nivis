@@ -154,3 +154,8 @@ func indexOf(s, sub string) int {
 func (c *stubClient) UpgradeState(_ context.Context, req provider.UpgradeStateRequest) (provider.UpgradeStateResult, error) {
 	return provider.UpgradeStateResult{Attrs: req.Stored}, nil
 }
+
+// Import satisfies provider.Client. These stubs are not used for import tests.
+func (c *stubClient) Import(context.Context, provider.ImportRequest) (provider.ImportResult, error) {
+	return provider.ImportResult{}, nil
+}
