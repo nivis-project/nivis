@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-09-10T20:18:27Z
-updated_at: 2026-10-15T20:23:41Z
+updated_at: 2026-10-15T20:50:59Z
 ---
 
 Requirements gathered from a real migration: AWS account 255418484322 (Waardenburg), 200 Terraform resource instances that have to move into nivis without being recreated. Two live websites behind Cognito, a delegated Route53 zone, and SES with working SMTP credentials. Recreating any of it is not an option, so import is the gate for that whole migration.
@@ -273,3 +273,17 @@ real `cyrilgdn/postgresql` provider, offline, in 13 seconds (bean
 nixform2-jkeh). `tests/vm/postgres.nix` and `nix/example/postgres.nix` are
 the shape to extend: adding a resource or an assertion is now a few lines rather
 than a new tier.
+
+
+## The schema-version question is proposed (2026-10-15)
+
+It is a bug in its own right, not an import gap: a provider upgrade silently
+mangles stored state today, because nivis drops `Schema.Version` and never
+calls `UpgradeResourceState`. Filed as nixform2-67gg (high), proposed as
+`honour-provider-schema-versions`, and it blocks this bean.
+
+Once it lands, an imported Terraform state document can carry the
+`schema_version` it came with, instead of being assumed to match whatever
+provider happens to be configured. That assumption is exactly the "looks like
+it worked, first apply destroys production" failure this bean exists to
+prevent.
