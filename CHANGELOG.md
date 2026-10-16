@@ -8,6 +8,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-16
+
 ### Added
 - `nivis import` adopts infrastructure that already exists into state, so a
   running estate can be managed without being recreated. It takes a manifest
@@ -507,7 +509,8 @@ The proof-of-concept. Proves the thesis end to end.
 - **Docs**: a branded mdBook site deployed to GitHub Pages, a from-scratch AWS
   S3 tutorial, the IR contract, and the design/testing docs.
 
-[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/nivis-project/nivis/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/nivis-project/nivis/releases/tag/v0.10.0
 [0.9.2]: https://github.com/nivis-project/nivis/releases/tag/v0.9.2
 [0.9.1]: https://github.com/nivis-project/nivis/releases/tag/v0.9.1
 [0.9.0]: https://github.com/nivis-project/nivis/releases/tag/v0.9.0
