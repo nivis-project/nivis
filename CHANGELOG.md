@@ -8,6 +8,18 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- a replacement now carries through to the resources that hold the replaced
+  object, instead of being refused whenever anything depends on it. Changing a
+  machine image meant replacing the layer below resources that still held it,
+  which nivis refused, so the rollout needed manual steps. Nivis now asks the
+  provider which dependents an unknown reference forces it to replace, destroys
+  that set in reverse dependency order so nothing is destroyed while something
+  holds it, and recreates it. A dependent the provider can update in place is
+  still refused, because nothing can keep its reference valid across the gap;
+  `nivis plan` names the whole set before the run so the blast radius is visible
+  first. See docs/REPLACEMENT.md.
+
 ## [0.10.0] - 2026-10-16
 
 ### Added

@@ -112,9 +112,22 @@ pkgs.testers.runNixOSTest {
         # infrastructure that nivis does not yet track. The imported object must
         # match what the configuration declares, or the plan afterwards reports a
         # real difference and the test would be asserting the wrong thing.
+        # All three, because the plan below asserts a CLEAN plan and anything
+        # the configuration declares but state does not hold is a create.
+        #
+        # The schema needs a seed for a reason that has nothing to do with
+        # secrets: `if_not_exists` is a create-time flag, so a read after import
+        # returns it as null while a created schema has it set, and the next
+        # plan would propose a change. Measured against this provider, not
+        # assumed.
         machine.succeed(
             "cd /tmp && cat > /tmp/import.json <<'EOF'\n"
-            '{"imports":{"postgresql.postgresql_role.appuser":{"id":"appuser"}}}\n'
+            '{"imports":{'
+            '"postgresql.postgresql_role.appuser":{"id":"appuser"},'
+            '"postgresql.postgresql_database.app":{"id":"appdb"},'
+            '"postgresql.postgresql_schema.app":'
+            '{"id":"appdb.appschema","seed":{"if_not_exists":true}}'
+            '}}\n'
             "EOF"
         )
         # A fresh state file, so the import is not refused as already-in-state.
@@ -148,5 +161,54 @@ pkgs.testers.runNixOSTest {
                 "plan reported no changes after the role was altered out of band, "
                 "so the clean-plan assertion proves nothing:\n" + out
             )
+
+    with subtest("a replacement cascades to the resources that hold it"):
+        # The premise the whole cascade rests on, exercised against a real
+        # provider rather than an in-repo fake: replacing the database makes
+        # `schema.database` unknown, and the provider turns an unknown in an
+        # identity-bearing attribute into a requires-replace. If it did not, the
+        # schema would not be replaced and this subtest would fail.
+        #
+        # Changing lc_collate is what forces the database to be replaced;
+        # postgresql cannot alter a database's collation in place.
+        cascade = f"{common} --var db_collate=C.utf8"
+
+        # The plan reports BOTH, before anything runs. A cascade is a larger
+        # blast radius than the one resource whose configuration changed, so
+        # reporting only the database would understate it.
+        out = machine.succeed(f"cd /tmp && {nivis} plan {cascade} 2>&1 | tee /tmp/cascade-plan.log")
+        for ident in ["postgresql.postgresql_database.app", "postgresql.postgresql_schema.app"]:
+            # The marker matters, not the mention: every resource appears in a
+            # plan whatever its operation, so asserting only that the id is
+            # present would pass for a plan reporting no changes at all.
+            if f"-/+ {ident}" not in out:
+                raise Exception(f"the plan does not report {ident} as a replacement:\n" + out)
+
+        before = machine.succeed(
+            "psql -U postgres -tAc \"SELECT datcollate FROM pg_database WHERE datname='appdb'\""
+        ).strip()
+        if before != "C":
+            raise Exception(f"expected the database at collation C before the cascade, got {before!r}")
+
+        machine.succeed(f"cd /tmp && {nivis} apply {cascade} 2>&1 | tee /tmp/cascade.log")
+
+        # Asked of postgres directly, not through nivis.
+        after = machine.succeed(
+            "psql -U postgres -tAc \"SELECT datcollate FROM pg_database WHERE datname='appdb'\""
+        ).strip()
+        if after != "C.utf8":
+            raise Exception(f"the database was not replaced: collation is {after!r}")
+
+        # The schema went with it. It lives INSIDE the database, so a cascade
+        # that destroyed the database without recreating the schema would leave
+        # this query returning nothing.
+        machine.succeed(
+            "psql -U postgres -d appdb -tAc "
+            "\"SELECT 1 FROM information_schema.schemata WHERE schema_name='appschema'\" | grep -q 1"
+        )
+
+        out = machine.succeed(f"cd /tmp && {nivis} plan {cascade} 2>&1 | tee /tmp/cascade-settled.log")
+        if "No changes" not in out:
+            raise Exception("plan after the cascade was not clean:\n" + out)
   '';
 }

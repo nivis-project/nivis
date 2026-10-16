@@ -103,6 +103,12 @@ type Event struct {
 	// three that drifted. A renderer cannot infer this from the other fields,
 	// so it is stated.
 	Refresh bool
+	// Destroy marks a node event as the DESTROY half of a replacement, run
+	// ahead of the apply loop so that a resource holding another is destroyed
+	// before the one it holds. Like Refresh, a renderer cannot infer it: the
+	// same id appears again moments later as the create half, and without this
+	// the pair reads as the resource being applied twice.
+	Destroy bool
 
 	// BuildProgress fields.
 	Derivation string // the derivation building now, by readable name

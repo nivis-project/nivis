@@ -46,6 +46,18 @@ let
       type = "str";
       default = "postgres";
     };
+    # The collation the managed database is created with. postgresql treats it
+    # as identity: changing it is a replacement, not an alteration. That is what
+    # lets the test drive a cascade from the CLI without editing this file.
+    #
+    # Use "C" and "C.utf8" as the two values. NOT "POSIX": glibc treats POSIX as
+    # an alias for C, so postgres stores C whatever you asked for, and nivis
+    # would then propose the same replacement on every run forever. Measured,
+    # not assumed (bean nixform2-nwnf).
+    db_collate = {
+      type = "str";
+      default = "C";
+    };
   } (ledger.vars or { });
 
   # One role. The assertion the test makes is not about this resource's values;
@@ -59,6 +71,38 @@ let
     config = {
       name = "appuser";
       login = true;
+    };
+  };
+  # A two-link chain whose reference lands in an attribute postgresql treats as
+  # identity. Replacing the database makes `schema.database` unknown, and a
+  # provider turns an unknown in an identity-bearing attribute into a
+  # replacement, so the schema must be replaced with it.
+  #
+  # Measured against this provider before it was relied on (bean nixform2-nwnf):
+  # `schema.database` unknown replaces, `schema.owner` unknown does not. The
+  # second is why nivis asks the provider rather than assuming every holder of a
+  # replaced object must go.
+  database = mkResource {
+    provider = "postgresql";
+    type = "postgresql_database";
+    name = "app";
+    config = {
+      name = "appdb";
+      lc_collate = vars.db_collate;
+      lc_ctype = vars.db_collate;
+      # A database can only be created with a non-default collation from a
+      # template that has none of its own.
+      template = "template0";
+    };
+  };
+
+  schema = mkResource {
+    provider = "postgresql";
+    type = "postgresql_schema";
+    name = "app";
+    config = {
+      name = "appschema";
+      database = database.refAttr "name";
     };
   };
 in
@@ -77,6 +121,10 @@ toIR {
       };
     };
   };
-  resources = [ role ];
+  resources = [
+    role
+    database
+    schema
+  ];
   inherit ledger;
 }

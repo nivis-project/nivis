@@ -77,6 +77,13 @@ Leaving one out is not harmless. The attribute is then absent from state while
 your configuration expects a value, so the next plan proposes changing a live
 credential.
 
+Not every seed is a secret. Some attributes are create-time instructions that
+the object itself does not record, so a read cannot return them either.
+`postgresql_schema.if_not_exists` is one: a created schema has it set, a read
+after import returns null, and without seeding it the next plan proposes a
+change that is not real. The test for this is the one place nivis drives a real
+third-party provider, which is how the case was found.
+
 > **A manifest with seeds holds credentials.** Do not commit it. `nivis import`
 > says so when it reads one.
 

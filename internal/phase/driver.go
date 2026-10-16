@@ -50,6 +50,10 @@ type ProviderManager interface {
 
 // Driver runs the phased-eval loop.
 type Driver struct {
+	// priorCache holds this phase's refreshed prior state per resource id. It is
+	// reset at the top of every phase; see storedPrior.
+	priorCache map[string]priorEntry
+
 	Eval    NixEvaluator
 	Manager ProviderManager
 	Store   state.Store
@@ -169,6 +173,8 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 
 	for phaseNum := 0; phaseNum < maxPhases; phaseNum++ {
 		d.Ledger.Phase = phaseNum
+		// Prior state is cached for the duration of a phase; see storedPrior.
+		d.priorCache = map[string]priorEntry{}
 
 		irJSON, err := d.evalPhase(ctx, phaseNum)
 		if err != nil {
@@ -198,6 +204,16 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 		progressed := false
 		var thisPhase []AppliedNode
 		announced := false
+
+		// Everything a replacement must take with it is decided, and destroyed,
+		// before the forward loop runs. The loop itself then sees those
+		// resources as absent from state and creates them through the path it
+		// already has. See replacePrologue.
+		replaced, err := d.replacePrologue(ctx, g, applied)
+		if err != nil {
+			return nil, fmt.Errorf("phase %d: %w", phaseNum, err)
+		}
+
 		for {
 			res := graph.ResolveTFTF(g, d.Ledger.ToGraphOutputs())
 
@@ -221,7 +237,7 @@ func (d *Driver) Run(ctx context.Context) (*Result, error) {
 			}
 
 			for _, id := range ready {
-				node, op, err := d.resolveOne(ctx, g, res, id, phaseNum)
+				node, op, err := d.resolveOne(ctx, g, res, id, phaseNum, replaced)
 				if err != nil {
 					return nil, err
 				}
@@ -339,6 +355,8 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 	}
 
 	var items []PlanItem
+	planned := map[string]plan.Op{}
+	candidates := map[string]bool{}
 	for _, id := range g.Order {
 		node := g.Nodes[id]
 		// Datasources are read, not created; they never appear in the plan.
@@ -399,18 +417,49 @@ func (d *Driver) PlanReport(ctx context.Context) ([]PlanItem, error) {
 				return nil, err
 			}
 			item.Op = pr.Op
-			if pr.Op == plan.OpReplace {
-				held, herr := d.heldBy(g, id)
-				if herr != nil {
-					return nil, herr
-				}
-				item.HeldBy = held
-			}
+			planned[id] = pr.Op
+			candidates[id] = true
 		} else if found {
 			// In state but not resolvable this pass — treat as an update pending.
 			item.Op = plan.OpUpdate
 		}
 		items = append(items, item)
+	}
+
+	// A replacement takes resources with it, and a cascade is a larger blast
+	// radius than the one resource whose configuration changed. The same facts
+	// are available here as during apply, so it is reported before the run
+	// rather than discovered during it. The ops just computed seed the first
+	// round, so this costs provider calls only for the dependents a cascade
+	// actually reaches.
+	set, err := plan.ReplaceSet(ctx, plan.ReplaceSetInput{
+		Graph:      g,
+		Configs:    res.Configs,
+		Candidates: candidates,
+		Known:      planned,
+		Reeval:     d.reevalWithout(d.Ledger.ToGraphOutputs()),
+		Plan: func(ctx context.Context, node *ir.ResourceNode, cfg map[string]interface{}) (plan.Op, error) {
+			op, _, _, perr := d.planCandidate(ctx, g, node, cfg)
+			return op, perr
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	member := make(map[string]bool, len(set))
+	for _, id := range set {
+		member[id] = true
+	}
+	for i := range items {
+		if !member[items[i].ID] {
+			continue
+		}
+		items[i].Op = plan.OpReplace
+		held, herr := d.heldBy(g, items[i].ID, member)
+		if herr != nil {
+			return nil, herr
+		}
+		items[i].HeldBy = held
 	}
 	return items, nil
 }
@@ -528,7 +577,7 @@ func (d *Driver) readOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode
 // it (encoding unresolved refs as unknown), and applies the implied operation:
 // create (no prior), update in place, or replace (destroy the prior resource
 // then create). Returns the computed outputs.
-func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}, builds []Build) (map[string]interface{}, plan.Op, error) {
+func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNode, resolvedCfg map[string]interface{}, builds []Build, replaced map[string]bool) (map[string]interface{}, plan.Op, error) {
 	prov, ok := g.Providers[node.Resource.Provider]
 	if !ok {
 		return nil, plan.OpCreate, fmt.Errorf("provider %q not declared", node.Resource.Provider)
@@ -556,18 +605,9 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 	// Prior state for this resource id, if it was applied in an earlier run.
 	// By default this is refreshed from the provider (so drift is seen and an
 	// out-of-band deletion becomes a create); --refresh=false uses stored state.
-	var prior map[string]interface{}
-	if stored, found, err := d.Store.Get(node.Resource.ID); err != nil {
-		return nil, plan.OpCreate, fmt.Errorf("read prior state for %q: %w", node.Resource.ID, err)
-	} else if found {
-		attrs, err := plan.UpgradeStored(ctx, client, rs, node, stored.SchemaVersion, stored.Attrs)
-		if err != nil {
-			return nil, plan.OpCreate, err
-		}
-		prior, _, err = d.priorState(ctx, client, rs, node, attrs)
-		if err != nil {
-			return nil, plan.OpCreate, err
-		}
+	prior, _, err := d.storedPrior(ctx, client, rs, node)
+	if err != nil {
+		return nil, plan.OpCreate, err
 	}
 
 	pr, err := plan.Plan(ctx, client, rs, node, resolvedCfg, prior)
@@ -594,7 +634,7 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		// who references it, the store says which of those exist. Refusing here
 		// is the difference between naming them and relaying a provider's API
 		// error about an id the user never typed.
-		holders, err := d.heldBy(g, node.Resource.ID)
+		holders, err := d.heldBy(g, node.Resource.ID, replaced)
 		if err != nil {
 			return nil, plan.OpReplace, fmt.Errorf(
 				"cannot replace %q: its dependents could not be determined, so destroying it is not safe: %w",
@@ -621,12 +661,21 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 		if err := d.Store.Delete(node.Resource.ID); err != nil {
 			return nil, plan.OpReplace, fmt.Errorf("replace %q: destroyed the prior resource but could not clear its state entry: %w", node.Resource.ID, err)
 		}
+		d.forgetPrior(node.Resource.ID)
 		outs, err := apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, nil, d.Store)
 		return outs, plan.OpReplace, err
 	default:
 		// OpCreate (prior nil) or OpUpdate (prior carried into apply for in-place).
 		outs, err := apply.Apply(ctx, client, rs, node, resolvedCfg, pr.PlannedState, prior, d.Store)
-		return outs, pr.Op, err
+		op := pr.Op
+		if replaced[node.Resource.ID] {
+			// The prologue destroyed this resource's prior object and cleared its
+			// state entry, so the plan just made against a null prior says
+			// "create". The operation is still a replacement, and reporting it as
+			// a create would hide a destroy that happened.
+			op = plan.OpReplace
+		}
+		return outs, op, err
 	}
 }
 
@@ -644,7 +693,11 @@ func (d *Driver) applyOne(ctx context.Context, g *ir.Graph, node *ir.ResourceNod
 // whether anything holds the object is not the same as knowing nothing does.
 // Refusing wrongly costs a retry; proceeding wrongly destroys live
 // infrastructure.
-func (d *Driver) heldBy(g *ir.Graph, id string) ([]string, error) {
+// A holder already destroyed with this resource as part of a replacement set is
+// not a holder: the prologue decided it must be replaced too, and its prior
+// object is already gone. Passing that set in is what keeps the per-node guard
+// from refusing a cascade the prologue has authorised.
+func (d *Driver) heldBy(g *ir.Graph, id string, replaced map[string]bool) ([]string, error) {
 	dag, err := graph.Build(g)
 	if err != nil {
 		return nil, fmt.Errorf("build the dependency graph: %w", err)
@@ -663,7 +716,7 @@ func (d *Driver) heldBy(g *ir.Graph, id string) ([]string, error) {
 	}
 	var held []string
 	for _, dep := range dependents {
-		if exists[dep] {
+		if exists[dep] && !replaced[dep] {
 			held = append(held, dep)
 		}
 	}
@@ -887,6 +940,7 @@ func resourceIDOf(outs map[string]interface{}) string {
 // they share one readiness list.
 func (d *Driver) resolveOne(
 	ctx context.Context, g *ir.Graph, res graph.ResolveResult, id string, phaseNum int,
+	replaced map[string]bool,
 ) (*ir.ResourceNode, plan.Op, error) {
 	node := g.Nodes[id]
 
@@ -905,7 +959,7 @@ func (d *Driver) resolveOne(
 			err = fmt.Errorf("phase %d: read datasource %q: %w", phaseNum, id, err)
 		}
 	} else {
-		outs, op, err = d.applyOne(ctx, g, node, res.Configs[id], res.BuildOutputs[id])
+		outs, op, err = d.applyOne(ctx, g, node, res.Configs[id], res.BuildOutputs[id], replaced)
 		if err != nil {
 			err = fmt.Errorf("phase %d: apply %q: %w", phaseNum, id, err)
 		}

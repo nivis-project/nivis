@@ -1,11 +1,11 @@
 ---
 # nixform2-nwnf
 title: A replacement destroys a resource before the resources that depend on it
-status: todo
+status: completed
 type: bug
 priority: normal
 created_at: 2026-09-14T20:22:58Z
-updated_at: 2026-10-11T10:05:43Z
+updated_at: 2026-10-16T10:38:34Z
 ---
 
 Applying `040_tunnel_target` in nivis-demos, where a changed image forces the
@@ -139,3 +139,130 @@ so far avoided by never planning ahead.
   taking deliberately (it moves the replacement decision from per-resource
   during apply to a set computed up front, introducing ordinary plan/apply skew
   that nivis has so far avoided).
+
+## OpenSpec change (2026-10-16)
+
+`cascade-a-replacement-through-dependents` (store: nivis). Proposed, not yet
+implemented.
+
+Scope: a replace-set prologue per phase, destroys in reverse dependency order,
+the refusal narrowed to holders the provider does not replace, the plan
+reporting the cascade, and `docs/REPLACEMENT.md`.
+
+Two things the exploration changed against what this bean assumed:
+
+- The fixpoint needs NO `nix eval`. `graph.ResolveTFTF` re-resolves TF->TF
+  references in process and `__ref` already encodes as unknown, so a round costs
+  provider plan calls only. The bean's per-round eval is the general case
+  including Nix-computed values, which design D4 puts out of scope by refusing
+  them.
+- Every primitive already exists: `DAG.DestroyOrder`, `DAG.Dependents`,
+  `ResolveTFTF`, `tfvalue.isUnresolved`. What is missing is the prologue that
+  wires them.
+
+The plan/apply skew decision this bean flagged is taken in design D7: accepted,
+bounded to one phase of one run, no persisted plan.
+
+The prologue runs once per phase, not once per run (D3). Not a spike question:
+the driver already assumes a node's config is stable once applied
+(`applied[id] = true`, never revisited), so the prologue inherits that rather
+than introducing it, and per-phase is the only version that reaches a resource
+revealed in a later phase.
+
+Task 1 is a spike against the real postgres provider and may end the change: the
+premise that an unknown in a force-new attribute returns requires-replace is
+verified in upstream source and has never been executed, which is the exact
+shape of nixform2-1mk0, aur6, msl4 and cjxz.
+
+Also recorded during exploration: hpmb already turned this from a corruption bug
+into a capability gap. Nivis refuses cleanly before destroying anything, so the
+remaining cost is that a changed image cannot be rolled out unattended, not that
+a run damages infrastructure.
+
+## Spike result (2026-10-16): the premise holds
+
+Measured against cyrilgdn/postgresql 1.26.0, a real unmodified provider binary,
+driven through `internal/plugin` with a local postgresql 17.10. Not against a
+fake, deliberately.
+
+| probe                                          | RequiresReplace |
+|------------------------------------------------|-----------------|
+| `database.lc_collate` C to POSIX                | true            |
+| control: schema unchanged                       | false (NoOp)    |
+| `schema.database` = UNKNOWN                     | **true**        |
+| `schema.owner` = UNKNOWN (not identity)         | false (NoOp)    |
+| `database.owner` = UNKNOWN (not identity)       | false (NoOp)    |
+| `role` renamed                                  | false           |
+
+Row 3 is the premise the whole design rests on: a provider turns an unknown in
+an identity-bearing attribute into a requires-replace. Rows 4 and 5 are what
+stop the cascade over-reaching, and they matter as much: an unknown in an
+attribute the provider can update in place does NOT force a replacement, so
+asking the provider rather than assuming (design D1) is load-bearing, not
+ceremony.
+
+Row 6 is a fixture constraint discovered here: `postgresql_role` supports
+ALTER ROLE RENAME, so a role is never replaced and cannot be the head of a
+cascade in the real-provider test. The chain used instead is
+`postgresql_database` -> `postgresql_schema`, where `schema.database` is
+identity-bearing.
+
+## Summary of Changes
+
+Shipped as OpenSpec change `cascade-a-replacement-through-dependents`.
+
+A replacement now carries through to the resources that hold the replaced
+object. Before each phase's apply loop, the executor computes the set of
+resources that must be replaced together, refuses if anything in state holds a
+member without joining it, and otherwise destroys the set in reverse dependency
+order so nothing is destroyed while something holds it. The forward loop then
+recreates the members through the path it already had; it was not modified.
+`nivis plan` reports the whole set before the run.
+
+The refusal narrowed rather than disappeared. A holder the provider plans as an
+in-place update still blocks, and the message now names create-before-destroy
+(`nixform2-vh2s`) as what that case needs.
+
+### What the spike changed
+
+The premise, that a provider turns an unknown in an identity-bearing attribute
+into a requires-replace, was verified in upstream source and never executed.
+Measured against cyrilgdn/postgresql 1.26.0 it holds, and the negative controls
+hold too: an unknown in `owner` is an in-place update. That is why the design
+asks the provider instead of assuming every holder must go.
+
+### The design error the real provider found
+
+The design said the fixpoint needed no `nix eval`, because `ResolveTFTF` can
+re-resolve references in process. That is wrong. Nivis evaluates with the
+recorded outputs injected, and an evaluation that can see a value bakes it in:
+the reference leaf AND the IR edge recording it are both gone from the graph the
+executor receives. Dropping the target and evaluating again is the only way the
+dependency comes back, which is what this bean proposed originally.
+
+It surfaced as `nivis plan` reporting a cascade as "no change" while apply
+performed it, because `Run` starts with an empty ledger and `PlanReport` seeds
+from state before evaluating. Every Go test passed throughout, because the stub
+evaluator returns the same IR whatever the ledger holds. The project's recurring
+failure shape, in a new place: a fake that agrees with our reading.
+
+Fixed by re-evaluating per fixpoint round, with round one still evaluation-free
+so a run that replaces nothing pays nothing. The regression
+(`TestPlanReportsACascadeThroughABakedReference`) uses a stub that bakes the way
+the real evaluator does.
+
+### Also found
+
+- `postgresql_role` supports ALTER ROLE RENAME, so a role is never replaced.
+- glibc treats `POSIX` as an alias for `C`, so a database created with
+  `lc_collate = "POSIX"` stores `C` and would make nivis propose the same
+  replacement forever. The fixture uses `C` and `C.utf8`.
+- `postgresql_schema.if_not_exists` is a create-time flag a read cannot return,
+  so importing a schema needs it seeded. A non-credential reason to seed, now
+  in `docs/IMPORT.md`.
+
+### Not done here
+
+`nixform2-vh2s` (create-before-destroy) is the remaining case: a holder the
+provider updates in place. A cascade cannot reach it, and the refusal now says
+so by name.
