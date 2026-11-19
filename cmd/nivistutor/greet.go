@@ -9,16 +9,8 @@ import (
 	"os"
 
 	"golang.org/x/term"
-)
 
-// Brand ANSI colours (24-bit truecolor) from docs/BRAND.md, matching the nivis
-// splash: ember #F2632E (the one warm accent), ice blue #AECFE6.
-const (
-	ansiReset = "\x1b[0m"
-	ansiEmber = "\x1b[38;2;242;99;46m"   // Volcanic Ember
-	ansiIce   = "\x1b[38;2;174;207;230m" // Ice Blue
-	ansiDim   = "\x1b[38;2;120;140;160m" // dim grey-blue
-	ansiSnow  = "\x1b[1;38;2;245;250;253m"
+	"github.com/nivis-project/nivis/internal/ui"
 )
 
 // colorEnabled reports whether ANSI colour should be used: a TTY and no NO_COLOR
@@ -42,10 +34,10 @@ func greet(w io.Writer) {
 		if !c {
 			return s
 		}
-		return code + s + ansiReset
+		return code + s + ui.Reset
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "  %s  %s\n", paint(ansiEmber, "*"), paint(ansiSnow, "Welcome to the Nivis Tutorials"))
-	fmt.Fprintf(w, "     %s\n", paint(ansiDim, "scaffold a tutorial, then run it with plain nivis · "+version))
+	fmt.Fprintf(w, "  %s  %s\n", paint(ui.Accent, "●"), paint(ui.Bright, "Welcome to the Nivis Tutorials"))
+	fmt.Fprintf(w, "     %s\n", paint(ui.Dim, "scaffold a tutorial, then run it with plain nivis · "+version))
 	fmt.Fprintln(w)
 }

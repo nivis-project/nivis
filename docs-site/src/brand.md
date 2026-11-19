@@ -1,5 +1,5 @@
 <div class="tn-brand-emblem">
-  <img src="./nivis-emblem.svg" alt="Nivis emblem" width="120" height="120" />
+  <img src="./favicon.svg" alt="The Nivis mark" width="120" height="120" />
 </div>
 
 {{#include ../../docs/BRAND.md}}

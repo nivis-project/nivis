@@ -19,15 +19,12 @@ import (
 	"golang.org/x/term"
 )
 
-// Brand ANSI colours (24-bit truecolor) from docs/BRAND.md:
-//
-//	ember #F2632E (the one warm accent), ice blue #AECFE6, silver #C3D2DE.
 const (
-	Reset = "\x1b[0m"
-	Ember = "\x1b[38;2;242;99;46m"   // Volcanic Ember
-	Ice   = "\x1b[38;2;174;207;230m" // Ice Blue
-	Dim   = "\x1b[38;2;120;140;160m" // dim grey-blue
-	Snow  = "\x1b[1;38;2;245;250;253m"
+	Reset  = "\x1b[0m"
+	Accent = "\x1b[38;2;45;210;197m"
+	Name   = "\x1b[38;2;123;211;255m"
+	Dim    = "\x1b[38;2;147;184;199m"
+	Bright = "\x1b[1m"
 
 	// Change-type colours. Green/yellow/red carry the conventional plan-diff
 	// meaning.

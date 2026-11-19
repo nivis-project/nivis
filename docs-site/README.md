@@ -36,8 +36,8 @@ The built site is written to `docs-site/book/` (git-ignored).
 - `theme/favicon.svg`: a byte-for-byte copy of `https://nivis.tf/favicon.svg`.
   mdBook links it itself. When nivis.tf's mark changes, copy it again and update
   its SHA-256 in `tests/check-docs-site.sh`.
-- `src/nivis-emblem.svg`: the emblem on the brand page, copied from
-  `../assets`.
+- `src/brand.md`: shows the mark from `favicon.svg`, the copy above, and
+  includes `docs/BRAND.md`.
 
 ## Editing content
 

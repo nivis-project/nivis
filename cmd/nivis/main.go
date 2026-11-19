@@ -62,10 +62,11 @@ func main() {
 	var showVersion bool
 	root := &cobra.Command{
 		Use:   "nivis",
-		Short: "Nivis — Infrastructure as Nix Code",
-		Long: "Nivis — Infrastructure as Nix Code. All your base belongs to Nix.\n\n" +
-			"A Nix-native infrastructure tool where Terraform/OpenTofu provider\n" +
-			"resources are first-class Nix values. (Formerly nixform, then Terrae Nivis.)",
+		Short: "Nivis: " + tagline,
+		Long: "Nivis: " + tagline + ".\n\n" +
+			"Describe real infrastructure as Nix instead of HCL. A thin Go executor\n" +
+			"drives unmodified Terraform and OpenTofu provider binaries, and what the\n" +
+			"cloud returns flows back into Nix. (Formerly nixform, then Terrae Nivis.)",
 		// We print runtime failures ourselves as a clean `error:` line; don't let
 		// cobra print the error a second time.
 		SilenceErrors: true,

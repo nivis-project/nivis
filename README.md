@@ -1,9 +1,11 @@
 <p align="center">
-  <img src="docs/assets/banner.png" alt="Nivis: All your base belongs to Nix" width="100%">
+  <img src="https://nivis.tf/social.png" alt="Nivis: Terraform providers as first-class Nix values." width="100%">
 </p>
 
 # Nivis
 
+**Terraform providers as first-class Nix values.** *(Nivis, Latin, "of snow".
+Formerly `nixform`, then Terrae Nivis.)*
 
 Nivis lets you manage real infrastructure from Nix: Terraform/OpenTofu **provider
 resources are first-class Nix values**. You write your infra in a flake; a thin

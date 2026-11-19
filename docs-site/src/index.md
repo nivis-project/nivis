@@ -4,8 +4,8 @@
 
 # Nivis
 
-**Infrastructure as Nix Code.** *All your base belongs to Nix.* *(Nivis, Latin,
-"of snow"; it belongs to Nix. Formerly `nixform`, then Terrae Nivis.)*
+**Terraform providers as first-class Nix values.** *(Nivis, Latin, "of snow".
+Formerly `nixform`, then Terrae Nivis.)*
 
 {{#include ../../docs/OVERVIEW.md:pitch}}
 

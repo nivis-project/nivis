@@ -9,6 +9,8 @@ import (
 	"os"
 
 	"golang.org/x/term"
+
+	"github.com/nivis-project/nivis/internal/ui"
 )
 
 // version is the displayed version. The single source of truth is the top-level
@@ -17,16 +19,7 @@ import (
 // "dev" rather than a stale hardcoded number.
 var version = "dev"
 
-// Brand ANSI colours (24-bit truecolor) from docs/BRAND.md:
-//
-//	ember #F2632E (the one warm accent), ice blue #AECFE6, silver #C3D2DE.
-const (
-	ansiReset = "\x1b[0m"
-	ansiEmber = "\x1b[38;2;242;99;46m"   // Volcanic Ember
-	ansiIce   = "\x1b[38;2;174;207;230m" // Ice Blue
-	ansiDim   = "\x1b[38;2;120;140;160m" // dim grey-blue
-	ansiSnow  = "\x1b[1;38;2;245;250;253m"
-)
+const tagline = "Terraform providers as first-class Nix values"
 
 // colorEnabled reports whether ANSI colour should be used: a TTY and no NO_COLOR.
 // (https://no-color.org)
@@ -49,18 +42,13 @@ func splash(w io.Writer) {
 		if !c {
 			return s
 		}
-		return code + s + ansiReset
+		return code + s + ui.Reset
 	}
 
-	// ASCII peak + wordmark (handoff "10 · Command line").
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "          %s\n", paint(ansiEmber, "*"))
-	fmt.Fprintf(w, "         %s        %s\n", paint(ansiIce, "/\\"), paint(ansiSnow, "NIVIS"))
-	fmt.Fprintf(w, "        %s       %s\n", paint(ansiIce, "/  \\"), paint(ansiDim, "infrastructure as nix code · all your base belongs to nix · "+version))
-	fmt.Fprintf(w, "       %s\n", paint(ansiIce, "/____\\"))
-	fmt.Fprintf(w, "      %s\n", paint(ansiIce, "/\\/\\/\\/\\"))
+	fmt.Fprintf(w, "  %s  %s  %s\n", paint(ui.Accent, "●"), paint(ui.Bright, "Nivis"), paint(ui.Dim, tagline+" · "+version))
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "  %s plan · apply · destroy · refresh · state · gen    (try %s)\n",
-		paint(ansiEmber, "❯"), paint(ansiIce, "nivis --help"))
+		paint(ui.Accent, "❯"), paint(ui.Name, "nivis --help"))
 	fmt.Fprintln(w)
 }

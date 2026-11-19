@@ -6,14 +6,8 @@ package main
 import (
 	"fmt"
 	"io"
-)
 
-// Change-type ANSI colours (24-bit truecolor), complementing splash.go's brand
-// palette. Green/yellow/red carry the conventional plan-diff meaning.
-const (
-	ansiGreen  = "\x1b[38;2;90;200;120m" // create
-	ansiYellow = "\x1b[38;2;220;190;90m" // update
-	ansiRed    = "\x1b[38;2;220;100;90m" // destroy / replace (destroy half)
+	"github.com/nivis-project/nivis/internal/ui"
 )
 
 // output renders plan/apply/destroy lines, colourising by change type only when
@@ -35,7 +29,7 @@ func (o *output) paint(code, s string) string {
 	if !o.color {
 		return s
 	}
-	return code + s + ansiReset
+	return code + s + ui.Reset
 }
 
 func (o *output) printf(format string, a ...interface{}) {
@@ -51,14 +45,14 @@ func (o *output) printf(format string, a ...interface{}) {
 //   - destroy  (red)
 //     =    no-op    (dim)
 //     r    read     (dim; a datasource read, not a create)
-func (o *output) create(id, typ string) { o.node(o.paint(ansiGreen, "+"), id, typ) }
-func (o *output) update(id, typ string) { o.node(o.paint(ansiYellow, "~"), id, typ) }
+func (o *output) create(id, typ string) { o.node(o.paint(ui.Green, "+"), id, typ) }
+func (o *output) update(id, typ string) { o.node(o.paint(ui.Yellow, "~"), id, typ) }
 func (o *output) replace(id, typ string) {
-	o.node(o.paint(ansiRed, "-")+o.paint(ansiGreen, "/+"), id, typ)
+	o.node(o.paint(ui.Red, "-")+o.paint(ui.Green, "/+"), id, typ)
 }
-func (o *output) destroy(id, typ string) { o.node(o.paint(ansiRed, "-"), id, typ) }
-func (o *output) noop(id, typ string)    { o.node(o.paint(ansiDim, "="), id, typ) }
-func (o *output) read(id, typ string)    { o.node(o.paint(ansiDim, "r"), id, typ) }
+func (o *output) destroy(id, typ string) { o.node(o.paint(ui.Red, "-"), id, typ) }
+func (o *output) noop(id, typ string)    { o.node(o.paint(ui.Dim, "="), id, typ) }
+func (o *output) read(id, typ string)    { o.node(o.paint(ui.Dim, "r"), id, typ) }
 
 func (o *output) node(marker, id, typ string) {
 	if typ != "" {
@@ -70,5 +64,5 @@ func (o *output) node(marker, id, typ string) {
 
 // phaseHeading prints a "Phase N" group header (ice-blue on a TTY).
 func (o *output) phaseHeading(n int) {
-	o.printf("%s\n", o.paint(ansiIce, fmt.Sprintf("Phase %d", n)))
+	o.printf("%s\n", o.paint(ui.Name, fmt.Sprintf("Phase %d", n)))
 }

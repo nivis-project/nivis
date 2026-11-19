@@ -223,7 +223,7 @@ func (s *Sink) marker(level string) string {
 	}
 }
 
-// Colours match the CLI's change-type palette (cmd/nivis/output.go).
+// Colours match the CLI's change-type palette (internal/ui/capability.go).
 const (
 	ansiYellow = "\x1b[38;2;220;190;90m"
 	ansiRed    = "\x1b[38;2;220;100;90m"

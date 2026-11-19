@@ -13,6 +13,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   style: Hind, the teal to blue palette, light or dark following the system,
   the nivis.tf mark as its favicon and the nivis.tf preview image on its
   landing page. The old address redirects there.
+- nivis wears the nivis.tf house style: the README banner is the nivis.tf
+  preview image, the CLI splash and progress output use the teal to blue
+  palette, and the tagline is "Terraform providers as first-class Nix values."
+  The previous emblem, banner and the slogans "Infrastructure as Nix Code" and
+  "All your base belongs to Nix" are gone.
 
 ### Fixed
 - a replacement now carries through to the resources that hold the replaced

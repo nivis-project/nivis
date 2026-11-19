@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/nivis-project/nivis/internal/ui"
 )
 
 // A buffer is not a *os.File, so newOutput disables color: plain markers, no ANSI.
@@ -53,12 +55,12 @@ func TestOutputColoredWhenEnabled(t *testing.T) {
 	o.noop("e", "")
 	o.read("f", "")
 	got := buf.String()
-	for _, code := range []string{ansiGreen, ansiYellow, ansiRed, ansiDim} {
+	for _, code := range []string{ui.Green, ui.Yellow, ui.Red, ui.Dim} {
 		if !strings.Contains(got, code) {
 			t.Errorf("expected ANSI %q in colored output:\n%q", code, got)
 		}
 	}
-	if !strings.Contains(got, ansiReset) {
+	if !strings.Contains(got, ui.Reset) {
 		t.Error("colored output must reset")
 	}
 }

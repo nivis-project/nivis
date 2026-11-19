@@ -215,7 +215,7 @@ func (l *live) redraw() {
 		it := l.inFlight[key]
 		label := truncate(it.label, l.width()-24)
 		row := fmt.Sprintf("%s %s %s",
-			l.paint(Ember, frames), label, l.paint(Dim, dur(time.Since(it.started))))
+			l.paint(Accent, frames), label, l.paint(Dim, dur(time.Since(it.started))))
 		if l.phaseCount > 0 && key != "eval" {
 			row += l.paint(Dim, fmt.Sprintf("  [%d/%d]", l.phaseDone+1, l.phaseCount))
 		}

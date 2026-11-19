@@ -113,7 +113,7 @@ func (b *base) line(e progress.Event) string {
 		}
 	case progress.PhaseStart:
 		if b.level >= LevelInfo {
-			return b.paint(Ice, fmt.Sprintf("Phase %d", e.Phase+1)) +
+			return b.paint(Name, fmt.Sprintf("Phase %d", e.Phase+1)) +
 				b.paint(Dim, fmt.Sprintf("  %s", plural(e.Count, "node", "nodes")))
 		}
 	case progress.NodeStart:

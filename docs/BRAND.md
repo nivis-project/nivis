@@ -1,64 +1,63 @@
 # Nivis: brand reference
 
-**Nivis** (Latin, *"of snow"*) · tagline **"Infrastructure as Nix
-Code."** Formerly `nixform`. This file records the brand tokens so future work
-(docs site, UI, slides) has the palette and type in-repo, and is the in-repo
-source of truth for the logo geometry and treatments.
+Nivis wears the house style of [nivis.tf](https://nivis.tf). That site's
+repository, [nivis-project/nivis.tf](https://github.com/nivis-project/nivis.tf),
+is the source of the brand: the colour and type tokens are in its
+`data/tokens.yaml`, the mark's parameters in its `data/marks.yaml`. This file
+records what this repository takes from it, and where each value comes from, so
+a change on nivis.tf can be followed here.
 
-## Logo
+## Name and tagline
 
-- `assets/nivis-emblem.svg`: full emblem (snow-capped twin summit on a
-  navy disc with silver ring + ember star). Use at **≥40px**.
-- `assets/nivis-glyph.svg`: simplified single-peak mark for **16-64px**
-  (favicons, tabs, avatars).
-- Never recolour (beyond the ember star), stretch, skew, rotate, or shadow the
-  emblem. Clear space ≥ the ring thickness. Below 40px use the glyph.
+**Nivis** (Latin, "of snow"). Tagline: **"Terraform providers as first-class
+Nix values."** It is the same on nivis.tf, the GitHub organisation, the README,
+the docs site and the CLI. Formerly `nixform`, then Terrae Nivis.
 
-## Colour tokens
+## The mark
 
-| Token | Hex | Use |
-|---|---|---|
-| Ink | `#081726` | deepest background |
-| Deep Navy | `#0E3157` | **primary brand**, icon tile, dark surfaces |
-| Disc Navy | `#0B2A48` | emblem disc fill |
-| Steel Blue | `#2D5E8E` | secondary |
-| Glacier Blue | `#4A93C8` | links, cool UI accent |
-| Ice Blue | `#AECFE6` | text on navy, tagline |
-| Pale Ice | `#DCEDF7` | subtle fills |
-| Silver | `#C3D2DE` | ring, hairlines, metallic |
-| Snow | `#F5FAFD` | light surfaces, text on navy |
-| **Volcanic Ember** | `#F2632E` | **the one warm accent**: the star, key highlights |
-| Magma | `#C4361A` | deep warm shade |
+The mark is a closed curve h(θ) = a + b·cos kθ, drawn as nested, rotated,
+translucent copies in an analogous teal to blue family around hue 205. For Nivis
+it has three lobes, a lobe ratio of 12, four copies and 20 degrees of rotation
+between copies (the `default` entry of `data/marks.yaml`).
 
-## Typography (all Google Fonts, OFL)
+| Use                 | Source                                  |
+| ------------------- | --------------------------------------- |
+| mark                | `https://nivis.tf/favicon.svg`          |
+| banner, 1200 by 630 | `https://nivis.tf/social.png`           |
+| docs site favicon   | `docs-site/theme/favicon.svg`, a copy   |
 
-- **Cinzel** (600): wordmark / display, Roman caps, letter-spacing ≈ .07em,
-  used UPPERCASE ("NIVIS").
-- **Schibsted Grotesk** (400/500/600): UI, body, tagline.
-- **IBM Plex Mono** (400/500): code, CLI, labels.
+Markdown loads both images from nivis.tf, so the repository keeps no copies of
+its own. The docs site needs one file on disk for mdBook, and
+`tests/check-docs-site.sh` holds it to the SHA-256 of the nivis.tf mark.
 
-## CLI colours (`nivis`)
+## Typography
 
-Truecolor ANSI, applied only on a TTY (honours `NO_COLOR`): ember
-`\e[38;2;242;99;46m` for the `❯` prompt and "fixpoint reached"; ice blue
-`\e[38;2;174;207;230m` for resource names/values; dim grey for secondary text.
+- **Hind** (400, 500, 600) for text and headings.
+- **IBM Plex Mono** (400, 500) for code, the CLI and labels.
 
-## Regenerating the raster assets
+Both are on Google Fonts under the OFL.
 
-The logo SVGs are the source; the icons and banner PNG are generated from them.
-Requires `rsvg-convert` and ImageMagick (`magick`), plus the Cinzel and IBM Plex
-Mono fonts available to fontconfig.
+## Palette
 
-```sh
-# favicon (32px) + apple-touch-icon (180px glyph on a #0E3157 tile, ~14% padding)
-cp assets/nivis-glyph.svg assets/favicon.svg
-rsvg-convert -w 32 -h 32 assets/nivis-glyph.svg -o /tmp/f32.png
-magick /tmp/f32.png assets/favicon.ico
-rsvg-convert -w 180 -h 180 docs/assets/apple-touch-icon.svg -o assets/apple-touch-icon.png
+The docs site copies its colours from nivis.tf `data/tokens.yaml`, each under
+the token's own name, in `docs-site/theme/custom.css`: `ground`, `surface`,
+`ink`, `muted`, `line`, `accent` and `accent-soft`, light and dark.
 
-# README hero banner (1280×640): needs Cinzel + IBM Plex Mono on fontconfig
-rsvg-convert -w 1280 -h 640 docs/assets/banner.svg -o docs/assets/banner.png
-```
+## CLI colours
 
-The banner/apple-touch source SVGs live in `docs/assets/` / generated inline;
-the committed PNGs are reproducible from them.
+Truecolor ANSI, only on a TTY and never when `NO_COLOR` is set. The constants
+live in `internal/ui/capability.go`; `nivis` and `nivistutor` both use them.
+
+| Constant | sRGB          | Comes from                              | Used for                    |
+| -------- | ------------- | --------------------------------------- | --------------------------- |
+| `Accent` | 45, 210, 197  | the mark's first copy, hsl(175 65% 50%) | prompt, spinner             |
+| `Name`   | 123, 211, 255 | `tok-func`, oklch(0.83 0.11 235)        | phase headers, commands     |
+| `Dim`    | 147, 184, 199 | `code-dim`, oklch(0.76 0.045 225)       | secondary text              |
+
+`Bright` is bold in the terminal's own text colour, for the wordmark. A fixed
+light colour would vanish on a light terminal.
+
+The `tok-` and `code-` tokens are nivis.tf's colours for text on its dark code
+blocks, which is what a terminal is closest to. The plan-diff colours (green,
+yellow, red for create, update, destroy) are not part of the brand: they carry
+the meaning every plan output gives them.

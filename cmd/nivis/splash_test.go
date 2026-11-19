@@ -16,10 +16,10 @@ func TestSplashPlainToBuffer(t *testing.T) {
 	splash(&buf)
 	out := buf.String()
 
-	if !strings.Contains(out, "NIVIS") {
+	if !strings.Contains(out, "Nivis") {
 		t.Errorf("splash missing wordmark:\n%s", out)
 	}
-	if !strings.Contains(out, "infrastructure as nix code") {
+	if !strings.Contains(out, "Terraform providers as first-class Nix values") {
 		t.Errorf("splash missing tagline:\n%s", out)
 	}
 	// A bytes.Buffer is not a TTY, so output must carry no ANSI escape codes.
