@@ -1,119 +1,105 @@
-/* Nivis brand theme for mdBook (docs/BRAND.md).
- * Navy surfaces, ice/silver text, glacier-blue links, the single Volcanic Ember
- * accent; Cinzel display, Schibsted Grotesk body, IBM Plex Mono code. Fonts come
- * from Google Fonts (OFL) with a system-font fallback so the site renders offline.
- */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Schibsted+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  /* Brand tokens */
-  --tn-ink:          #081726;
-  --tn-deep-navy:    #0E3157;
-  --tn-disc-navy:    #0B2A48;
-  --tn-steel:        #2D5E8E;
-  --tn-glacier:      #4A93C8;
-  --tn-ice:          #AECFE6;
-  --tn-pale-ice:     #DCEDF7;
-  --tn-silver:       #C3D2DE;
-  --tn-snow:         #F5FAFD;
-  --tn-ember:        #F2632E;
-  --tn-magma:        #C4361A;
-
-  --tn-body-font:    "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --tn-display-font: "Cinzel", Georgia, "Times New Roman", serif;
-  --tn-mono-font:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --nv-body-font: "Hind", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --nv-mono-font: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
-/* Map the brand palette onto mdBook's theme variables (the .navy theme). */
+.light {
+  --nv-ground:      oklch(0.985 0.006 230);
+  --nv-surface:     oklch(0.998 0.003 230);
+  --nv-ink:         oklch(0.26 0.05 258);
+  --nv-muted:       oklch(0.46 0.04 252);
+  --nv-line:        oklch(0.88 0.02 240);
+  --nv-accent:      oklch(0.45 0.19 265);
+  --nv-accent-soft: oklch(0.93 0.045 235);
+}
+
 .navy {
-  --bg: var(--tn-ink);
-  --fg: var(--tn-snow);
-
-  --sidebar-bg: var(--tn-disc-navy);
-  --sidebar-fg: var(--tn-ice);
-  --sidebar-non-existant: #5a6f82;
-  --sidebar-active: var(--tn-ember);
-  --sidebar-spacer: #143653;
-
-  --scrollbar: var(--tn-steel);
-
-  --icons: var(--tn-silver);
-  --icons-hover: var(--tn-ice);
-
-  --links: var(--tn-glacier);
-
-  --inline-code-color: var(--tn-pale-ice);
-
-  --theme-popup-bg: var(--tn-deep-navy);
-  --theme-popup-border: var(--tn-steel);
-  --theme-hover: #143653;
-
-  --quote-bg: var(--tn-disc-navy);
-  --quote-border: var(--tn-ember);
-
-  --table-border-color: var(--tn-steel);
-  --table-header-bg: var(--tn-deep-navy);
-  --table-alternate-bg: #0c2640;
-
-  --searchbar-border-color: var(--tn-steel);
-  --searchbar-bg: var(--tn-disc-navy);
-  --searchbar-fg: var(--tn-snow);
-  --searchbar-shadow-color: var(--tn-ink);
-  --search-mark-bg: var(--tn-ember);
+  --nv-ground:      oklch(0.17 0.035 255);
+  --nv-surface:     oklch(0.21 0.04 255);
+  --nv-ink:         oklch(0.94 0.015 230);
+  --nv-muted:       oklch(0.77 0.035 230);
+  --nv-line:        oklch(0.34 0.045 250);
+  --nv-accent:      oklch(0.80 0.12 230);
+  --nv-accent-soft: oklch(0.30 0.07 250);
 }
 
-/* Type stack. */
-html, body, .content { font-family: var(--tn-body-font); }
-.content code, pre, code, kbd, .hljs, .menu-title + .left .icon { font-family: var(--tn-mono-font); }
+.light, .navy {
+  --bg: var(--nv-ground);
+  --fg: var(--nv-ink);
 
-/* Display headings: Cinzel for the top-level title, Grotesk for the rest so body
- * stays readable. The page H1 and the sidebar brand get the Roman caps treatment. */
-.content h1 {
-  font-family: var(--tn-display-font);
-  letter-spacing: 0.04em;
-  color: var(--tn-snow);
+  --sidebar-bg: var(--nv-surface);
+  --sidebar-fg: var(--nv-muted);
+  --sidebar-non-existant: var(--nv-muted);
+  --sidebar-active: var(--nv-accent);
+  --sidebar-spacer: var(--nv-line);
+
+  --scrollbar: var(--nv-line);
+
+  --icons: var(--nv-muted);
+  --icons-hover: var(--nv-ink);
+
+  --links: var(--nv-accent);
+
+  --inline-code-color: var(--nv-ink);
+
+  --theme-popup-bg: var(--nv-surface);
+  --theme-popup-border: var(--nv-line);
+  --theme-hover: var(--nv-accent-soft);
+
+  --quote-bg: var(--nv-accent-soft);
+  --quote-border: var(--nv-accent);
+  --warning-border: var(--nv-accent);
+
+  --table-border-color: var(--nv-line);
+  --table-header-bg: var(--nv-accent-soft);
+  --table-alternate-bg: var(--nv-surface);
+
+  --searchbar-border-color: var(--nv-line);
+  --searchbar-bg: var(--nv-surface);
+  --searchbar-fg: var(--nv-ink);
+  --searchbar-shadow-color: var(--nv-line);
+  --searchresults-header-fg: var(--nv-muted);
+  --searchresults-border-color: var(--nv-line);
+  --searchresults-li-bg: var(--nv-surface);
+  --search-mark-bg: var(--nv-accent-soft);
 }
-.content h2, .content h3, .content h4 {
-  font-family: var(--tn-body-font);
+
+html, body, .content { font-family: var(--nv-body-font); }
+.content code, pre, code, kbd, .hljs { font-family: var(--nv-mono-font); }
+
+.content h1, .content h2, .content h3, .content h4 {
+  font-family: var(--nv-body-font);
   font-weight: 600;
-  color: var(--tn-pale-ice);
+  color: var(--nv-ink);
 }
+.menu-title { font-family: var(--nv-body-font); font-weight: 600; }
 
-/* Links + the one warm accent. */
-.content a, .content a:visited { color: var(--tn-glacier); }
-.content a:hover { color: var(--tn-ice); }
+.content a, .content a:visited { color: var(--nv-accent); }
+.content a:hover { color: var(--nv-ink); }
 
-/* Blockquotes (the ⚠️ real-resource warnings) get the ember edge. */
 .content blockquote {
-  border-inline-start: 3px solid var(--tn-ember);
-  background: var(--tn-disc-navy);
-  color: var(--tn-pale-ice);
+  border-inline-start: 3px solid var(--nv-accent);
+  background: var(--nv-accent-soft);
+  color: var(--nv-ink);
 }
 
-/* Hero banner on the landing page. */
-.tn-hero { margin: 0 0 1.5rem; text-align: center; }
-.tn-hero img {
-  max-width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--tn-steel);
-}
-
-/* Emblem on the brand page. */
-.tn-brand-emblem { text-align: center; margin: 0 0 1rem; }
-
-/* Inline code: ice on a faint navy chip. */
 .content code:not(pre code) {
-  background: var(--tn-disc-navy);
-  color: var(--tn-pale-ice);
+  background: var(--nv-accent-soft);
   border-radius: 3px;
   padding: 0.1em 0.35em;
 }
 
-/* Compact tables: wide comparison grids (many provider columns) wrapped in
- * <div class="tn-compact-table"> shrink to fit the page instead of forcing a
- * horizontal scrollbar. Smaller font, tighter cells, fixed layout so columns
- * share the width and long words wrap. On very narrow viewports it still falls
- * back to scrolling (the wrapper keeps overflow-x:auto) so nothing is clipped. */
+.tn-hero { margin: 0 0 1.5rem; text-align: center; }
+.tn-hero img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--nv-line);
+}
+
+.tn-brand-emblem { text-align: center; margin: 0 0 1rem; }
+
 .tn-compact-table .table-wrapper,
 .tn-compact-table table {
   width: 100%;
@@ -131,8 +117,6 @@ html, body, .content { font-family: var(--tn-body-font); }
   word-break: normal;
   hyphens: auto;
 }
-/* The first column holds the row label (feature / tool name): give it room and
- * keep the per-tool result columns narrow and centered. */
 .tn-compact-table thead th:first-child,
 .tn-compact-table tbody td:first-child {
   width: 22%;

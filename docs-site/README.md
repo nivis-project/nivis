@@ -2,13 +2,15 @@
 
 A static documentation site built with [mdBook](https://rust-lang.github.io/mdBook/).
 It **reuses** the repository's Markdown docs (via `{{#include}}`) so there is one
-source of truth, and applies the [brand tokens](../docs/BRAND.md) through a custom
-theme.
+source of truth, and wears the nivis.tf house style through a custom theme:
+`theme/custom.css` copies its colours from nivis.tf `data/tokens.yaml`, each
+under the token's own name.
 
-**Live:** <https://nivis-project.github.io/nivis/> — deployed to GitHub
-Pages by `.github/workflows/docs.yml` on every push to `main` (Pages source =
-GitHub Actions). It's a project page served under the `/nivis/` subpath,
-which is why `book.toml` sets `site-url = "/nivis/"`.
+**Live:** <https://docs.nivis.tf/>, deployed to GitHub Pages by
+`.github/workflows/docs.yml` on every push to `main` (Pages source = GitHub
+Actions), with `docs.nivis.tf` as the custom domain. The site is served from
+the root of that domain, which is why `book.toml` sets `site-url = "/"`.
+`tests/check-docs-site.sh` guards the address, the sharing tags and the theme.
 
 ## Build
 

@@ -85,7 +85,7 @@ verifies real providers from the OpenTofu registry on first use.)
 - **How does it compare?** An honest **[comparison](docs/COMPARISON.md)** with
   Terranix, OpenTofu/Terraform, Pulumi, NixOps, CDK and CloudFormation, including
   where Nivis is still young.
-- Browse it all on the **[docs site](https://nivis-project.github.io/nivis/)**.
+- Browse it all on the **[docs site](https://docs.nivis.tf/)**.
 
 ## How it works (one paragraph)
 

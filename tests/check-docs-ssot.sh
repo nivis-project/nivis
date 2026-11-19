@@ -111,6 +111,10 @@ if ! bash tests/check-changelog.sh; then
   fail=1
 fi
 
+if ! bash tests/check-docs-site.sh; then
+  fail=1
+fi
+
 # 5. The site must still build with the includes in place.
 echo "== site builds with includes =="
 if command -v mdbook >/dev/null 2>&1; then

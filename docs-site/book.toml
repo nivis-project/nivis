@@ -7,9 +7,9 @@ src = "src"
 
 [output.html]
 # Brand theme lives in ./theme (custom.css/head.hbs override the defaults).
-# Served as a GitHub Pages project page under the /nivis/ subpath.
-site-url = "/nivis/"
-default-theme = "navy"
+# Served from the root of docs.nivis.tf (GitHub Pages custom domain).
+site-url = "/"
+default-theme = "light"
 preferred-dark-theme = "navy"
 no-section-label = false
 additional-css = ["theme/custom.css"]

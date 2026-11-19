@@ -8,6 +8,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- the documentation site moved to docs.nivis.tf and wears the nivis.tf house
+  style: Hind, the teal to blue palette, light or dark following the system.
+  The old address redirects there.
+
 ### Fixed
 - a replacement now carries through to the resources that hold the replaced
   object, instead of being refused whenever anything depends on it. Changing a
