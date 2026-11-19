@@ -27,7 +27,13 @@ want_meta property og:image:type image/png
 want_meta property og:image:width 1200
 want_meta property og:image:height 630
 want_meta name twitter:image https://nivis.tf/social.png
-grep -qF '<link rel="icon" type="image/svg+xml" href="https://nivis.tf/favicon.svg">' "$head" || bad "$head: the favicon must be https://nivis.tf/favicon.svg"
+if grep -qE 'rel="(shortcut )?icon"' "$head"; then
+  bad "$head: an icon link; mdBook links theme/favicon.svg itself, and a second link loses to it"
+fi
+mark=docs-site/theme/favicon.svg
+mark_sha256=e64fce8e86010fe6add5d89876149afd4fa5d0e3eac85e416bf98da658aa9d0e
+[ "$(sha256sum "$mark" | cut -d' ' -f1)" = "$mark_sha256" ] || bad "$mark is not the nivis.tf mark (https://nivis.tf/favicon.svg, sha256 $mark_sha256)"
+[ ! -e docs-site/theme/favicon.png ] || bad "docs-site/theme/favicon.png exists; mdBook would link it as a second icon"
 if grep -oE '(href|content)="/[^"]*"' "$head" | grep -q .; then
   bad "$head: a site-relative URL in the head; sharing systems need absolute ones"
 fi
@@ -57,6 +63,27 @@ if command -v mdbook >/dev/null 2>&1; then
   if mdbook build docs-site -d "$out" >"$out.log" 2>&1; then
     grep -qF 'https://nivis.tf/social.png' "$out/index.html" || bad "the built index.html has no sharing image"
     grep -qE 'href="theme/custom(-[0-9a-f]+)?\.css"' "$out/index.html" || bad "the built index.html does not load theme/custom.css"
+    pages=0
+    while IFS= read -r page; do
+      pages=$((pages + 1))
+      icons="$(grep -oE '<link rel="(shortcut )?icon"[^>]*>' "$page" || true)"
+      n="$(printf '%s' "$icons" | grep -c . || true)"
+      if [ "$n" -ne 1 ]; then
+        bad "$page has $n icon links, expected 1"
+        continue
+      fi
+      href="$(printf '%s' "$icons" | sed -E 's/.*href="([^"]*)".*/\1/')"
+      case "$href" in
+        /*) file="$out$href" ;;
+        *) file="$(dirname "$page")/$href" ;;
+      esac
+      cmp -s "$file" "$mark" || bad "$page: its icon $href is not $mark"
+    done < <(find "$out" -name '*.html' ! -name 'toc.html')
+    [ "$pages" -gt 0 ] || bad "the build produced no pages to inspect"
+    first_img="$(grep -oE '<img [^>]*src="[^"]*"' "$out/index.html" | head -n1 | sed -E 's/.*src="([^"]*)"/\1/')"
+    [ "$first_img" = "https://nivis.tf/social.png" ] || bad "the first image on the landing page is '$first_img', not https://nivis.tf/social.png"
+    hits="$(grep -rlE 'src="[^"]*banner\.png"' "$out" --include='*.html' || true)"
+    [ -z "$hits" ] || bad "a built page still loads banner.png: $hits"
   else
     cat "$out.log"
     bad "mdbook build docs-site failed"

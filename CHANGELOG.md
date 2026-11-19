@@ -10,8 +10,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 - the documentation site moved to docs.nivis.tf and wears the nivis.tf house
-  style: Hind, the teal to blue palette, light or dark following the system.
-  The old address redirects there.
+  style: Hind, the teal to blue palette, light or dark following the system,
+  the nivis.tf mark as its favicon and the nivis.tf preview image on its
+  landing page. The old address redirects there.
 
 ### Fixed
 - a replacement now carries through to the resources that hold the replaced

@@ -1,5 +1,5 @@
 <div class="tn-hero">
-  <img src="./banner.png" alt="Nivis: All your base belongs to Nix" />
+  <img src="https://nivis.tf/social.png" alt="Nivis: Terraform providers as first-class Nix values." width="1200" height="630" />
 </div>
 
 # Nivis

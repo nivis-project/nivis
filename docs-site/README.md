@@ -29,11 +29,15 @@ The built site is written to `docs-site/book/` (git-ignored).
 - `book.toml` — site config (title, theme dir, custom CSS, git/edit links).
 - `src/SUMMARY.md` — the nav; `src/*.md` — thin pages that `{{#include}}` the
   canonical docs (`../docs/*.md`, including `DESIGN.md` and `ROADMAP.md`).
-- `theme/custom.css` — the brand palette + Cinzel/Schibsted Grotesk/IBM Plex Mono
-  type stack (Google Fonts with a system fallback).
-- `theme/head.hbs` — `og:image`/`twitter:image` (the 1280×640 banner) + favicon.
-- `banner.png`, `nivis-emblem.svg`, `favicon.svg` — brand assets copied
-  from `../docs/assets` / `../assets` so the built site is self-contained.
+- `theme/custom.css`: Hind and IBM Plex Mono (Google Fonts with a system
+  fallback) and the nivis.tf palette for the light and navy themes.
+- `theme/head.hbs`: the sharing tags, with `https://nivis.tf/social.png` as
+  `og:image` and `twitter:image`.
+- `theme/favicon.svg`: a byte-for-byte copy of `https://nivis.tf/favicon.svg`.
+  mdBook links it itself. When nivis.tf's mark changes, copy it again and update
+  its SHA-256 in `tests/check-docs-site.sh`.
+- `src/nivis-emblem.svg`: the emblem on the brand page, copied from
+  `../assets`.
 
 ## Editing content
 
