@@ -47,6 +47,11 @@ fi
 if grep -qE '#[0-9a-fA-F]{3,8}\b' "$css"; then
   bad "$css: a hex colour; every colour is a nivis.tf token in oklch"
 fi
+hero="$(awk '/^\.tn-hero img \{/ { inside = 1 } inside { print } inside && /^\}/ { exit }' "$css")"
+[ -n "$hero" ] || bad "$css: no .tn-hero img rule"
+if printf '%s' "$hero" | grep -q 'max-width' && ! printf '%s' "$hero" | grep -qE 'height: *auto'; then
+  bad "$css: .tn-hero img sets max-width without height: auto, so the landing image stretches when it shrinks"
+fi
 for theme in light navy; do
   for token in ground surface ink muted line accent accent-soft; do
     awk -v t=".$theme {" -v k="--nv-$token:" '

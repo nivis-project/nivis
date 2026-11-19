@@ -94,6 +94,7 @@ html, body, .content { font-family: var(--nv-body-font); }
 .tn-hero { margin: 0 0 1.5rem; text-align: center; }
 .tn-hero img {
   max-width: 100%;
+  height: auto;
   border-radius: 8px;
   border: 1px solid var(--nv-line);
 }
