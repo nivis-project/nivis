@@ -92,5 +92,8 @@ nix eval --impure --json --expr '
 python3 tests/ir-conformance/check.py validate /tmp/tn-ir-backend.json
 rm -f /tmp/tn-ir-backend.json
 
+echo "== 8. the recorded demo still shows what it claims =="
+bash tests/check-demo.sh
+
 echo
 echo "All Nix tests passed."
